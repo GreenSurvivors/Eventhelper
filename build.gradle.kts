@@ -3,7 +3,7 @@
 plugins {
     `java-library`
     //java
-    id("io.papermc.paperweight.userdev") version "1.3.8"
+    id("io.papermc.paperweight.userdev") version "1.5.1"
 	id("xyz.jpenilla.run-paper") version "2.0.1" // Adds runServer and runMojangMappedServer tasks for testing
 }
 
