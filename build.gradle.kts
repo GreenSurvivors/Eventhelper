@@ -10,7 +10,9 @@ plugins {
 group = "de.greensurvivors"
 version = "1.0.0-SNAPSHOT"
 description = "A Greensurvivors Plugin "
-//java.sourceCompatibility = JavaVersion.VERSION_17
+// this is the minecraft major version. If you need a subversion like 1.20.1,
+// change it in the dependencies section as this is also used as the api version of the plugin.yml
+val mainMCVersion by extra("1.20")
 
 java {
   // Configure the java toolchain. This allows gradle to auto-provision JDK 17 on systems that only have JDK 8 installed for example.
@@ -27,7 +29,7 @@ repositories {
 }
 
 dependencies {
-    paperweight.paperDevBundle("1.19.2-R0.1-SNAPSHOT")
+    paperweight.paperDevBundle("$mainMCVersion.1-R0.1-SNAPSHOT")
 }
 
 tasks {
@@ -45,7 +47,11 @@ tasks {
   }
   
   processResources {
-    filteringCharset = Charsets.UTF_8.name() // We want UTF-8 for everything
+      filteringCharset = Charsets.UTF_8.name() // We want UTF-8 for everything
+
+      expand("version" to project.version,
+          "description" to project.description,
+          "apiVersion" to mainMCVersion)
   }
 
   /*

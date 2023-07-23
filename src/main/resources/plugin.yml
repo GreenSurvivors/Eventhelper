@@ -1,7 +1,8 @@
 main: de.greensurvivors.greenplugin.GreenPlugin
 name: GreenPlugin
-version: 1.0.0
-api-version: 1.19
+api-version: '${apiVersion}'
+version: ${version}
+description: ${description}
 author: GreensurvivorsTeam
 
 commands:
