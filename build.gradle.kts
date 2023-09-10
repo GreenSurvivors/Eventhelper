@@ -26,10 +26,16 @@ repositories {
     maven {
         url = uri("https://repo.papermc.io/repository/maven-public/")
     }
+
+    //world guard
+    maven {
+        url = uri("https://maven.enginehub.org/repo/")
+    }
 }
 
 dependencies {
     paperweight.paperDevBundle("$mainMCVersion.1-R0.1-SNAPSHOT")
+    compileOnly("com.sk89q.worldguard","worldguard-bukkit","7.1.0-SNAPSHOT")
 }
 
 tasks {
@@ -49,9 +55,7 @@ tasks {
   processResources {
       filteringCharset = Charsets.UTF_8.name() // We want UTF-8 for everything
 
-      expand("version" to project.version,
-          "description" to project.description,
-          "apiVersion" to mainMCVersion)
+      expand(project.properties)
   }
 
   /*

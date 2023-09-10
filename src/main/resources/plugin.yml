@@ -1,10 +1,12 @@
-main: de.greensurvivors.greenplugin.GreenPlugin
-name: GreenPlugin
-api-version: '${apiVersion}'
+main: de.greensurvivors.eventhelper.Eventhelper
+name: Eventhelper
+api-version: '${mainMCVersion}'
 version: ${version}
 description: ${description}
 author: GreensurvivorsTeam
+loadbefore:
+  - WorldGuard
 
 commands:
-  greenplugin:
+  eventhelper:
     description: A command.
