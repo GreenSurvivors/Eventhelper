@@ -102,6 +102,7 @@ public class TNTKnockback implements Listener {
                 interaction -> {
                     interaction.setResponsive(true);
 
+                    // 0.03f is just a magic value to be slightly bigger than the original hitbox
                     interaction.setInteractionHeight((float) probablyTnt.getBoundingBox().getHeight() + 0.03f);
                     interaction.setInteractionWidth((float) probablyTnt.getBoundingBox().getWidthX() + 0.03f);
 
@@ -224,8 +225,9 @@ public class TNTKnockback implements Listener {
                             if (tntUUID != null) {
                                 Entity tntEntity = Bukkit.getEntity(tntUUID);
                                 if (tntEntity != null) {
-                                    double knockbackX = Math.sin(player.getYaw() * 0.017453292D);
-                                    double knockbackZ = -Math.cos(player.getYaw() * 0.017453292D);
+                                    float yaw = player.getLocation().getYaw();
+                                    double knockbackX = Math.sin(yaw * 0.017453292D);
+                                    double knockbackZ = -Math.cos(yaw * 0.017453292D);
 
                                     Vector velocity = tntEntity.getVelocity();
 
