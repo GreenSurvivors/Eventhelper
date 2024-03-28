@@ -31,7 +31,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Level;
 
-public class TNTKnockback implements Listener {
+public class TNTKnockbackListener implements Listener {
     private final Plugin eventHelper;
     private final Plugin worldGuard;
     private final HashMap<UUID, TntAndTasks> interactionMap = new HashMap<>();
@@ -42,7 +42,7 @@ public class TNTKnockback implements Listener {
      * Since flag creation has to be done before worldguard is enabled,
      * we can't check if it was successfully loaded here.
      */
-    public TNTKnockback(Plugin eventHelper) {
+    public TNTKnockbackListener(Plugin eventHelper) {
         this.eventHelper = eventHelper;
         this.worldGuard = Bukkit.getPluginManager().getPlugin("WorldGuard");
 

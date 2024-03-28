@@ -3,13 +3,13 @@
 plugins {
     `java-library`
     //java
-    id("io.papermc.paperweight.userdev") version "1.5.1"
-	id("xyz.jpenilla.run-paper") version "2.0.1" // Adds runServer and runMojangMappedServer tasks for testing
+    id("io.papermc.paperweight.userdev") version "1.5.12"
+    id("xyz.jpenilla.run-paper") version "2.2.2" // Adds runServer and runMojangMappedServer tasks for testing
 }
 
 group = "de.greensurvivors"
-version = "1.0.1-SNAPSHOT"
-description = "A Greensurvivors Plugin "
+version = "1.1.0-SNAPSHOT"
+description = "Helper for all kinds of Event.d"
 // this is the minecraft major version. If you need a subversion like 1.20.1,
 // change it in the dependencies section as this is also used as the api version of the plugin.yml
 val mainMCVersion by extra("1.20")
