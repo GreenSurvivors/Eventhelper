@@ -24,7 +24,7 @@ import java.util.UUID;
 import java.util.logging.Level;
 
 public class InventoryRegionListener implements Listener {
-    private final HashMap<UUID, String> playerInventoryCache = new HashMap<>();
+    private final HashMap<UUID, String> playerInventoryCache = new HashMap<>(); //todo use caffeein cache
 
     private static InventoryRegionListener instance;
     public static StringFlag inventory_identifier;
@@ -82,15 +82,13 @@ public class InventoryRegionListener implements Listener {
         }
     }
 
-    @EventHandler
+    @EventHandler(ignoreCancelled = true)
     public void onPlayerTeleport(PlayerTeleportEvent event) {
-        if (!event.isCancelled()) {
-            if (inventory_identifier == null) {
-                return;
-            }
-
-            updateInventory(event.getPlayer(), BukkitAdapter.adapt(event.getTo()));
+        if (inventory_identifier == null) {
+            return;
         }
+
+        updateInventory(event.getPlayer(), BukkitAdapter.adapt(event.getTo()));
     }
 
     @EventHandler

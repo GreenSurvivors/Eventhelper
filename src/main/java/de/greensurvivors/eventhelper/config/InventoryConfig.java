@@ -1,9 +1,6 @@
 package de.greensurvivors.eventhelper.config;
 
 import de.greensurvivors.eventhelper.Eventhelper;
-import org.bukkit.attribute.Attribute;
-import org.bukkit.attribute.AttributeInstance;
-import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
@@ -12,7 +9,9 @@ import org.bukkit.inventory.ItemStack;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.regex.Pattern;
 
@@ -120,21 +119,6 @@ public class InventoryConfig {
         cfg.set(buildKey(identifier, STATS, HEALTH), player.getHealth());
         cfg.set(buildKey(identifier, STATS, HUNGER), player.getFoodLevel());
 
-        //save attributes
-        cfg.set(buildKey(identifier, ATTRIBUTES), Arrays.stream(Attribute.values()).map(attribute -> {
-            AttributeInstance attributeInstance = player.getAttribute(attribute);
-            if (attributeInstance != null) {
-                Map<String, Object> attributeMap = new HashMap<>();
-                attributeMap.put(ATTRIBUTE_TYPE, attribute.name());
-                attributeMap.put(ATTRIBUTE_BASE_VALUE, attributeInstance.getBaseValue());
-                attributeMap.put(ATTRIBUTE_MODIFIERS, attributeInstance.getModifiers().stream().map(AttributeModifier::serialize).toList());
-
-                return attributeMap;
-            } else {
-                return new HashMap<>();
-            }
-        }).filter(s -> !s.isEmpty()).toList());
-
         // save modified configuration
         cfg.options().parseComments(true);
         try {
@@ -204,91 +188,6 @@ public class InventoryConfig {
         }
 
         player.updateInventory();
-
-        //todo
-
-        if (cfg.contains(buildKey(identifier, ATTRIBUTES))) {
-            List<?> attributeObjs = cfg.getList(buildKey(identifier, ATTRIBUTES));
-
-            if (attributeObjs != null) {
-
-                //reset attributes
-                for (Attribute attribute : Attribute.values()) {
-                    AttributeInstance attributeInstance = player.getAttribute(attribute);
-                    if (attributeInstance == null) {
-                        continue;
-                    }
-
-                    attributeInstance.setBaseValue(attributeInstance.getDefaultValue());
-                    attributeInstance.getModifiers().clear();
-                }
-
-
-                //load attributes
-                for (Object mapObj : attributeObjs) {
-                    if (mapObj instanceof Map<?, ?> attributeMap) {
-                        String type = null;
-                        Double baseValue = null;
-                        List<AttributeModifier> modifiers = new ArrayList<>();
-
-                        for (Object strObj : attributeMap.keySet()) {
-                            if (strObj instanceof String id) {
-                                if (id.equalsIgnoreCase(ATTRIBUTE_TYPE)) {
-                                    Object attributeNameObj = attributeMap.get(strObj);
-
-                                    if (attributeNameObj instanceof String name) {
-                                        type = name;
-                                    }
-                                } else if (id.equalsIgnoreCase(ATTRIBUTE_BASE_VALUE)) {
-                                    Object baseObj = attributeMap.get(strObj);
-
-                                    if (baseObj instanceof Double base) {
-                                        baseValue = base;
-                                    } else if (baseObj instanceof Float base) {
-                                        baseValue = Double.valueOf(base);
-                                    } else if (baseObj instanceof String baseStr) {
-                                        if (isDouble(baseStr)) {
-                                            baseValue = Double.parseDouble(baseStr);
-                                        }
-                                    }
-                                } else if (id.equalsIgnoreCase(ATTRIBUTE_MODIFIERS)) {
-                                    Object modifierListObjMapObjs = attributeMap.get(strObj);
-
-                                    if (modifierListObjMapObjs instanceof List<?> modifierListMapObjs) {
-                                        for (Object modifierMapObj : modifierListMapObjs) {
-                                            if (modifierMapObj instanceof Map<?, ?> modifierMap) {
-                                                Map<String, Object> checkedModifierMap = new HashMap<>();
-
-                                                for (Object modifierMapKeyObj : modifierMap.keySet()) {
-                                                    if (modifierMapKeyObj instanceof String modifierMapKey) {
-                                                        checkedModifierMap.put(modifierMapKey, modifierMap.get(modifierMapKeyObj));
-                                                    }
-                                                }
-
-                                                modifiers.add(AttributeModifier.deserialize(checkedModifierMap));
-                                            }
-                                        }
-                                    }
-
-                                } else {
-                                    Eventhelper.getPlugin().getLogger().log(Level.WARNING, "unknown playerdata-attribut id: \"" + id + "\".");
-                                }
-                            }
-                        }
-
-                        if (type != null && baseValue != null) {
-                            Attribute attribute = Attribute.valueOf(type);
-                            player.registerAttribute(attribute);
-
-                            player.getAttribute(attribute).setBaseValue(baseValue);
-                            for (AttributeModifier modifier : modifiers) {
-                                player.getAttribute(attribute).getModifiers().add(modifier);
-                            }
-                        }
-                    }
-                }
-            }
-        }
 
         player.setExp(Math.max(0, (float) cfg.getDouble(buildKey(identifier, STATS, EXP), defaultExp)));
         player.setLevel(Math.max(0, cfg.getInt(buildKey(identifier, STATS, LEVEL), defaultLevel)));
