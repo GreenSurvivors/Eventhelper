@@ -63,10 +63,6 @@ public class InventoryConfig {
             LEVEL = "level",
             HEALTH = "health",
             HUNGER = "hunger",
-            ATTRIBUTES = "attributes",
-            ATTRIBUTE_BASE_VALUE = "base",
-            ATTRIBUTE_MODIFIERS = "modifiers",
-            ATTRIBUTE_TYPE = "type",
             ACTIVE_INVENTORY = "activeInventory";
 
     private static InventoryConfig instance;

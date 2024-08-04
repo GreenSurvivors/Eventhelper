@@ -3,20 +3,18 @@
 plugins {
     `java-library`
     //java
-    id("io.papermc.paperweight.userdev") version "1.5.12"
-    id("xyz.jpenilla.run-paper") version "2.2.2" // Adds runServer and runMojangMappedServer tasks for testing
+    id("io.papermc.paperweight.userdev") version "1.7.1"
+    id("xyz.jpenilla.run-paper") version "2.3.0" // Adds runServer and runMojangMappedServer tasks for testing
 }
 
 group = "de.greensurvivors"
-version = "1.1.0-SNAPSHOT"
+version = "1.2.0-SNAPSHOT"
 description = "Helper for all kinds of Event.d"
-// this is the minecraft major version. If you need a subversion like 1.20.1,
-// change it in the dependencies section as this is also used as the api version of the plugin.yml
-val mainMCVersion by extra("1.20")
+val mcVersion by extra("1.21")
 
 java {
   // Configure the java toolchain. This allows gradle to auto-provision JDK 17 on systems that only have JDK 8 installed for example.
-  toolchain.languageVersion.set(JavaLanguageVersion.of(17))
+  toolchain.languageVersion.set(JavaLanguageVersion.of(21))
 }
 
 repositories {
@@ -34,7 +32,7 @@ repositories {
 }
 
 dependencies {
-    paperweight.paperDevBundle("$mainMCVersion.1-R0.1-SNAPSHOT")
+    paperweight.paperDevBundle("$mcVersion-R0.1-SNAPSHOT")
     compileOnly("com.sk89q.worldguard","worldguard-bukkit","7.1.0-SNAPSHOT")
 }
 
@@ -49,7 +47,7 @@ tasks {
 
     // Set the release flag. This configures what version bytecode the compiler will emit, as well as what JDK APIs are usable.
     // See https://openjdk.java.net/jeps/247 for more information.
-    options.release.set(17)
+    options.release.set(21)
   }
   
   processResources {
@@ -57,13 +55,4 @@ tasks {
 
       expand(project.properties)
   }
-
-  /*
-  reobfJar {
-    // This is an example of how you might change the output location for reobfJar. It's recommended not to do this
-    // for a variety of reasons, however it's asked frequently enough that an example of how to do it is included here.
-    outputJar.set(layout.buildDirectory.file("libs/PaperweightTestPlugin-${project.version}.jar"))
-  }
-   */
- 
 }
