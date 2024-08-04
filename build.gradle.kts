@@ -6,9 +6,10 @@ plugins {
     id("io.papermc.paperweight.userdev") version "1.7.1"
     id("xyz.jpenilla.run-paper") version "2.3.0" // Adds runServer and runMojangMappedServer tasks for testing
 }
+paperweight.reobfArtifactConfiguration = io.papermc.paperweight.userdev.ReobfArtifactConfiguration.MOJANG_PRODUCTION
 
 group = "de.greensurvivors"
-version = "1.2.0-SNAPSHOT"
+version = "1.§.0-SNAPSHOT"
 description = "Helper for all kinds of Event.d"
 val mcVersion by extra("1.21")
 
