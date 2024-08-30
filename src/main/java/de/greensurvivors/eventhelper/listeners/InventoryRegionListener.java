@@ -9,7 +9,7 @@ import com.sk89q.worldguard.protection.flags.StringFlag;
 import com.sk89q.worldguard.protection.flags.registry.FlagConflictException;
 import com.sk89q.worldguard.protection.flags.registry.FlagRegistry;
 import com.sk89q.worldguard.protection.regions.RegionQuery;
-import de.greensurvivors.eventhelper.Eventhelper;
+import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.config.InventoryConfig;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -53,7 +53,7 @@ public class InventoryRegionListener implements Listener {
                 inventory_identifier = null;
                 // types don't match - this is bad news! some other plugin conflicts with you
                 // hopefully this never actually happens
-                Eventhelper.getPlugin().getLogger().log(Level.WARNING, "couldn't enable Flag \"cinventory-identifier\". Might conflict with other plugin.");
+                EventHelper.getPlugin().getLogger().log(Level.WARNING, "couldn't enable Flag \"cinventory-identifier\". Might conflict with other plugin.");
             }
         }
     }

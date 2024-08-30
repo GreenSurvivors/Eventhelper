@@ -25,6 +25,7 @@ import org.bukkit.event.entity.EntitySpawnEvent;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -42,7 +43,7 @@ public class TNTKnockbackListener implements Listener {
      * Since flag creation has to be done before worldguard is enabled,
      * we can't check if it was successfully loaded here.
      */
-    public TNTKnockbackListener(Plugin eventHelper) {
+    public TNTKnockbackListener(@NotNull Plugin eventHelper) {
         this.eventHelper = eventHelper;
         this.worldGuard = Bukkit.getPluginManager().getPlugin("WorldGuard");
 
@@ -97,7 +98,7 @@ public class TNTKnockbackListener implements Listener {
      *                    All assumptions where made for a primed tnt;
      *                    however, everything may work with other entities as well
      */
-    private void spawnInteraction(final Entity probablyTnt) {
+    private void spawnInteraction(final @NotNull Entity probablyTnt) {
         probablyTnt.getWorld().spawn(probablyTnt.getLocation(), Interaction.class, CreatureSpawnEvent.SpawnReason.COMMAND,
                 interaction -> {
                     interaction.setResponsive(true);
@@ -121,7 +122,7 @@ public class TNTKnockbackListener implements Listener {
      *                        call this function with the UUID of its
      *                        interaction entity as identifier
      */
-    private void doTimerTask(UUID interactionUUID) {
+    private void doTimerTask(@NotNull UUID interactionUUID) {
         Interaction interaction = (Interaction) Bukkit.getEntity(interactionUUID);
         TntAndTasks tntAndTasks = interactionMap.get(interactionUUID);
 

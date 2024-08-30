@@ -1,0 +1,15 @@
+name: EventHelper
+version: '${version}'
+main: de.greensurvivors.eventhelper.EventHelper
+description: ${description}
+api-version: '${apiVersion}'
+#bootstrapper: de.greensurvivors.eventhelper.startup.Bootstrap
+#loader: de.greensurvivors.eventhelper.startup.Loader
+authors: [ GreensurvivorsTeam ]
+dependencies:
+  server:
+    WorldGuard:
+      load: AFTER
+      required: true
+      # This means that we will have access to their classpath
+      join-classpath: true

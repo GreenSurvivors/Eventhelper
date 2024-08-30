@@ -1,11 +1,12 @@
 package de.greensurvivors.eventhelper.config;
 
-import de.greensurvivors.eventhelper.Eventhelper;
+import de.greensurvivors.eventhelper.EventHelper;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.inventory.ItemStack;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
@@ -15,7 +16,7 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.regex.Pattern;
 
-public class InventoryConfig {
+public class InventoryConfig { // todo use ItemStack.deserializeBytes() instead of broken bukkit stuff
     final static String Digits = "(\\p{Digit}+)";
     final static String HexDigits = "(\\p{XDigit}+)";
     // an exponent is 'e' or 'E' followed by an optionally
@@ -103,8 +104,8 @@ public class InventoryConfig {
      * @param player     player whose inventory is about to be saved
      * @param identifier the identifier what inventory should be saved.
      */
-    public void savePlayerData(Player player, String identifier) {
-        File file = new File(Eventhelper.getPlugin().getDataFolder(), "inventory_regions" + File.separator + player.getUniqueId() + ".yml");
+    public void savePlayerData(@NotNull Player player, @NotNull String identifier) {
+        File file = new File(EventHelper.getPlugin().getDataFolder(), "inventory_regions" + File.separator + player.getUniqueId() + ".yml");
         FileConfiguration cfg = YamlConfiguration.loadConfiguration(file);
 
         //saves the inventory, enderchest and states of a player under the identifier
@@ -120,7 +121,7 @@ public class InventoryConfig {
         try {
             cfg.save(file);
         } catch (IOException e) {
-            Eventhelper.getPlugin().getLogger().log(Level.SEVERE, "Could not save " + file.getName() + " inventory file.", e);
+            EventHelper.getPlugin().getLogger().log(Level.SEVERE, "Could not save " + file.getName() + " inventory file.", e);
         }
     }
 
@@ -135,7 +136,7 @@ public class InventoryConfig {
      * @param identifier the identifier what inventory should be loaded.
      */
     public void loadPlayerData(Player player, String identifier) {
-        File file = new File(Eventhelper.getPlugin().getDataFolder(), "inventory_regions" + File.separator + player.getUniqueId() + ".yml");
+        File file = new File(EventHelper.getPlugin().getDataFolder(), "inventory_regions" + File.separator + player.getUniqueId() + ".yml");
         FileConfiguration cfg = YamlConfiguration.loadConfiguration(file);
 
         //set active
@@ -146,7 +147,7 @@ public class InventoryConfig {
         try {
             cfg.save(file);
         } catch (IOException e) {
-            Eventhelper.getPlugin().getLogger().log(Level.SEVERE, "Could not save " + file.getName() + " inventory file.", e);
+            EventHelper.getPlugin().getLogger().log(Level.SEVERE, "Could not save " + file.getName() + " inventory file.", e);
         }
 
 //		ItemStack[] content = ((List<ItemStack>) c.get(mode + ".inventory.armor")).toArray(new ItemStack[0]);
@@ -197,7 +198,7 @@ public class InventoryConfig {
      * @param player player whose inventory identifier is about to be loaded
      */
     public String loadIdentifier(Player player) {
-        File file = new File(Eventhelper.getPlugin().getDataFolder(), "inventory_regions" + File.separator + player.getUniqueId() + ".yml");
+        File file = new File(EventHelper.getPlugin().getDataFolder(), "inventory_regions" + File.separator + player.getUniqueId() + ".yml");
         FileConfiguration cfg = YamlConfiguration.loadConfiguration(file);
 
         //get active inventory identifier
