@@ -3,16 +3,18 @@
 plugins {
     `java-library`
     //java
-    id("io.papermc.paperweight.userdev") version "1.5.12"
-    id("xyz.jpenilla.run-paper") version "2.2.2" // Adds runServer and runMojangMappedServer tasks for testing
+    id("io.papermc.paperweight.userdev") version "1.7.2"
+    id("xyz.jpenilla.run-paper") version "2.3.1" // Adds runServer and runMojangMappedServer tasks for testing
 }
 
 group = "de.greensurvivors"
-version = "1.1.0-SNAPSHOT"
+version = "1.2.0-SNAPSHOT"
 description = "Helper for all kinds of Event.d"
 // this is the minecraft major version. If you need a subversion like 1.20.1,
 // change it in the dependencies section as this is also used as the api version of the plugin.yml
 val mainMCVersion by extra("1.20")
+
+paperweight.reobfArtifactConfiguration = io.papermc.paperweight.userdev.ReobfArtifactConfiguration.MOJANG_PRODUCTION
 
 java {
   // Configure the java toolchain. This allows gradle to auto-provision JDK 17 on systems that only have JDK 8 installed for example.
@@ -34,8 +36,9 @@ repositories {
 }
 
 dependencies {
-    paperweight.paperDevBundle("$mainMCVersion.1-R0.1-SNAPSHOT")
+    paperweight.paperDevBundle("$mainMCVersion.4-R0.1-SNAPSHOT")
     compileOnly("com.sk89q.worldguard","worldguard-bukkit","7.1.0-SNAPSHOT")
+    api("com.github.ben-manes.caffeine:caffeine:3.1.8") // caches
 }
 
 tasks {
@@ -57,13 +60,4 @@ tasks {
 
       expand(project.properties)
   }
-
-  /*
-  reobfJar {
-    // This is an example of how you might change the output location for reobfJar. It's recommended not to do this
-    // for a variety of reasons, however it's asked frequently enough that an example of how to do it is included here.
-    outputJar.set(layout.buildDirectory.file("libs/PaperweightTestPlugin-${project.version}.jar"))
-  }
-   */
- 
 }
