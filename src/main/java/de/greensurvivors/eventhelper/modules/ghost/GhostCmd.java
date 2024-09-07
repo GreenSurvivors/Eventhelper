@@ -3,6 +3,9 @@ package de.greensurvivors.eventhelper.modules.ghost;
 import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.command.ASubCommand;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Ghast;
+import org.bukkit.entity.Player;
+import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.permissions.Permission;
 import org.bukkit.permissions.PermissionDefault;
 import org.jetbrains.annotations.NotNull;
@@ -27,7 +30,19 @@ public class GhostCmd extends ASubCommand {
     }
 
     @Override
-    public boolean execute(@NotNull CommandSender sender, @NotNull List<String> args) {
+    public boolean execute(final @NotNull CommandSender sender, final @NotNull List<String> args) {
+        if (sender instanceof Player player) {
+            player.getWorld().spawn(player.getLocation(), Ghast.class, CreatureSpawnEvent.SpawnReason.COMMAND, false,
+                ghast -> {
+                ghast.setAI(false);
+                ghast.setPersistent(true);
+                ghast.setInvulnerable(true);
+                ghast.setCollidable(false);
+                ghast.setNoPhysics(true);
+                ghast.setSilent(true);
+            });
+        }
+
         return false;
     }
 

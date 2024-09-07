@@ -102,7 +102,7 @@ public class InventoryRegionModul extends AModul<InventoryConfig> implements Lis
 
     @Override
     public @NotNull String getName() {
-        return "InventoryRegion";
+        return "inventoryRegions";
     }
 
     @Override
