@@ -1,4 +1,4 @@
-package de.greensurvivors.eventhelper.modules.tnt;
+package de.greensurvivors.eventhelper.modules.ghost;
 
 import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.modules.AModulConfig;
@@ -13,10 +13,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.concurrent.CompletableFuture;
 
-
-public class TNTKnockbackConfig extends AModulConfig<TNTKnockbackModul> {
-
-    public TNTKnockbackConfig(@NotNull EventHelper plugin) {
+public class GeneralGhostConfig extends AModulConfig<GhostModul> {
+    public GeneralGhostConfig(final @NotNull EventHelper plugin) {
         super(plugin);
     }
 
@@ -38,7 +36,7 @@ public class TNTKnockbackConfig extends AModulConfig<TNTKnockbackModul> {
 
                             if (dataVersion.compareTo(lastVersion) < 0) {
                                 plugin.getComponentLogger().warn("Found modul config for \"{}\" was saved in a newer data version ({}), " +
-                                    "expected: {}. Trying to load anyway but some this most definitely will be broken!",
+                                        "expected: {}. Trying to load anyway but some this most definitely will be broken!",
                                     modul.getName(), lastVersion, dataVersion);
                             }
                         } else {

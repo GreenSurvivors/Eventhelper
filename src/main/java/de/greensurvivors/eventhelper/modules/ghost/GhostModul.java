@@ -5,9 +5,9 @@ import de.greensurvivors.eventhelper.command.MainCmd;
 import de.greensurvivors.eventhelper.modules.AModul;
 import org.jetbrains.annotations.NotNull;
 
-public class GhostModul extends AModul<GhostConfig> {
+public class GhostModul extends AModul<GeneralGhostConfig> {
     public GhostModul(final @NotNull EventHelper plugin) {
-        super(plugin, new GhostConfig(plugin));
+        super(plugin, new GeneralGhostConfig(plugin));
         this.getConfig().setModul(this);
 
         plugin.getMainCmd().registerSubCommand(new GhostCmd(plugin, MainCmd.getParentPermission()));
@@ -15,7 +15,7 @@ public class GhostModul extends AModul<GhostConfig> {
 
     @Override
     public @NotNull String getName() {
-        return "Ghost";
+        return "ghost";
     }
 
     @Override
