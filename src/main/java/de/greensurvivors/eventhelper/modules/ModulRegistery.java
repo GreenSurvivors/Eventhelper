@@ -34,9 +34,13 @@ public class ModulRegistery {
 
     public void onEnable() {
         for (final @NotNull AModul<?> modul : registeredModules.values()) {
+            final boolean wasEnabled = modul.getConfig().isEnabled();
+
             modul.getConfig().reload().thenAccept(isEnabled -> {
                 if (isEnabled) {
                     modul.onEnable();
+                } else if (wasEnabled){
+                    modul.onDisable();
                 }
             });
         }

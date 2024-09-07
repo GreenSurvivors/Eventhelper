@@ -2,6 +2,7 @@ package de.greensurvivors.eventhelper.modules.inventory;
 
 import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.modules.AModulConfig;
+import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
@@ -9,8 +10,10 @@ import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -32,7 +35,7 @@ public class InventoryConfig extends AModulConfig<InventoryRegionModul> {
         ATTRIBUTE_TYPE = "type",
         ACTIVE_INVENTORY = "activeInventory";
 
-    private final ItemStack[] defaultInventory = new ItemStack[InventoryType.PLAYER.getDefaultSize()];
+    private final ItemStack[] defaultInventory = new ItemStack[InventoryType.PLAYER.getDefaultSize()]; // todo
     private final ItemStack[] defaultEnderInv = new ItemStack[InventoryType.ENDER_CHEST.getDefaultSize()];
     private float defaultExp = 0.0f;
     private int defaultLevel = 0;
@@ -45,16 +48,38 @@ public class InventoryConfig extends AModulConfig<InventoryRegionModul> {
     }
 
     @Override
-    public CompletableFuture<Boolean> reload() {
+    public @NotNull CompletableFuture<@NotNull Boolean> reload() {
         final CompletableFuture<Boolean> runAfter = new CompletableFuture<>();
 
-        //todo
-        runAfter.complete(isEnabled.getValueOrFallback());
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            synchronized (this) {
+                if (this.modul != null) {
+                    plugin.saveResource(modul.getName() + "/" + configPath.getFileName().toString(), false);
+
+                    try (BufferedReader bufferedReader = Files.newBufferedReader(configPath)) {
+                        @NotNull YamlConfiguration config = YamlConfiguration.loadConfiguration(bufferedReader);
+
+                        isEnabled.setValue(config.getBoolean(isEnabled.getPath()));
+                        runAfter.complete(isEnabled.getValueOrFallback());
+                    } catch (IOException e) {
+                        plugin.getComponentLogger().error("Could not load modul config for {} from file!", modul.getName(), e);
+
+                        isEnabled.setValue(Boolean.FALSE);
+                        runAfter.complete(Boolean.FALSE);
+                    }
+                } else {
+                    plugin.getComponentLogger().error("Could not load modul config, since the module of {} was not set!", this.getClass().getName());
+
+                    isEnabled.setValue(Boolean.FALSE);
+                    runAfter.complete(Boolean.FALSE);
+                }
+            }
+        });
 
         return runAfter;
     }
 
-    public void setDefaults(ItemStack inventoryContent, float exp, int level, float health, int food, String identifier) {
+    public void setDefaults(final @NotNull ItemStack inventoryContent, float exp, int level, float health, int food, final @NotNull String identifier) {
         Arrays.fill(defaultInventory, inventoryContent);
         Arrays.fill(defaultEnderInv, inventoryContent);
 
