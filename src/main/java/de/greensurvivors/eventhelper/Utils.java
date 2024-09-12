@@ -1,5 +1,12 @@
 package de.greensurvivors.eventhelper;
 
+import io.papermc.paper.math.Position;
+import org.jetbrains.annotations.NotNull;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
 public class Utils {
@@ -58,5 +65,41 @@ public class Utils {
         }
 
         return FLOAT_PATTERN.matcher(toTest).find();
+    }
+
+    @SuppressWarnings("UnstableApiUsage") // Position
+    public static @NotNull Map<String, Double> serializePosition(final @NotNull Position position) {
+        return Map.of("x", position.x(), "y", position.y(), "z", position.z());
+    }
+
+    @SuppressWarnings("UnstableApiUsage") // Position
+    public static @NotNull Position deserializePosition(final @NotNull Map<String, ?> map) throws NoSuchElementException {
+        if (map.get("x") instanceof Number x) {
+            if (map.get("y") instanceof Number y) {
+                if (map.get("z") instanceof Number z) {
+                    return Position.fine(x.doubleValue(), y.doubleValue(), z.doubleValue());
+                } else {
+                    throw new NoSuchElementException("Serialized Position " + map + " does not contain an valid z value.");
+                }
+            } else {
+                throw new NoSuchElementException("Serialized Position " + map + " does not contain an valid y value.");
+            }
+        } else {
+            throw new NoSuchElementException("Serialized Position " + map + " does not contain an valid x value.");
+        }
+    }
+
+    public static @NotNull Map<@NotNull String, ?> checkSerialzedMap(final @NotNull Map<?, ?> map, Consumer<Map.Entry<?, ?>> unexpectedTypeConsumer) {
+        final @NotNull Map<String, Object> result = new LinkedHashMap<>(map.size());
+
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
+            if (entry.getKey() instanceof String key) {
+                result.put(key, entry.getValue());
+            } else {
+                unexpectedTypeConsumer.accept(entry);
+            }
+        }
+
+        return result;
     }
 }

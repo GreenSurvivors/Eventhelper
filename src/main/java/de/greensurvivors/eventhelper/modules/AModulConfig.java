@@ -38,7 +38,7 @@ public abstract class AModulConfig<ModulType extends AModul<?>> {
         return modul;
     }
 
-    public void setModul(@NotNull ModulType modul) {
+    public void setModul(final @NotNull ModulType modul) {
         this.modul = modul;
     }
 
