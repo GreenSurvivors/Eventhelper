@@ -19,17 +19,19 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 // wanders around looking for player if no target. can target through walls but must path find there
 public class GhostGameConfig extends AModulConfig<GhostModul> {
-    private final @NotNull ConfigOption<@NotNull Material> pathFindableBlockTyp = new ConfigOption<>("ghost.pathfind.validMaterial", Material.YELLOW_GLAZED_TERRACOTTA);
+    private final @NotNull ConfigOption<@NotNull Map<Material, PathModifier>> pathFindableMats = new ConfigOption<>("ghost.pathfind.validMaterials", new HashMap<>(Map.of(Material.YELLOW_GLAZED_TERRACOTTA, new PathModifier())));
     private final @NotNull ConfigOption<@NotNull Integer> pathFindOffset = new ConfigOption<>("ghost.pathfind.offset", -30);
     private final @NotNull ConfigOption<@NotNull Integer> followRange = new ConfigOption<>("ghost.follow.range", 30); // in blocks
     private final @NotNull ConfigOption<@NotNull Long> followTimeOut = new ConfigOption<>("ghost.follow.timeout", 1L); // in milliseconds
     private final @NotNull ConfigOption<@NotNull Double> idleVelocity = new ConfigOption<>("ghost.velocity.idle", 1.0D);  // in blocks / s ?
-    private final @NotNull ConfigOption<@NotNull Double> followVelocity = new ConfigOption<>("ghost.velocity.idle", 1.5D); // in blocks / s ?
-    private final @NotNull ConfigOption<@NotNull List<@NotNull Location>> spawnLocations = new ConfigOption<>("ghost.spawnLocations", List.of()); // we need fast random access. But the locations should be unique!
+    private final @NotNull ConfigOption<@NotNull Double> followVelocity = new ConfigOption<>("ghost.velocity.follow", 1.5D); // in blocks / s ?
+    private final @NotNull ConfigOption<@NotNull List<@NotNull Location>> ghostSpawnLocations = new ConfigOption<>("ghost.spawnLocations", List.of()); // we need fast random access. But the locations should be unique!
     private final @NotNull ConfigOption<@NotNull @Range(from = 1, to = Integer.MAX_VALUE) Integer> amount = new ConfigOption<>("ghost.amount", 1);
+    private final @NotNull ConfigOption<@NotNull List<@NotNull MouseTrap>> mouseTraps = new ConfigOption<>("ghost.mouseTraps", List.of()); // we need fast random access. But the MouseTraps should be unique!
 
     private final @NotNull String gameName;
 
@@ -67,12 +69,25 @@ public class GhostGameConfig extends AModulConfig<GhostModul> {
 
                         isEnabled.setValue(config.getBoolean(isEnabled.getPath()));
 
-                        String strBlockType = config.getString(pathFindableBlockTyp.getPath());
-                        if (strBlockType != null) {
-                            // might be null
-                            pathFindableBlockTyp.setValue(Material.matchMaterial(strBlockType));
+                        Object pathFindableMatsObj = config.get(pathFindableMats.getPath());
+                        if (pathFindableMatsObj instanceof Map<?, ?> map) {
+                            final @NotNull Map<Material, PathModifier> result = new LinkedHashMap<>(map.size());
+
+                            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                                if (entry.getKey() instanceof String key && entry.getValue() instanceof PathModifier pathModifier) {
+                                    final @Nullable Material material = Material.matchMaterial(key);
+
+                                    if (material != null) {
+                                        result.put(material, pathModifier);
+                                    }
+                                } else {
+                                    plugin.getLogger().warning("Could not read data \"" + entry + "\" for " + pathFindableMats.getPath() + " in ghost config!");
+                                }
+                            }
+
+                            pathFindableMats.setValue(result);
                         } else {
-                            pathFindableBlockTyp.setValue(null);
+                            pathFindableMats.setValue(null);
                         }
 
                         pathFindOffset.setValue(config.getInt(pathFindOffset.getPath(), pathFindOffset.getFallback()));
@@ -80,9 +95,10 @@ public class GhostGameConfig extends AModulConfig<GhostModul> {
                         followTimeOut.setValue(config.getLong(followTimeOut.getPath(), followTimeOut.getFallback()));
                         idleVelocity.setValue(config.getDouble(idleVelocity.getPath(), idleVelocity.getFallback()));
                         followVelocity.setValue(config.getDouble(followVelocity.getPath(), followVelocity.getFallback()));
+                        mouseTraps.setValue((List<MouseTrap>) config.getList(mouseTraps.getPath()));
 
                         final @NotNull ArrayList<@NotNull Location> newSpawnLocations = new ArrayList<>();
-                        final @NotNull List<?> objectList = config.getList(spawnLocations.getPath(), List.of());
+                        final @NotNull List<?> objectList = config.getList(ghostSpawnLocations.getPath(), List.of());
 
                         for (Object object : objectList) {
                             if (object instanceof Location location) {
@@ -111,6 +127,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> {
                                 }
                             }
                         }
+                        ghostSpawnLocations.setValue(newSpawnLocations);
 
                         amount.setValue(config.getInt(amount.getPath(), amount.getFallback()));
 
@@ -145,16 +162,19 @@ public class GhostGameConfig extends AModulConfig<GhostModul> {
                     try (BufferedReader bufferedReader = Files.newBufferedReader(configPath)) {
                         @NotNull YamlConfiguration config = YamlConfiguration.loadConfiguration(bufferedReader);
 
-                        config.set(VERSION_PATH, dataVersion);
+                        config.set(VERSION_PATH, dataVersion.toString());
 
-                        config.set(isEnabled.getPath(), isEnabled.getValueOrFallback());
-                        config.set(pathFindableBlockTyp.getPath(), pathFindableBlockTyp.getValueOrFallback().getKey().toString());
+                        config.set(pathFindableMats.getPath(),
+                            pathFindableMats.getValueOrFallback().entrySet().stream().collect(Collectors.toMap(
+                                e -> e.getKey().getKey().asString(), // map materials to namespaced strings
+                                Map.Entry::getValue)));
                         config.set(followRange.getPath(), followRange.getValueOrFallback());
                         config.set(followTimeOut.getPath(), followTimeOut.getValueOrFallback());
                         config.set(idleVelocity.getPath(), idleVelocity.getValueOrFallback());
                         config.set(followVelocity.getPath(), followVelocity.getValueOrFallback());
-                        config.set(spawnLocations.getPath(), spawnLocations.getValueOrFallback());
+                        config.set(ghostSpawnLocations.getPath(), ghostSpawnLocations.getValueOrFallback());
                         config.set(amount.getPath(), amount.getValueOrFallback());
+                        config.set(mouseTraps.getPath(), mouseTraps.getValueOrFallback());
 
                         config.options().parseComments(true);
                         config.save(configPath.toFile());
