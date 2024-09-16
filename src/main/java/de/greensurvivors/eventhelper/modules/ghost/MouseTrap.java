@@ -19,7 +19,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 
 @SuppressWarnings("UnstableApiUsage") // Position
-public class MouseTrap implements ConfigurationSerializable {
+public class MouseTrap implements ConfigurationSerializable { // todo freeing mechanism
     private final static @NotNull String WORLD_NAME_KEY = "worldName";
     private final static @NotNull String SPAWN_POS_KEY = "spawnPosition";
     private final static @NotNull String REDSTONE_PULSE_POS_KEY = "redstonePulsePosition";
