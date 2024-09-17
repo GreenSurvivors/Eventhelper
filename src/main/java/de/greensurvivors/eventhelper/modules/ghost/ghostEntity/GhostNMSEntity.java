@@ -190,7 +190,7 @@ public class GhostNMSEntity extends Monster implements Enemy {
         this.level().getProfiler().pop();
         super.customServerAiStep();
 
-        //GhostAi.updateActivity(this);
+        GhostAi.updateActivity(this);
     }
 
     @Override
