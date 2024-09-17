@@ -72,6 +72,20 @@ public class MainCmd extends Command {
             }
 
             return result;
+        } else if (args.length == 1) {
+            List<String> result = new ArrayList<>(registeredCommandMap.size());
+
+            for (ASubCommand subCommand : registeredCommands) {
+                if (subCommand.hasPermission(sender)) {
+                    for (String subAlias : subCommand.getAliases()) {
+                        if (subAlias.startsWith(args[0])) {
+                            result.add(subAlias);
+                        }
+                    }
+                }
+            }
+
+            return result;
         } else {
             ASubCommand subCommand = registeredCommandMap.get(args[0]);
 

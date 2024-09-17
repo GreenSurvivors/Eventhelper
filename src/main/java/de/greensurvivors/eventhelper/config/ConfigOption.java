@@ -38,6 +38,10 @@ public class ConfigOption<T> {
         return Objects.requireNonNullElse(this.value.get(), fallbackValue);
     }
 
+    public boolean hasValue() {
+        return this.value.get() != null;
+    }
+
     public void setValue(@Nullable T value) {
         this.value.set(value);
     }

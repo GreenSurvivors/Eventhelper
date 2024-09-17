@@ -1,5 +1,6 @@
 package de.greensurvivors.eventhelper.modules.ghost.ghostEntity;
 
+import de.greensurvivors.eventhelper.modules.ghost.GhostGame;
 import org.bukkit.Location;
 import org.bukkit.craftbukkit.v1_20_R3.CraftServer;
 import org.bukkit.craftbukkit.v1_20_R3.CraftWorld;
@@ -19,8 +20,12 @@ public class GhostCraftEntity extends CraftMob implements IGhost, CraftEnemy {
 
     public static IGhost spawnNew(final @NotNull Location location,
                                   final @NotNull CreatureSpawnEvent.SpawnReason reason,
+                                  final @NotNull GhostGame ghostGame,
                                   final @Nullable Consumer<IGhost> function) {
-        GhostNMSEntity ghostNMSEntity = GhostNMSEntity.GHOST_TYPE.create(((CraftWorld) location.getWorld()).getHandle().getMinecraftWorld());
+        GhostNMSEntity ghostNMSEntity = new GhostNMSEntity(
+            GhostNMSEntity.GHOST_TYPE,
+            ((CraftWorld) location.getWorld()).getHandle().getMinecraftWorld(),
+            ghostGame);
 
         ghostNMSEntity.absMoveTo(location.x(), location.y(), location.z(), location.getYaw(), location.getPitch());
         ghostNMSEntity.setYHeadRot(location.getYaw());

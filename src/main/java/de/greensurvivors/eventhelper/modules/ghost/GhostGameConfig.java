@@ -29,13 +29,13 @@ import java.util.stream.Collectors;
 public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create and call events
     // ghost
     private final @NotNull ConfigOption<@NotNull Map<Material, PathModifier>> pathFindableMats = new ConfigOption<>("ghost.pathfind.validMaterials", new HashMap<>(Map.of(Material.YELLOW_GLAZED_TERRACOTTA, new PathModifier())));
-    private final @NotNull ConfigOption<@NotNull Integer> pathFindOffset = new ConfigOption<>("ghost.pathfind.offset", -30);
+    private final @NotNull ConfigOption<@NotNull Double> pathFindOffset = new ConfigOption<>("ghost.pathfind.offset", -30.0D);
     private final @NotNull ConfigOption<@NotNull Integer> followRange = new ConfigOption<>("ghost.follow.range", 30); // in blocks
     private final @NotNull ConfigOption<@NotNull Long> followTimeOut = new ConfigOption<>("ghost.follow.timeout", 1L); // in milliseconds
     private final @NotNull ConfigOption<@NotNull Double> idleVelocity = new ConfigOption<>("ghost.velocity.idle", 1.0D);  // in blocks / s ?
     private final @NotNull ConfigOption<@NotNull Double> followVelocity = new ConfigOption<>("ghost.velocity.follow", 1.5D); // in blocks / s ?
-    private final @NotNull ConfigOption<@NotNull List<@NotNull Location>> ghostSpawnLocations = new ConfigOption<>("ghost.spawnLocations", List.of()); // we need fast random access. But the locations should be unique!
-    private final @NotNull ConfigOption<@NotNull @Range(from = 1, to = Integer.MAX_VALUE) Integer> amount = new ConfigOption<>("ghost.amount", 1);
+    private final @NotNull ConfigOption<@NotNull List<@NotNull Location>> ghostSpawnLocations = new ConfigOption<>("ghost.spawnLocations", List.of()); // we need fast random access. But the locations should be unique! // todo check for very close together locations!
+    private final @NotNull ConfigOption<@NotNull @Range(from = 1, to = Integer.MAX_VALUE) Integer> ghostAmount = new ConfigOption<>("ghost.amount", 1);
     // general
     private final @NotNull String gameName;
     private final @NotNull ConfigOption<@NotNull List<@NotNull MouseTrap>> mouseTraps = new ConfigOption<>("game.mouseTraps", List.of()); // we need fast random access. But the MouseTraps should be unique!
@@ -46,10 +46,11 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     private final @NotNull ConfigOption<@NotNull List<@NotNull String>> gameEndCommands = new ConfigOption<>("game.commands.gameEnd", List.of());
     private final @NotNull ConfigOption<@NotNull Location> endLocation = new ConfigOption<>("game.endLocation", Bukkit.getWorlds().get(0).getSpawnLocation());
     private final @NotNull ConfigOption<@NotNull Duration> gameDuration = new ConfigOption<>("game.duration", Duration.of(10, ChronoUnit.MINUTES)); // saved in seconds
-    private final @NotNull ConfigOption<@NotNull Long> startPlayerTime = new ConfigOption<>("game.playerTime.start", 14000L); // in ticks
-    private final @NotNull ConfigOption<@NotNull Long> endPlayerTime = new ConfigOption<>("game.playerTime.end", 23000L); // in ticks
+    private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = 24000) Long> startPlayerTime = new ConfigOption<>("game.playerTime.start", 14000L); // in ticks
+    private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = 24000) Long> endPlayerTime = new ConfigOption<>("game.playerTime.end", 23000L); // in ticks
     private final @NotNull ConfigOption<@NotNull Boolean> allowLateJoin = new ConfigOption<>("game.allowLateJoin", false);
     private final @NotNull ConfigOption<@NotNull @Range(from = -1, to = Integer.MAX_VALUE) Integer> maxAmountPlayers = new ConfigOption<>("game.maxAmountPlayers", -1);
+    private final @NotNull ConfigOption<@NotNull Double> playerSpreadDistance = new ConfigOption<>("game.teleport.playerSpread.distance", 0.5); // todo use
 
     public GhostGameConfig(final @NotNull EventHelper plugin, final @NotNull String gameName) {
         super(plugin, Path.of("games", gameName + ".yaml"));
@@ -119,7 +120,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                             pathFindableMats.setValue(null);
                         }
 
-                        pathFindOffset.setValue(config.getInt(pathFindOffset.getPath(), pathFindOffset.getFallback()));
+                        pathFindOffset.setValue(config.getDouble(pathFindOffset.getPath(), pathFindOffset.getFallback()));
                         followRange.setValue(config.getInt(followRange.getPath(), followRange.getFallback()));
                         followTimeOut.setValue(config.getLong(followTimeOut.getPath(), followTimeOut.getFallback()));
                         idleVelocity.setValue(config.getDouble(idleVelocity.getPath(), idleVelocity.getFallback()));
@@ -157,7 +158,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                         }
                         ghostSpawnLocations.setValue(newSpawnLocations);
 
-                        amount.setValue(config.getInt(amount.getPath(), amount.getFallback()));
+                        ghostAmount.setValue(config.getInt(ghostAmount.getPath(), ghostAmount.getFallback()));
 
                         mouseTraps.setValue((List<MouseTrap>) config.getList(mouseTraps.getPath(), mouseTraps.getFallback()));
                         gameInitCommands.setValue(config.getStringList(gameInitCommands.getPath()));
@@ -172,6 +173,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                         endPlayerTime.setValue(config.getLong(endPlayerTime.getPath(), endPlayerTime.getFallback()));
                         allowLateJoin.setValue(config.getBoolean(allowLateJoin.getPath(), allowLateJoin.getFallback()));
                         maxAmountPlayers.setValue(config.getInt(maxAmountPlayers.getPath(), maxAmountPlayers.getFallback()));
+                        playerSpreadDistance.setValue(config.getDouble(playerSpreadDistance.getPath(), playerSpreadDistance.getFallback()));
 
                         Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(isEnabled.getValueOrFallback())); // back to main thread
                     } catch (IOException e) {
@@ -193,7 +195,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     }
 
     @Override
-    public @NotNull CompletableFuture<Void> save() {
+    public @NotNull CompletableFuture<Void> save() { // todo update and write fallbacks only if the value changed back to fallback
         final CompletableFuture<Void> runAfter = new CompletableFuture<>();
 
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
@@ -215,7 +217,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                         config.set(idleVelocity.getPath(), idleVelocity.getValueOrFallback());
                         config.set(followVelocity.getPath(), followVelocity.getValueOrFallback());
                         config.set(ghostSpawnLocations.getPath(), ghostSpawnLocations.getValueOrFallback());
-                        config.set(amount.getPath(), amount.getValueOrFallback());
+                        config.set(ghostAmount.getPath(), ghostAmount.getValueOrFallback());
                         config.set(mouseTraps.getPath(), mouseTraps.getValueOrFallback());
 
                         config.options().parseComments(true);
@@ -240,11 +242,17 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
         return runAfter;
     }
 
-    public int getPathfindOffset() {
+    public double getPathfindOffset() {
         return pathFindOffset.getValueOrFallback();
     }
 
-    public int getFollowRangeAt(final @NotNull Material material) {
+    public void setPathfindOffset(double newOffset) {
+        pathFindOffset.setValue(newOffset);
+
+        save().thenRun(this::reload);
+    }
+
+    public int getFollowRangeAt(final @NotNull Material material) { // todo setter
         PathModifier modifier = pathFindableMats.getValueOrFallback().get(material);
 
         if (modifier != null) {
@@ -258,7 +266,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
         return followRange.getValueOrFallback();
     }
 
-    public long getFollowTimeOutAt(final @NotNull Material material) {
+    public long getFollowTimeOutAt(final @NotNull Material material) { // todo setter
         PathModifier modifier = pathFindableMats.getValueOrFallback().get(material);
 
         if (modifier != null) {
@@ -272,7 +280,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
         return followTimeOut.getValueOrFallback();
     }
 
-    public double getIdleVelocityAt(final @NotNull Material material) {
+    public double getIdleVelocityAt(final @NotNull Material material) { // todo setter
         PathModifier modifier = pathFindableMats.getValueOrFallback().get(material);
 
         if (modifier != null) {
@@ -286,7 +294,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
         return idleVelocity.getValueOrFallback();
     }
 
-    public double getFollowVelocityAt(final @NotNull Material material) {
+    public double getFollowVelocityAt(final @NotNull Material material) { // todo setter
         PathModifier modifier = pathFindableMats.getValueOrFallback().get(material);
 
         if (modifier != null) {
@@ -304,15 +312,53 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
         return ghostSpawnLocations.getValueOrFallback();
     }
 
-    public int getAmountOfGhosts() {
-        return amount.getValueOrFallback();
+    public void addGhostSpawnLocation(final @NotNull Location newLocation) {
+        if (ghostSpawnLocations.hasValue()) {
+
+            if (!ghostSpawnLocations.getValueOrFallback().contains(newLocation)) {
+                ghostSpawnLocations.getValueOrFallback().add(newLocation);
+            }
+        } else {
+            List<Location> locations = new ArrayList<>();
+            locations.add(newLocation);
+
+            ghostSpawnLocations.setValue(locations);
+        }
+
+        save().thenRun(this::reload);
     }
 
-    public @NotNull List<@NotNull MouseTrap> getMouseTraps() {
+    public void removeGhostSpawnLocation(final @NotNull Location newLocation) {
+        if (ghostSpawnLocations.hasValue()) {
+
+            if (ghostSpawnLocations.getValueOrFallback().remove(newLocation)) {
+                save().thenRun(this::reload);
+            }
+        }
+    }
+
+    public void removeAllGhostSpawnLocations() {
+        if (ghostSpawnLocations.hasValue()) {
+
+            save().thenRun(this::reload);
+        }
+    }
+
+    public int getAmountOfGhosts() {
+        return ghostAmount.getValueOrFallback();
+    }
+
+    public void setAmountOfGhosts(@Range(from = 1, to = Integer.MAX_VALUE) int newAmount) {
+        ghostAmount.setValue(newAmount);
+
+        save().thenRun(this::reload);
+    }
+
+    public @NotNull List<@NotNull MouseTrap> getMouseTraps() { // todo make editable via command
         return mouseTraps.getValueOrFallback();
     }
 
-    public @NotNull List<String> getGameInitCommands() {
+    public @NotNull List<String> getGameInitCommands() { // todo use and makle editable
         return gameInitCommands.getValueOrFallback();
     }
 
@@ -320,7 +366,13 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
         return lobbyLocation.getValueOrFallback();
     }
 
-    public @NotNull List<String> getGameStartCommands() {
+    public void setLobbyLocation(final @NotNull Location newLobbyLocation) {
+        lobbyLocation.setValue(newLobbyLocation);
+
+        save().thenRun(this::reload);
+    }
+
+    public @NotNull List<String> getGameStartCommands() { // todo use and make editable
         return gameStartCommands.getValueOrFallback();
     }
 
@@ -328,7 +380,13 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
         return startLocation.getValueOrFallback();
     }
 
-    public @NotNull List<String> getGameEndCommands() {
+    public void setStartLocation(final @NotNull Location newStartingLocation) {
+        startLocation.setValue(newStartingLocation);
+
+        save().thenRun(this::reload);
+    }
+
+    public @NotNull List<String> getGameEndCommands() { // todo use and make editable
         return gameEndCommands.getValueOrFallback();
     }
 
@@ -336,23 +394,69 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
         return endLocation.getValueOrFallback();
     }
 
+    public void setEndLocation(final @NotNull Location newEndLocation) {
+        endLocation.setValue(newEndLocation);
+
+        save().thenRun(this::reload);
+    }
+
     public @NotNull Duration getGameDuration() {
         return gameDuration.getValueOrFallback();
+    }
+
+    public void setGameDuration(final @NotNull Duration newGameDuration) { // todo maybe make all the setters nullable to reset to default?
+        gameDuration.setValue(newGameDuration);
+
+        save().thenRun(this::reload);
     }
 
     public long getStartPlayerTime() {
         return startPlayerTime.getValueOrFallback();
     }
 
+    public void setStartPlayerTime(@Range(from = 0, to = 24000) long newStartPlayerTime) {
+        startPlayerTime.setValue(newStartPlayerTime);
+
+        save().thenRun(this::reload);
+    }
+
     public long getEndPlayerTime() {
         return endPlayerTime.getValueOrFallback();
+    }
+
+    public void setEndPlayerTime(@Range(from = 0, to = 24000) long newEndPlayerTime) {
+        endPlayerTime.setValue(newEndPlayerTime);
+
+        save().thenRun(this::reload);
     }
 
     public boolean isLateJoinAllowed() {
         return allowLateJoin.getValueOrFallback();
     }
 
+    public void setIsLateJoinAllowed(boolean isAllowed) {
+        allowLateJoin.setValue(isAllowed);
+
+        save().thenRun(this::reload);
+    }
+
     public @Range(from = -1, to = Integer.MAX_VALUE) int getMaxAmountPlayers() {
         return maxAmountPlayers.getValueOrFallback();
+    }
+
+    public void setMaxAmountPlayers(@Range(from = -1, to = Integer.MAX_VALUE) int newMaxAmount) {
+        maxAmountPlayers.setValue(newMaxAmount);
+
+        save().thenRun(this::reload);
+    }
+
+    public double getMaxPlayerSpreadTeleport() { // todo use
+        return playerSpreadDistance.getValueOrFallback();
+    }
+
+    public void setPlayerSpreadDistanceTeleport(double newDistance) {
+        playerSpreadDistance.setValue(newDistance);
+
+        save().thenRun(this::reload);
     }
 }

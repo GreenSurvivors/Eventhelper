@@ -1,10 +1,7 @@
-package de.greensurvivors.eventhelper.modules.ghost.command;
+package de.greensurvivors.eventhelper.modules.ghost;
 
 import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.messages.LangPath;
-import de.greensurvivors.eventhelper.modules.ghost.GhostGameConfig;
-import de.greensurvivors.eventhelper.modules.ghost.GhostLangPath;
-import de.greensurvivors.eventhelper.modules.ghost.GhostModul;
 import de.greensurvivors.eventhelper.modules.ghost.ghostEntity.IGhost;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -64,17 +61,17 @@ public class GhostGame implements Listener {
         }
     }
 
-    public void startGame() {
+    public void startGame() { // todo start count down
         gameState = GameState.STARTING;
         Random random = ThreadLocalRandom.current();
 
         for (int i = 0; i < config.getAmountOfGhosts(); i++) {
             Location spawnLocation = config.getGhostSpawnLocations().get(random.nextInt(config.getGhostSpawnLocations().size()));
 
-            IGhost newGhost = IGhost.spawnNew(spawnLocation, CreatureSpawnEvent.SpawnReason.CUSTOM, ghost -> {
-                ghost.setPersistent(true);
-                ghost.setCollidable(false);
-                ghost.setInvulnerable(true);
+            IGhost newGhost = IGhost.spawnNew(spawnLocation, CreatureSpawnEvent.SpawnReason.CUSTOM, this, ghost -> {
+                ghost.setPersistent(true);  // don't despawn
+                ghost.setCollidable(false); // don't be a push around
+                //ghost.setInvulnerable(true);
             });
 
             ghosts.add(newGhost);
@@ -252,6 +249,10 @@ public class GhostGame implements Listener {
 
     public @NotNull GameState getGameState() {
         return gameState;
+    }
+
+    public @NotNull GhostGameConfig getConfig() {
+        return config;
     }
 
     public enum EndReason {

@@ -1,6 +1,7 @@
 package de.greensurvivors.eventhelper.modules.ghost.ghostEntity;
 
 import com.mojang.serialization.Dynamic;
+import de.greensurvivors.eventhelper.modules.ghost.GhostGame;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -33,17 +34,20 @@ import javax.annotation.Nullable;
 import java.lang.reflect.Field;
 
 public class GhostNMSEntity extends Monster implements Enemy {
+    /**
+     * do NOT - I repeat - do NOT call GHOST_TYPE.create!
+     * There is no way to add the important game parameter there!
+     */
     public static final EntityType<GhostNMSEntity> GHOST_TYPE = registerEntityType(
         (EntityType.Builder.
             of(GhostNMSEntity::new, MobCategory.MONSTER).
-            // sometimes you aren't aware of how big you are. And sometimes that for the better.
-            // At least that's what I will to continue to tell myself, while avoiding every mirror
-                sized(0.6F, 1.95F). // size of zombie, this just makes pathfinding easier
-            //sized(4.0F, 4.0F). // size of ghast (alternative), hard for pathfinding
+            sized(4.0F, 4.0F).
             noSave(). // don't save this entity to disk.
                 clientTrackingRange(10)));
     private static final EntityDataAccessor<Boolean> DATA_IS_CHARGING = SynchedEntityData.defineId(GhostNMSEntity.class, EntityDataSerializers.BOOLEAN);
-    private volatile GhostCraftEntity bukkitEntity;
+    private volatile @Nullable GhostCraftEntity bukkitEntity;
+    private @NotNull GhostGame ghostGame;
+    private @NotNull GhostUnderWorldNMSEntity underWorldGhost;
 
     @SuppressWarnings("unchecked")
     // has to be called while the server is bootstrapping, or else the registry will be frozen!
@@ -52,10 +56,20 @@ public class GhostNMSEntity extends Monster implements Enemy {
             type.build("ghost"));
     }
 
+    @Deprecated(forRemoval = true)
     public GhostNMSEntity(EntityType<? extends GhostNMSEntity> type, Level world) {
         super(type, world);
 
         navigation.setCanFloat(true); // can swim. not like floating in the air
+    }
+
+    public GhostNMSEntity(EntityType<? extends GhostNMSEntity> type, Level world, @NotNull GhostGame ghostGame) {
+        this(type, world);
+
+        this.underWorldGhost = new GhostUnderWorldNMSEntity(ghostGame, this, 0.6F, 1.9F);
+        this.startRiding(underWorldGhost, true);
+
+        this.ghostGame = ghostGame;
     }
 
     public static AttributeSupplier.Builder createAttributes() {
@@ -123,7 +137,7 @@ public class GhostNMSEntity extends Monster implements Enemy {
 
     @Override
     protected @NotNull Brain<?> makeBrain(@NotNull Dynamic<?> dynamic) {
-        return GhostAi.makeBrain(this.brainProvider().makeBrain(dynamic));
+        return GhostAI.makeBrain(this.brainProvider().makeBrain(dynamic));
     }
 
     @Override
@@ -134,7 +148,7 @@ public class GhostNMSEntity extends Monster implements Enemy {
 
     @Override
     protected @NotNull Brain.Provider<GhostNMSEntity> brainProvider() {
-        return Brain.provider(GhostAi.MEMORY_TYPES, GhostAi.SENSOR_TYPES);
+        return Brain.provider(GhostAI.MEMORY_TYPES, GhostAI.SENSOR_TYPES);
     }
 
     @Override
@@ -190,7 +204,7 @@ public class GhostNMSEntity extends Monster implements Enemy {
         this.level().getProfiler().pop();
         super.customServerAiStep();
 
-        GhostAi.updateActivity(this);
+        GhostAI.updateActivity(this);
     }
 
     @Override
