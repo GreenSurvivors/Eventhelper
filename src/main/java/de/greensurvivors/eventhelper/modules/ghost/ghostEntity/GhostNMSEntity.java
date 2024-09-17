@@ -1,6 +1,7 @@
 package de.greensurvivors.eventhelper.modules.ghost.ghostEntity;
 
 import com.mojang.serialization.Dynamic;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.protocol.Packet;
@@ -10,6 +11,7 @@ import net.minecraft.network.protocol.game.DebugPackets;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -21,7 +23,9 @@ import net.minecraft.world.entity.ai.attributes.*;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelReader;
 import org.bukkit.craftbukkit.v1_20_R3.attribute.CraftAttributeMap;
+import org.bukkit.craftbukkit.v1_20_R3.entity.CraftLivingEntity;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Vector3f;
 
@@ -29,15 +33,16 @@ import javax.annotation.Nullable;
 import java.lang.reflect.Field;
 
 public class GhostNMSEntity extends Monster implements Enemy {
-    private static final EntityDataAccessor<Boolean> DATA_IS_CHARGING = SynchedEntityData.defineId(GhostNMSEntity.class, EntityDataSerializers.BOOLEAN);
-
     public static final EntityType<GhostNMSEntity> GHOST_TYPE = registerEntityType(
         (EntityType.Builder.
-                of(GhostNMSEntity::new, MobCategory.MONSTER).
-                sized(4.0F, 4.0F).
-                noSave(). // don't save this entity to disk.
+            of(GhostNMSEntity::new, MobCategory.MONSTER).
+            // sometimes you aren't aware of how big you are. And sometimes that for the better.
+            // At least that's what I will to continue to tell myself, while avoiding every mirror
+                sized(0.6F, 1.95F). // size of zombie, this just makes pathfinding easier
+            //sized(4.0F, 4.0F). // size of ghast (alternative), hard for pathfinding
+            noSave(). // don't save this entity to disk.
                 clientTrackingRange(10)));
-
+    private static final EntityDataAccessor<Boolean> DATA_IS_CHARGING = SynchedEntityData.defineId(GhostNMSEntity.class, EntityDataSerializers.BOOLEAN);
     private volatile GhostCraftEntity bukkitEntity;
 
     @SuppressWarnings("unchecked")
@@ -50,19 +55,15 @@ public class GhostNMSEntity extends Monster implements Enemy {
     public GhostNMSEntity(EntityType<? extends GhostNMSEntity> type, Level world) {
         super(type, world);
 
-        navigation.setCanFloat(true);
+        navigation.setCanFloat(true); // can swim. not like floating in the air
     }
 
-    @Override
-    public @NotNull GhostCraftEntity getBukkitEntity() {
-        if (this.bukkitEntity == null) {
-            synchronized (this) {
-                if (this.bukkitEntity == null) {
-                    return this.bukkitEntity = new GhostCraftEntity(this.level().getCraftServer(), this);
-                }
-            }
-        }
-        return this.bukkitEntity;
+    public static AttributeSupplier.Builder createAttributes() {
+        return Monster.createMonsterAttributes().
+            add(Attributes.MAX_HEALTH, 500.0D).
+            add(Attributes.MOVEMENT_SPEED, 0.30000001192092896D).
+            add(Attributes.KNOCKBACK_RESISTANCE, 1.0D).add(Attributes.ATTACK_KNOCKBACK, 1.5D).
+            add(Attributes.ATTACK_DAMAGE, 30.0D);
     }
 
     /*
@@ -120,15 +121,6 @@ public class GhostNMSEntity extends Monster implements Enemy {
         return new ClientboundAddEntityPacket(getId(), getUUID(), getX(), getY(), getZ(), getXRot(), getYRot(), EntityType.GHAST, 0, getDeltaMovement(), getYHeadRot());
     }
 
-    public static AttributeSupplier.Builder createAttributes() {
-        return Monster.createMonsterAttributes().
-            add(Attributes.MAX_HEALTH, 500.0D).
-            add(Attributes.MOVEMENT_SPEED, 0.30000001192092896D).
-            add(Attributes.KNOCKBACK_RESISTANCE, 1.0D).add(Attributes.ATTACK_KNOCKBACK, 1.5D).
-            add(Attributes.ATTACK_DAMAGE, 30.0D);
-    }
-
-
     @Override
     protected @NotNull Brain<?> makeBrain(@NotNull Dynamic<?> dynamic) {
         return GhostAi.makeBrain(this.brainProvider().makeBrain(dynamic));
@@ -145,8 +137,25 @@ public class GhostNMSEntity extends Monster implements Enemy {
         return Brain.provider(GhostAi.MEMORY_TYPES, GhostAi.SENSOR_TYPES);
     }
 
+    @Override
+    public @NotNull CraftLivingEntity getBukkitLivingEntity() {
+        return getBukkitEntity();
+    }
+
+    @Override
+    public @NotNull GhostCraftEntity getBukkitEntity() {
+        if (this.bukkitEntity == null) {
+            synchronized (this) {
+                if (this.bukkitEntity == null) {
+                    return this.bukkitEntity = new GhostCraftEntity(this.level().getCraftServer(), this);
+                }
+            }
+        }
+        return this.bukkitEntity;
+    }
+
     public boolean isCharging() {
-        return (Boolean) this.entityData.get(DATA_IS_CHARGING);
+        return this.entityData.get(DATA_IS_CHARGING);
     }
 
     public void setCharging(boolean shooting) {
@@ -170,6 +179,18 @@ public class GhostNMSEntity extends Monster implements Enemy {
     public void tick() {
         // todo
         super.tick();
+    }
+
+    @Override
+    protected void customServerAiStep() {
+        ServerLevel worldserver = (ServerLevel) this.level();
+
+        worldserver.getProfiler().push("ghostBrain");
+        this.getBrain().tick(worldserver, this);
+        this.level().getProfiler().pop();
+        super.customServerAiStep();
+
+        //GhostAi.updateActivity(this);
     }
 
     @Override
@@ -209,17 +230,13 @@ public class GhostNMSEntity extends Monster implements Enemy {
     }
 
     @Override
-    public int getMaxHeadYRot() {
-        return 30;
+    public int getMaxHeadXRot() { // don't turn your head if you are all head
+        return 1;
     }
 
     @Override
-    public int getHeadRotSpeed() {
-        return 25;
-    }
-
-    public double getSnoutYPosition() {
-        return this.getEyeY() - 0.4;
+    public int getMaxHeadYRot() { // don't turn your head if you are all head
+        return 1;
     }
 
     @Override
@@ -239,6 +256,11 @@ public class GhostNMSEntity extends Monster implements Enemy {
         }
 
         return false; // immune to fall damage
+    }
+
+    @Override
+    public float getWalkTargetValue(@NotNull BlockPos pos, @NotNull LevelReader world) {
+        return 0.0F;
     }
 
     @Override
