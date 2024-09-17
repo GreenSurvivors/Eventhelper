@@ -2,8 +2,8 @@ package de.greensurvivors.eventhelper.modules.ghost;
 
 import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.command.ASubCommand;
+import de.greensurvivors.eventhelper.modules.ghost.ghostEntity.IGhost;
 import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Ghast;
 import org.bukkit.entity.Player;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.permissions.Permission;
@@ -26,20 +26,17 @@ public class GhostCmd extends ASubCommand {
 
     @Override
     public @NotNull Set<@NotNull String> getAliases() {
-        return Set.of();
+        return Set.of("ghost");
     }
 
     @Override
     public boolean execute(final @NotNull CommandSender sender, final @NotNull List<String> args) {
         if (sender instanceof Player player) {
-            player.getWorld().spawn(player.getLocation(), Ghast.class, CreatureSpawnEvent.SpawnReason.COMMAND, false,
-                ghast -> {
-                ghast.setAI(false);
-                ghast.setPersistent(true);
-                ghast.setInvulnerable(true);
-                ghast.setCollidable(false);
-                ghast.setNoPhysics(true);
-                ghast.setSilent(true);
+            IGhost.spawnNew(player.getLocation(), CreatureSpawnEvent.SpawnReason.COMMAND,
+                ghost -> {
+                    ghost.setPersistent(true); // don't despawn
+                    //ghost.setInvulnerable(true);
+                    ghost.setCollidable(false); // don't be a push around
             });
         }
 

@@ -43,7 +43,7 @@ public class TNTKnockbackConfig extends AModulConfig<TNTKnockbackModul> {
                             }
                         } else {
                             plugin.getComponentLogger().warn("The data version for modul config for \"{}\" was missing." +
-                                "proceed with care!", modul.getName());
+                                " Proceed with care!", modul.getName());
                         }
 
                         isEnabled.setValue(config.getBoolean(isEnabled.getPath()));

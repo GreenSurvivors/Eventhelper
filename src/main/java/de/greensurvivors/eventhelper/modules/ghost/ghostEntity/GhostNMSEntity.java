@@ -3,6 +3,9 @@ package de.greensurvivors.eventhelper.modules.ghost.ghostEntity;
 import com.mojang.serialization.Dynamic;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
 import net.minecraft.network.protocol.game.DebugPackets;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
@@ -12,31 +15,37 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityDimensions;
-import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.MobCategory;
+import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.ai.Brain;
+import net.minecraft.world.entity.ai.attributes.*;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.level.Level;
+import org.bukkit.craftbukkit.v1_20_R3.attribute.CraftAttributeMap;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Vector3f;
+
+import javax.annotation.Nullable;
+import java.lang.reflect.Field;
 
 public class GhostNMSEntity extends Monster implements Enemy {
     private static final EntityDataAccessor<Boolean> DATA_IS_CHARGING = SynchedEntityData.defineId(GhostNMSEntity.class, EntityDataSerializers.BOOLEAN);
 
-    @SuppressWarnings("unchecked")
-    protected static final EntityType<GhostNMSEntity> GHOST_TYPE =
-        Registry.register(BuiltInRegistries.ENTITY_TYPE, "ghast", // register as ghast to display a ghast to the client
-            ((EntityType<GhostNMSEntity>) (EntityType<? extends GhostNMSEntity>) EntityType.Builder.
+    public static final EntityType<GhostNMSEntity> GHOST_TYPE = registerEntityType(
+        (EntityType.Builder.
                 of(GhostNMSEntity::new, MobCategory.MONSTER).
                 sized(4.0F, 4.0F).
                 noSave(). // don't save this entity to disk.
-                    clientTrackingRange(10).
-                build("ghost")));
+                clientTrackingRange(10)));
 
     private volatile GhostCraftEntity bukkitEntity;
+
+    @SuppressWarnings("unchecked")
+    // has to be called while the server is bootstrapping, or else the registry will be frozen!
+    private static <T extends Entity> EntityType<T> registerEntityType(EntityType.Builder<Entity> type) {
+        return (EntityType<T>) Registry.register(BuiltInRegistries.ENTITY_TYPE, "ghast", // register as ghast to display a ghast to the client
+            type.build("ghost"));
+    }
 
     public GhostNMSEntity(EntityType<? extends GhostNMSEntity> type, Level world) {
         super(type, world);
@@ -55,6 +64,70 @@ public class GhostNMSEntity extends Monster implements Enemy {
         }
         return this.bukkitEntity;
     }
+
+    /*
+    since the DefaultAttributes class builds the immutable map directly
+    and the LivingEntity super constructor calls this method before we can set the attribute map correctly ourselves,
+    we have to get creative.
+    First we try to just let super fetch the attribute.
+    If this fails, as the fist time called from the constructor will do,
+    we set the private field ("attributes") of our super class LivingEntity with our defaults.
+    While the craftAttributes don't get immediately get accessed in the super constructor,
+    they don't get accessed via method. Since we use reflection to set the non craft field anyway,
+     we may set the craft field at the same time as well.
+    After that we try again calling the super method. fingers crossed it worked!
+
+    This have to be done this way, since the super constructor is not done and therefor we can't access the fields of this class yet.
+    We can't just relay to our own variable, nor can we just set the super one after the constructor.
+    Also, since the field is private we have to use reflection to set it to a new value!
+    If you have an idea how to solve this any mess better, please tell me!
+    */
+    public @Nullable AttributeInstance getAttribute(@NotNull Attribute attribute) {
+        try {
+            return super.getAttribute(attribute);
+        } catch (NullPointerException ignored) {
+            Class<?> livingEntityClass = LivingEntity.class;
+
+            try {
+                // Access the private field
+                Field privateAttributesField = livingEntityClass.getDeclaredField("attributes");
+
+                // Make the field accessible
+                privateAttributesField.setAccessible(true);
+
+                // Set the field value
+                AttributeMap attributeMap = new AttributeMap(createAttributes().build());
+                privateAttributesField.set(this, attributeMap);
+
+                // same below
+                Field finalCraftAttributesField = livingEntityClass.getDeclaredField("craftAttributes");
+
+                finalCraftAttributesField.setAccessible(true);
+
+                finalCraftAttributesField.set(this, new CraftAttributeMap(attributeMap));
+
+            } catch (NoSuchFieldException |
+                     IllegalAccessException e) { // should never happen since we set the field accessible
+                throw new RuntimeException(e);
+            }
+        }
+
+        return super.getAttribute(attribute);
+    }
+
+    @Override
+    public @NotNull Packet<ClientGamePacketListener> getAddEntityPacket() { // overwrite with ghast type
+        return new ClientboundAddEntityPacket(getId(), getUUID(), getX(), getY(), getZ(), getXRot(), getYRot(), EntityType.GHAST, 0, getDeltaMovement(), getYHeadRot());
+    }
+
+    public static AttributeSupplier.Builder createAttributes() {
+        return Monster.createMonsterAttributes().
+            add(Attributes.MAX_HEALTH, 500.0D).
+            add(Attributes.MOVEMENT_SPEED, 0.30000001192092896D).
+            add(Attributes.KNOCKBACK_RESISTANCE, 1.0D).add(Attributes.ATTACK_KNOCKBACK, 1.5D).
+            add(Attributes.ATTACK_DAMAGE, 30.0D);
+    }
+
 
     @Override
     protected @NotNull Brain<?> makeBrain(@NotNull Dynamic<?> dynamic) {

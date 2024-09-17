@@ -72,7 +72,7 @@ public class InventoryConfig extends AModulConfig<InventoryRegionModul> {
                             }
                         } else {
                             plugin.getComponentLogger().warn("The data version for modul config for \"{}\" was missing." +
-                                "proceed with care!", modul.getName());
+                                " Proceed with care!", modul.getName());
                         }
 
                         isEnabled.setValue(config.getBoolean(isEnabled.getPath()));
