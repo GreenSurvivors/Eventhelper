@@ -13,7 +13,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.List;
 import java.util.Set;
 
-public class GhostAi {
+public class GhostAI {
     static final List<SensorType<? extends Sensor<? super GhostNMSEntity>>> SENSOR_TYPES =
         ImmutableList.of(
             SensorType.NEAREST_LIVING_ENTITIES,
@@ -33,7 +33,7 @@ public class GhostAi {
         MemoryModuleType.PATH
     );
 
-    protected static Brain<?> makeBrain(Brain<GhostNMSEntity> brain) {
+    protected static Brain<?> makeBrain(final @NotNull Brain<GhostNMSEntity> brain) {
         initCoreActivity(brain);
         //initIdleActivity(brain);
         initFightActivity(brain);

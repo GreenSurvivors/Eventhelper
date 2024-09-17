@@ -3,7 +3,7 @@ package de.greensurvivors.eventhelper.modules.ghost;
 import de.greensurvivors.eventhelper.messages.LangPath;
 import org.jetbrains.annotations.NotNull;
 
-public enum GhostLangPath implements LangPath {
+public enum GhostLangPath implements LangPath { // todo
     PLAYER_GAME_JOIN(""),
     PLAYER_GAME_JOIN_BROADCAST(""),
     PLAYER_GAME_QUIT(""),
@@ -15,7 +15,8 @@ public enum GhostLangPath implements LangPath {
     ERROR_NO_LATE_JOIN(""),
     ERROR_ALREADY_PLAYING(""),
     ERROR_NOT_PLAYING(""),
-    ERROR_GAME_STATE("");
+    ERROR_GAME_STATE(""),
+    ARG_NOT_A_GAME("");
 
 
     private final @NotNull String path;
