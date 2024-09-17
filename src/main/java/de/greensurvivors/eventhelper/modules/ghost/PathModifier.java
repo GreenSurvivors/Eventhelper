@@ -28,26 +28,6 @@ public class PathModifier implements ConfigurationSerializable {
     public PathModifier() {
     }
 
-    @Override
-    public @NotNull Map<String, Object> serialize() {
-        final @NotNull Map<String, Object> result = new HashMap<>(5);
-
-        if (followRange.getValueOrFallback() > 0) {
-            result.put(followRange.getPath(), followRange.getValueOrFallback());
-        }
-        if (followTimeOut.getValueOrFallback() > 0) {
-            result.put(followTimeOut.getPath(), followTimeOut.getValueOrFallback());
-        }
-        if (idleVelocity.getValueOrFallback() > 0) {
-            result.put(idleVelocity.getPath(), idleVelocity.getValueOrFallback());
-        }
-        if (followVelocity.getValueOrFallback() > 0) {
-            result.put(followVelocity.getPath(), followVelocity.getValueOrFallback());
-        }
-
-        return result;
-    }
-
     @SuppressWarnings("unused") // used by ConfigurationSerialization
     public static @NotNull PathModifier deserialize(final @NotNull Map<String, Object> map) {
         final PathModifier result = new PathModifier();
@@ -63,6 +43,26 @@ public class PathModifier implements ConfigurationSerializable {
         }
         if (map.get(FOLLOW_VELOCITY_KEY) instanceof Number newFollowVelocity && newFollowVelocity.intValue() > 0) {
             result.followVelocity.setValue(newFollowVelocity.doubleValue());
+        }
+
+        return result;
+    }
+
+    @Override
+    public @NotNull Map<String, Object> serialize() {
+        final @NotNull Map<String, Object> result = new HashMap<>(5);
+
+        if (followRange.getValueOrFallback() > 0) {
+            result.put(followRange.getPath(), followRange.getValueOrFallback());
+        }
+        if (followTimeOut.getValueOrFallback() > 0) {
+            result.put(followTimeOut.getPath(), followTimeOut.getValueOrFallback());
+        }
+        if (idleVelocity.getValueOrFallback() > 0) {
+            result.put(idleVelocity.getPath(), idleVelocity.getValueOrFallback());
+        }
+        if (followVelocity.getValueOrFallback() > 0) {
+            result.put(followVelocity.getPath(), followVelocity.getValueOrFallback());
         }
 
         return result;

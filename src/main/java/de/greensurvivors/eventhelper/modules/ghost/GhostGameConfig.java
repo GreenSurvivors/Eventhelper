@@ -133,8 +133,8 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                                 if (!newSpawnLocations.contains(location)) {
                                     newSpawnLocations.add(location);
                                 }
-                            } else if (object instanceof Map<?,?> map) {
-                                Location location = Location.deserialize((Map<String, Object>)map);
+                            } else if (object instanceof Map<?, ?> map) {
+                                Location location = Location.deserialize((Map<String, Object>) map);
 
                                 if (!newSpawnLocations.contains(location)) {
                                     newSpawnLocations.add(location);

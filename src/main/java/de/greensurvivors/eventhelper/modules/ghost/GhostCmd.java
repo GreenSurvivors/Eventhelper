@@ -37,7 +37,7 @@ public class GhostCmd extends ASubCommand {
                     ghost.setPersistent(true); // don't despawn
                     //ghost.setInvulnerable(true);
                     ghost.setCollidable(false); // don't be a push around
-            });
+                });
         }
 
         return false;
