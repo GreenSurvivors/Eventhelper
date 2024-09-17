@@ -16,6 +16,7 @@ public abstract class AModulConfig<ModulType extends AModul<?>> {
     protected final @NotNull EventHelper plugin;
     protected @Nullable ModulType modul;
     protected @NotNull Path configPath;
+    private @NotNull Path configSpecificPath;
 
     public AModulConfig(final @NotNull EventHelper plugin) {
         this(plugin, Path.of("config.yaml"));
@@ -28,10 +29,9 @@ public abstract class AModulConfig<ModulType extends AModul<?>> {
     public AModulConfig(final @NotNull EventHelper plugin,
                         final @NotNull Path configSpecificPath,
                         final @NotNull ComparableVersion dataVersion) {
-        this.dataVersion = dataVersion;
         this.plugin = plugin;
-
-        configPath = plugin.getDataFolder().toPath().resolve(modul.getName()).resolve(configSpecificPath);
+        this.configSpecificPath = configSpecificPath;
+        this.dataVersion = dataVersion;
     }
 
     public @Nullable ModulType getModul() { // always have to be called!
@@ -40,6 +40,7 @@ public abstract class AModulConfig<ModulType extends AModul<?>> {
 
     public void setModul(final @NotNull ModulType modul) {
         this.modul = modul;
+        configPath = plugin.getDataFolder().toPath().resolve(modul.getName()).resolve(configSpecificPath);
     }
 
     public abstract @NotNull CompletableFuture<@NotNull Boolean> reload();
