@@ -24,14 +24,12 @@ public class GhostAi {
         MemoryModuleType.NEAREST_PLAYERS, //
         MemoryModuleType.NEAREST_VISIBLE_PLAYER, //
         MemoryModuleType.NEAREST_VISIBLE_ATTACKABLE_PLAYER,// ??
-        MemoryModuleType.NEAREST_VISIBLE_LIVING_ENTITIES, //
-        MemoryModuleType.NEAREST_ATTACKABLE, //
-        MemoryModuleType.CANT_REACH_WALK_TARGET_SINCE,
-        MemoryModuleType.LOOK_TARGET, //
-        MemoryModuleType.ATTACK_TARGET, // needed?
+        MemoryModuleType.LOOK_TARGET,
         MemoryModuleType.WALK_TARGET,
-        MemoryModuleType.HURT_BY,
-        MemoryModuleType.HURT_BY_ENTITY,
+        MemoryModuleType.CANT_REACH_WALK_TARGET_SINCE,
+        MemoryModuleType.ATTACK_TARGET, // needed?
+        MemoryModuleType.NEAREST_ATTACKABLE, //
+        MemoryModuleType.WALK_TARGET,
         MemoryModuleType.PATH
     );
 
@@ -67,6 +65,6 @@ public class GhostAi {
 
     public static void updateActivity(final @NotNull GhostNMSEntity ghost) {
         ghost.getBrain().setActiveActivityToFirstValid(
-            ImmutableList.of(Activity.EMERGE, Activity.DIG, Activity.ROAR, Activity.FIGHT, Activity.INVESTIGATE, Activity.SNIFF, Activity.IDLE));
+            ImmutableList.of(Activity.FIGHT, Activity.INVESTIGATE, Activity.SNIFF, Activity.IDLE));
     }
 }
