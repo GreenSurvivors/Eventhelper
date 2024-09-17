@@ -1,7 +1,10 @@
-package de.greensurvivors.eventhelper.modules.ghost;
+package de.greensurvivors.eventhelper.modules.ghost.command;
 
 import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.messages.LangPath;
+import de.greensurvivors.eventhelper.modules.ghost.GhostGameConfig;
+import de.greensurvivors.eventhelper.modules.ghost.GhostLangPath;
+import de.greensurvivors.eventhelper.modules.ghost.GhostModul;
 import de.greensurvivors.eventhelper.modules.ghost.ghostEntity.IGhost;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -121,17 +124,14 @@ public class GhostGame implements Listener {
         }
     }
 
-    public void endGame(final @NotNull EndReason reason) {
+    public void endGame(final @NotNull EndReason reason) { // todo do we need anything else here?
         switch (reason) {
-            case TIME -> {
-                broadcastAll(GhostLangPath.GAME_LOOSE_TIME_BROADCAST);
+            case EXTERN -> { // Command
+
             }
-            case ALL_DEAD -> {
-                broadcastAll(GhostLangPath.GAME_LOOSE_DEATH_BROADCAST);
-            }
-            case WIN -> {
-                broadcastAll(GhostLangPath.GAME_WIN_BROADCAST);
-            }
+            case TIME -> broadcastAll(GhostLangPath.GAME_LOOSE_TIME_BROADCAST);
+            case ALL_DEAD -> broadcastAll(GhostLangPath.GAME_LOOSE_DEATH_BROADCAST);
+            case WIN -> broadcastAll(GhostLangPath.GAME_WIN_BROADCAST);
         }
 
         resetGame();
@@ -255,6 +255,7 @@ public class GhostGame implements Listener {
     }
 
     public enum EndReason {
+        EXTERN,
         TIME,
         ALL_DEAD,
         WIN,

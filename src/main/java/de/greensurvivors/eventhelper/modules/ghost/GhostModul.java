@@ -3,6 +3,7 @@ package de.greensurvivors.eventhelper.modules.ghost;
 import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.command.MainCmd;
 import de.greensurvivors.eventhelper.modules.AModul;
+import de.greensurvivors.eventhelper.modules.ghost.command.GhostGame;
 import org.bukkit.Bukkit;
 import org.bukkit.event.HandlerList;
 import org.jetbrains.annotations.NotNull;

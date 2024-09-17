@@ -28,8 +28,13 @@ public class ModulRegistery {
 
     public void registerDefault() {
         registerNewModule(new GhostModul(plugin));
-        registerNewModule(new TNTKnockbackModul(plugin));
-        registerNewModule(new InventoryRegionModul(plugin));
+
+        if (plugin.getDependencyManager().isWorldGuardEnabled()) {
+            registerNewModule(new TNTKnockbackModul(plugin));
+            registerNewModule(new InventoryRegionModul(plugin));
+        } else {
+            plugin.getComponentLogger().warn("Could not enable all Modules because optional dependency Worldguard is missing!");
+        }
     }
 
     public void onEnable() {
