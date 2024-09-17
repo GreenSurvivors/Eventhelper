@@ -1,5 +1,6 @@
 package de.greensurvivors.eventhelper.modules.ghost.ghostEntity;
 
+import de.greensurvivors.eventhelper.modules.ghost.GhostGame;
 import org.bukkit.Location;
 import org.bukkit.entity.Enemy;
 import org.bukkit.entity.Flying;
@@ -12,7 +13,8 @@ import java.util.function.Consumer;
 public interface IGhost extends Flying, Enemy {
     static IGhost spawnNew(final @NotNull Location location,
                            final @NotNull CreatureSpawnEvent.SpawnReason reason,
+                           final @NotNull GhostGame ghostGame,
                            final @Nullable Consumer<IGhost> function) {
-        return GhostCraftEntity.spawnNew(location, reason, function);
+        return GhostCraftEntity.spawnNew(location, reason, ghostGame, function);
     }
 }
