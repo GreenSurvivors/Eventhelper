@@ -49,6 +49,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = 24000) Long> startPlayerTime = new ConfigOption<>("game.playerTime.start", 14000L); // in ticks
     private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = 24000) Long> endPlayerTime = new ConfigOption<>("game.playerTime.end", 23000L); // in ticks
     private final @NotNull ConfigOption<@NotNull Boolean> allowLateJoin = new ConfigOption<>("game.allowLateJoin", false);
+    private final @NotNull ConfigOption<@NotNull @Range(from = -1, to = Integer.MAX_VALUE) Integer> minAmountPlayers = new ConfigOption<>("game.minAmountPlayers", -1);
     private final @NotNull ConfigOption<@NotNull @Range(from = -1, to = Integer.MAX_VALUE) Integer> maxAmountPlayers = new ConfigOption<>("game.maxAmountPlayers", -1);
     private final @NotNull ConfigOption<@NotNull Double> playerSpreadDistance = new ConfigOption<>("game.teleport.playerSpread.distance", 0.5); // todo use
 
@@ -172,6 +173,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                         startPlayerTime.setValue(config.getLong(startPlayerTime.getPath(), startPlayerTime.getFallback()));
                         endPlayerTime.setValue(config.getLong(endPlayerTime.getPath(), endPlayerTime.getFallback()));
                         allowLateJoin.setValue(config.getBoolean(allowLateJoin.getPath(), allowLateJoin.getFallback()));
+                        minAmountPlayers.setValue(config.getInt(minAmountPlayers.getPath(), minAmountPlayers.getFallback()));
                         maxAmountPlayers.setValue(config.getInt(maxAmountPlayers.getPath(), maxAmountPlayers.getFallback()));
                         playerSpreadDistance.setValue(config.getDouble(playerSpreadDistance.getPath(), playerSpreadDistance.getFallback()));
 
@@ -195,7 +197,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     }
 
     @Override
-    public @NotNull CompletableFuture<Void> save() { // todo update and write fallbacks only if the value changed back to fallback
+    public @NotNull CompletableFuture<Void> save() { // todo update
         final CompletableFuture<Void> runAfter = new CompletableFuture<>();
 
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
@@ -436,6 +438,16 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
 
     public void setIsLateJoinAllowed(boolean isAllowed) {
         allowLateJoin.setValue(isAllowed);
+
+        save().thenRun(this::reload);
+    }
+
+    public double getMinAmountPlayers() { // todo use
+        return minAmountPlayers.getValueOrFallback();
+    }
+
+    public void setMinAmountPlayers(@Range(from = -1, to = Integer.MAX_VALUE) int newMaxAmount) {
+        minAmountPlayers.setValue(newMaxAmount);
 
         save().thenRun(this::reload);
     }

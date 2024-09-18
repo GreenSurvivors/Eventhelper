@@ -43,21 +43,21 @@ public class GhostGame implements Listener {
     @EventHandler(ignoreCancelled = true)
     private void onPlayerQuit(final @NotNull PlayerQuitEvent event) {
         if (players.contains(event.getPlayer().getUniqueId())) {
-            playerQuit(event.getPlayer());
+            playerQuit(event.getPlayer(), true);
         }
     }
 
     @EventHandler(ignoreCancelled = true)
     private void onPlayerChangeWorld(final @NotNull PlayerChangedWorldEvent event) {
         if (players.contains(event.getPlayer().getUniqueId())) {
-            playerQuit(event.getPlayer());
+            playerQuit(event.getPlayer(), false);
         }
     }
 
     @EventHandler(ignoreCancelled = true)
     private void onPlayerKick(final @NotNull PlayerKickEvent event) {
         if (players.contains(event.getPlayer().getUniqueId())) {
-            playerQuit(event.getPlayer());
+            playerQuit(event.getPlayer(), true);
         }
     }
 
@@ -200,9 +200,11 @@ public class GhostGame implements Listener {
         }
     }
 
-    public void playerQuit(final @NotNull Player player) {
+    public void playerQuit(final @NotNull Player player, boolean teleport) {
         if (players.contains(player.getUniqueId())) {
-            player.teleport(config.getEndLocation());
+            if (teleport) {
+                player.teleport(config.getEndLocation());
+            }
 
             players.remove(player.getUniqueId());
 

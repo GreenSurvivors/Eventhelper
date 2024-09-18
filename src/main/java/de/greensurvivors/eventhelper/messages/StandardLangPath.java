@@ -5,11 +5,11 @@ import org.jetbrains.annotations.NotNull;
 /**
  * Paths of all translatable
  */
-public enum StandardLangPath implements LangPath {
+public enum StandardLangPath implements LangPath {  // todo
     //plugin prefix
     PLUGIN_PREFIX("prefix", "<gold>[EventHelper]</gold> "),
-    ERROR_SIGN_BACKSIDE("error.sign.backside"),// todo
-    ERROR_WHAT("error.unknownError"),  // todo
+    ERROR_SIGN_BACKSIDE("error.sign.backside"),
+    ERROR_WHAT("error.unknownError"),
     // list builder
     LIST_HEADER_PAGED("list.header.paged"),
     LIST_HEADER_PLAIN("list.header.plain"),
@@ -23,12 +23,10 @@ public enum StandardLangPath implements LangPath {
     ARG_NOT_A_BOOL("cmd.error.arg.not-a-bool"),
     ARG_NOT_A_NUMBER("cmd.error.arg.not-a-number"),
     ARG_NOT_A_PLAYER("cmd.error.arg.not-a-player"),
+    ARG_NUMBER_OUT_OF_BOUNDS(""),
     NOT_ENOUGH_ARGS("cmd.error.arg.not-enough-args"),
     UNKNOWN_ARG("cmd.error.arg.unknown"),
-    NO_PERMISSION("no-permission"),
-    // reload subcommand
-    CMD_SUB_RELOAD_SUCCESS("cmd.sub.reload.success"),
-    CMD_SUB_RELOAD_HELP("cmd.sub.reload.help");
+    NO_PERMISSION("no-permission");
 
     private final @NotNull String path;
     private final @NotNull String defaultValue;

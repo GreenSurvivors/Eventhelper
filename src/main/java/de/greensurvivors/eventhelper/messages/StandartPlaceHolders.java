@@ -9,6 +9,7 @@ import org.jetbrains.annotations.NotNull;
 public enum StandartPlaceHolders implements PlaceHolder {
     ITEM("item"),
     BOOL("bool"),
+    MIN("min"),
     MAX("max"),
     NUMBER("number"),
     PLAYER("player"),
