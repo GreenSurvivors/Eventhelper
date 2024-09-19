@@ -1,6 +1,7 @@
 package de.greensurvivors.eventhelper.modules.ghost.ghostEntity;
 
 import de.greensurvivors.eventhelper.modules.ghost.GhostGame;
+import net.minecraft.server.level.ServerLevel;
 import org.bukkit.Location;
 import org.bukkit.craftbukkit.v1_20_R3.CraftServer;
 import org.bukkit.craftbukkit.v1_20_R3.CraftWorld;
@@ -22,14 +23,23 @@ public class GhostCraftEntity extends CraftMob implements IGhost, CraftEnemy {
                                   final @NotNull CreatureSpawnEvent.SpawnReason reason,
                                   final @NotNull GhostGame ghostGame,
                                   final @Nullable Consumer<IGhost> function) {
+        ServerLevel serverLevel = ((CraftWorld) location.getWorld()).getHandle();
+
         GhostNMSEntity ghostNMSEntity = new GhostNMSEntity(
-            GhostNMSEntity.GHOST_TYPE,
-            ((CraftWorld) location.getWorld()).getHandle().getMinecraftWorld(),
+            serverLevel.getMinecraftWorld(),
             ghostGame);
+
+        UnderWorldGhostNMSEntity underWorldGhostNMSEntity = new UnderWorldGhostNMSEntity(ghostNMSEntity, ghostGame);
+        ghostNMSEntity.setUnderworldGhost(underWorldGhostNMSEntity);
 
         ghostNMSEntity.absMoveTo(location.x(), location.y(), location.z(), location.getYaw(), location.getPitch());
         ghostNMSEntity.setYHeadRot(location.getYaw());
+        underWorldGhostNMSEntity.absMoveTo(location.x(), location.y(), location.z(), location.getYaw(), location.getPitch());
+        underWorldGhostNMSEntity.setYHeadRot(location.getYaw());
 
+        ghostNMSEntity.startRiding(underWorldGhostNMSEntity, true);
+
+        ((CraftWorld) location.getWorld()).addEntity(underWorldGhostNMSEntity, reason, null, false);
         return ((CraftWorld) location.getWorld()).addEntity(ghostNMSEntity, reason, function, false);
     }
 
