@@ -40,35 +40,26 @@ public class GhostNMSEntity extends Monster implements Enemy {
      */
     public static final EntityType<GhostNMSEntity> GHOST_TYPE = registerEntityType(
         (EntityType.Builder.
-            of(GhostNMSEntity::new, MobCategory.MONSTER).
+            of(null, MobCategory.MONSTER).
             sized(4.0F, 4.0F).
             noSave(). // don't save this entity to disk.
                 clientTrackingRange(10)));
     private static final EntityDataAccessor<Boolean> DATA_IS_CHARGING = SynchedEntityData.defineId(GhostNMSEntity.class, EntityDataSerializers.BOOLEAN);
     private volatile @Nullable GhostCraftEntity bukkitEntity;
-    private @NotNull GhostGame ghostGame;
-    private @NotNull GhostUnderWorldNMSEntity underWorldGhost;
+    private final @NotNull GhostGame ghostGame;
+    private UnderWorldGhostNMSEntity underWorldGhost;
 
     @SuppressWarnings("unchecked")
     // has to be called while the server is bootstrapping, or else the registry will be frozen!
     private static <T extends Entity> EntityType<T> registerEntityType(EntityType.Builder<Entity> type) {
-        return (EntityType<T>) Registry.register(BuiltInRegistries.ENTITY_TYPE, "ghast", // register as ghast to display a ghast to the client
+        return (EntityType<T>) Registry.register(BuiltInRegistries.ENTITY_TYPE, "skeleton", // register as ghast to display a ghast to the client
             type.build("ghost"));
     }
 
-    @Deprecated(forRemoval = true)
-    public GhostNMSEntity(EntityType<? extends GhostNMSEntity> type, Level world) {
-        super(type, world);
+    public GhostNMSEntity(Level world, @NotNull GhostGame ghostGame) {
+        super(GHOST_TYPE, world);
 
-        navigation.setCanFloat(true); // can swim. not like floating in the air
-    }
-
-    public GhostNMSEntity(EntityType<? extends GhostNMSEntity> type, Level world, @NotNull GhostGame ghostGame) {
-        this(type, world);
-
-        this.underWorldGhost = new GhostUnderWorldNMSEntity(ghostGame, this, 0.6F, 1.9F);
-        this.startRiding(underWorldGhost, true);
-
+        this.navigation.setCanFloat(true); // can swim. not like floating in the air
         this.ghostGame = ghostGame;
     }
 
@@ -166,6 +157,10 @@ public class GhostNMSEntity extends Monster implements Enemy {
             }
         }
         return this.bukkitEntity;
+    }
+
+    public void setUnderworldGhost(final @NotNull UnderWorldGhostNMSEntity underWorldghostNMSEntity) {
+        this.underWorldGhost = underWorldghostNMSEntity;
     }
 
     public boolean isCharging() {
@@ -286,4 +281,5 @@ public class GhostNMSEntity extends Monster implements Enemy {
     protected float ridingOffset(@NotNull Entity vehicle) {
         return 0.5F;
     }
+
 }
