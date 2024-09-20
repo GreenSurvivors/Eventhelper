@@ -22,7 +22,7 @@ import org.jetbrains.annotations.NotNull;
 import javax.annotation.Nullable;
 import java.lang.reflect.Field;
 
-public class UnderWorldGhostNMSEntity extends Monster { // todo register properly!
+public class UnderWorldGhostNMSEntity extends Monster {
     /**
      * do NOT - I repeat - do NOT call UNDERWORLD_GHOST_TYPE.create!
      * There is no way to add the important game parameter there!
@@ -41,7 +41,8 @@ public class UnderWorldGhostNMSEntity extends Monster { // todo register properl
     @SuppressWarnings("unchecked")
     // has to be called while the server is bootstrapping, or else the registry will be frozen!
     private static <T extends Entity> EntityType<T> registerEntityType(EntityType.Builder<Entity> type) {
-        return (EntityType<T>) Registry.register(BuiltInRegistries.ENTITY_TYPE, "skeleton", // register as skeleton to display a skeleton to the client
+
+        return (EntityType<T>) Registry.register(BuiltInRegistries.ENTITY_TYPE, "underworld_ghost",
             type.build("underworld_ghost"));
     }
 
