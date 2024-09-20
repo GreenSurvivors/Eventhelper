@@ -33,7 +33,7 @@ import org.joml.Vector3f;
 import javax.annotation.Nullable;
 import java.lang.reflect.Field;
 
-public class GhostNMSEntity extends Monster implements Enemy {
+public class GhostNMSEntity extends Monster implements Enemy { // todo make use of the block the underworld ghost is standing on!
     /**
      * do NOT - I repeat - do NOT call GHOST_TYPE.create!
      * There is no way to add the important game parameter there!
