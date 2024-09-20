@@ -67,7 +67,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
             synchronized (this) {
                 if (this.modul != null) {
 
-                    if (!configPath.toFile().exists()) {
+                    if (!Files.isRegularFile(configPath)) {
                         try (final InputStream inputStream = plugin.getResource(modul.getName() + "/defaultGhostGame.yaml")) {
                             if (inputStream != null) {
                                 Files.copy(inputStream, configPath, StandardCopyOption.ATOMIC_MOVE);
@@ -203,7 +203,9 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             synchronized (this) {
                 if (this.modul != null) {
-                    plugin.saveResource(modul.getName() + "/" + configPath.getFileName().toString(), false);
+                    if (!Files.isRegularFile(configPath)) {
+                        plugin.saveResource(modul.getName() + "/" + configPath.getFileName().toString(), false);
+                    }
 
                     try (BufferedReader bufferedReader = Files.newBufferedReader(configPath)) {
                         @NotNull YamlConfiguration config = YamlConfiguration.loadConfiguration(bufferedReader);

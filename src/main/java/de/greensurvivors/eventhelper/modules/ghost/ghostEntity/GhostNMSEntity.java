@@ -52,7 +52,7 @@ public class GhostNMSEntity extends Monster implements Enemy {
     @SuppressWarnings("unchecked")
     // has to be called while the server is bootstrapping, or else the registry will be frozen!
     private static <T extends Entity> EntityType<T> registerEntityType(EntityType.Builder<Entity> type) {
-        return (EntityType<T>) Registry.register(BuiltInRegistries.ENTITY_TYPE, "skeleton", // register as ghast to display a ghast to the client
+        return (EntityType<T>) Registry.register(BuiltInRegistries.ENTITY_TYPE, "ghost",
             type.build("ghost"));
     }
 

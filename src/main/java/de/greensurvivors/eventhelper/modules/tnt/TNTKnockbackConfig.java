@@ -27,7 +27,9 @@ public class TNTKnockbackConfig extends AModulConfig<TNTKnockbackModul> {
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             synchronized (this) {
                 if (this.modul != null) {
-                    plugin.saveResource(modul.getName() + "/" + configPath.getFileName().toString(), false);
+                    if (!Files.isRegularFile(configPath)) {
+                        plugin.saveResource(modul.getName() + "/" + configPath.getFileName().toString(), false);
+                    }
 
                     try (BufferedReader bufferedReader = Files.newBufferedReader(configPath)) {
                         @NotNull YamlConfiguration config = YamlConfiguration.loadConfiguration(bufferedReader);
@@ -73,7 +75,9 @@ public class TNTKnockbackConfig extends AModulConfig<TNTKnockbackModul> {
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             synchronized (this) {
                 if (this.modul != null) {
-                    plugin.saveResource(modul.getName() + "/" + configPath.getFileName().toString(), false);
+                    if (!Files.isRegularFile(configPath)) {
+                        plugin.saveResource(modul.getName() + "/" + configPath.getFileName().toString(), false);
+                    }
 
                     try (BufferedReader bufferedReader = Files.newBufferedReader(configPath)) {
                         @NotNull YamlConfiguration config = YamlConfiguration.loadConfiguration(bufferedReader);
