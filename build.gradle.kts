@@ -9,7 +9,7 @@ plugins {
 
 group = "de.greensurvivors"
 version = "1.3.0-SNAPSHOT"
-description = "Helper for all kinds of Event.d"
+description = "Helper for all kinds of Events."
 // this is the minecraft major version. If you need a subversion like 1.20.1,
 // change it in the dependencies section as this is also used as the api version of the plugin.yml
 val mainMCVersion by extra("1.20")
@@ -37,7 +37,7 @@ repositories {
 
 dependencies {
     paperweight.paperDevBundle("$mainMCVersion.4-R0.1-SNAPSHOT")
-    compileOnly("com.sk89q.worldguard","worldguard-bukkit","7.1.0-SNAPSHOT")
+    compileOnly("com.sk89q.worldguard", "worldguard-bukkit", "7.0.9" /*"7.1.0-SNAPSHOT" // newest worldguard version*/)
     api("com.github.ben-manes.caffeine:caffeine:3.1.8") // caches
 }
 
