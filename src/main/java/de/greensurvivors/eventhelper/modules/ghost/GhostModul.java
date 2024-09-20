@@ -33,6 +33,7 @@ public class GhostModul extends AModul<GeneralGhostConfig> {
     public void onEnable() {
         for (GhostGame ghostGame : games.values()) {
             Bukkit.getPluginManager().registerEvents(ghostGame, plugin);
+            ghostGame.getConfig().reload();
         }
     }
 
@@ -41,6 +42,25 @@ public class GhostModul extends AModul<GeneralGhostConfig> {
         for (GhostGame ghostGame : games.values()) {
             ghostGame.resetGame();
             HandlerList.unregisterAll(ghostGame);
+        }
+    }
+
+    public @Nullable GhostGame createNewGame(final @NotNull String gameName) {
+        if (!games.containsKey(gameName)) {
+            GhostGame newGame = new GhostGame(plugin, this, gameName);
+
+            if (config.isEnabled()) {
+                Bukkit.getPluginManager().registerEvents(newGame, plugin);
+                newGame.getConfig().save().thenRun(() -> newGame.getConfig().reload()); // safe to disk
+            } else {
+                newGame.getConfig().save(); // safe to disk
+            }
+
+            games.put(gameName.toLowerCase(Locale.ENGLISH), newGame);
+
+            return newGame;
+        } else {
+            return null;
         }
     }
 

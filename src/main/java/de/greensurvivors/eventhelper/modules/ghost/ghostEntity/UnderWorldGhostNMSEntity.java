@@ -7,17 +7,21 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
+import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.MobCategory;
+import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.ai.attributes.*;
+import net.minecraft.world.entity.ai.goal.FloatGoal;
+import net.minecraft.world.entity.ai.goal.Goal;
+import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
+import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal;
 import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.entity.vehicle.Boat;
 import net.minecraft.world.item.ItemStack;
 import org.bukkit.craftbukkit.v1_20_R3.attribute.CraftAttributeMap;
 import org.bukkit.craftbukkit.v1_20_R3.entity.CraftLivingEntity;
 import org.jetbrains.annotations.NotNull;
+import org.joml.Vector3f;
 
 import javax.annotation.Nullable;
 import java.lang.reflect.Field;
@@ -41,7 +45,6 @@ public class UnderWorldGhostNMSEntity extends Monster {
     @SuppressWarnings("unchecked")
     // has to be called while the server is bootstrapping, or else the registry will be frozen!
     private static <T extends Entity> EntityType<T> registerEntityType(EntityType.Builder<Entity> type) {
-
         return (EntityType<T>) Registry.register(BuiltInRegistries.ENTITY_TYPE, "underworld_ghost",
             type.build("underworld_ghost"));
     }
@@ -123,6 +126,7 @@ public class UnderWorldGhostNMSEntity extends Monster {
         return getBukkitEntity();
     }
 
+    @SuppressWarnings("resource")
     @Override
     public @NotNull UnderWorldGhostCraftEntity getBukkitEntity() {
         if (this.bukkitEntity == null) {
@@ -133,6 +137,36 @@ public class UnderWorldGhostNMSEntity extends Monster {
             }
         }
         return this.bukkitEntity;
+    }
+
+    @Override
+    protected @NotNull Vector3f getPassengerAttachmentPoint(@NotNull Entity passenger, @NotNull EntityDimensions dimensions, float scaleFactor) {
+        float walkAnimationSpeed = Math.min(0.25F, this.walkAnimation.speed());
+        float walkAnimationPos = this.walkAnimation.position();
+        float bumpOffset = 0.12F * Mth.cos(walkAnimationPos * 0.5F) * 2.0F * walkAnimationSpeed;
+
+        return new Vector3f(0.0F, (float) ghostGame.getConfig().getPathfindOffset() + bumpOffset * scaleFactor, 0.0F);
+    }
+
+    @Override
+    protected void registerGoals() { // don't randomly drown
+        super.registerGoals();
+        this.goalSelector.addGoal(0, new FloatGoal(this));
+        this.goalSelector.addGoal(4, new MeleeAttackGoal(this, 1.0D, true));
+        this.goalSelector.addGoal(5, new WaterAvoidingRandomStrollGoal(this, 0.4D));
+    }
+
+    @Override
+    protected void updateControlFlags() { // all control to rider
+        this.goalSelector.setControlFlag(Goal.Flag.MOVE, true);
+        this.goalSelector.setControlFlag(Goal.Flag.JUMP, !(this.getVehicle() instanceof Boat));
+        this.goalSelector.setControlFlag(Goal.Flag.LOOK, true);
+        this.goalSelector.setControlFlag(Goal.Flag.TARGET, true);
+    }
+
+    @Override
+    public boolean hasLineOfSight(@NotNull Entity entity) {
+        return parentMob.hasLineOfSight(entity);
     }
 
     @Override

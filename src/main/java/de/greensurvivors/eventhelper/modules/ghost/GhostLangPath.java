@@ -4,6 +4,8 @@ import de.greensurvivors.eventhelper.messages.LangPath;
 import org.jetbrains.annotations.NotNull;
 
 public enum GhostLangPath implements LangPath { // todo
+    COMMAND_CREATE_ERROR_EXISTS(""),
+    COMMAND_CREATE_SUCCESS(""),
     COMMAND_START_SUCCESS(""),
     COMMAND_END_SUCCESS(""),
     COMMAND_RELOAD_SUCCESS(""),
@@ -37,6 +39,7 @@ public enum GhostLangPath implements LangPath { // todo
     ERROR_ALREADY_PLAYING(""),
     ERROR_NOT_PLAYING(""),
     ERROR_GAME_STATE(""),
+    ERROR_MODUL_NOT_ENABLED(""),
     ARG_NOT_A_GAME("");
 
 
