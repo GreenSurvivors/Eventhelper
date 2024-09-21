@@ -6,13 +6,18 @@ import de.greensurvivors.eventhelper.modules.AModul;
 import de.greensurvivors.eventhelper.modules.ghost.command.GhostCmd;
 import org.bukkit.Bukkit;
 import org.bukkit.event.HandlerList;
+import org.bukkit.plugin.PluginManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 
 public class GhostModul extends AModul<GeneralGhostConfig> {
     private final @NotNull Map<@NotNull String, GhostGame> games = new HashMap<>(); // todo remember to init with lower case names
@@ -31,9 +36,24 @@ public class GhostModul extends AModul<GeneralGhostConfig> {
 
     @Override
     public void onEnable() {
-        for (GhostGame ghostGame : games.values()) {
-            Bukkit.getPluginManager().registerEvents(ghostGame, plugin);
-            ghostGame.getConfig().reload();
+        GhostLangPath.moduleName = getName(); // set here, not in constructor, so this class can expanded by another one if ever needed in the future
+        games.clear();
+
+        try (Stream<Path> stream = Files.list(plugin.getDataFolder().toPath().resolve(getName()))) { // stream need to get closed
+            PluginManager pluginManager = Bukkit.getPluginManager();
+
+            stream.filter(Files::isDirectory).
+                map(path -> new GhostGame(plugin, this, path.getFileName().toString())). // create a new game instance
+                forEach(game -> {
+                // register game
+                games.put(game.getName().toLowerCase(Locale.ENGLISH), game);
+                pluginManager.registerEvents(game, plugin);
+
+                // reload game
+                game.getConfig().reload();
+            });
+        } catch (IOException e) {
+            plugin.getComponentLogger().error("could open ghost game directories.", e);
         }
     }
 
