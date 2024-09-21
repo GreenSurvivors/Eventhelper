@@ -1,7 +1,7 @@
 package de.greensurvivors.eventhelper.command;
 
 import de.greensurvivors.eventhelper.EventHelper;
-import de.greensurvivors.eventhelper.messages.StandardLangPath;
+import de.greensurvivors.eventhelper.messages.SharedLangPath;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.permissions.Permission;
@@ -51,7 +51,7 @@ public class MainCmd extends Command {
 
                     return subCommand.execute(sender, shortenedArgs);
                 } else {
-                    plugin.getMessageManager().sendLang(sender, StandardLangPath.NO_PERMISSION);
+                    plugin.getMessageManager().sendLang(sender, SharedLangPath.NO_PERMISSION);
                     return true;
                 }
             }

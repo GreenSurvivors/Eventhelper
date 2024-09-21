@@ -18,6 +18,6 @@ public class Bootstrapper implements PluginBootstrap {
 
         context.getLogger().debug("Successfully registered new entity type!");
         context.getLogger().info("You can safely ignore the following message, about the ghost entity missing attributes. " +
-            "It does in fact has attributes, We just can't register a supplier the way mojang does.");
+            "It does in fact has attributes, we just can't register a supplier the way mojang does.");
     }
 }
