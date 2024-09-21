@@ -5,9 +5,9 @@ import org.jetbrains.annotations.NotNull;
 /**
  * Paths of all translatable
  */
-public enum StandardLangPath implements LangPath {  // todo
+public enum SharedLangPath implements LangPath {  // todo
     //plugin prefix
-    PLUGIN_PREFIX("prefix", "<gold>[EventHelper]</gold> "),
+    MESSAGE_PREFIX("prefix", "<gold>[EventHelper]</gold> "),
     ERROR_SIGN_BACKSIDE("error.sign.backside"),
     ERROR_WHAT("error.unknownError"),
     // list builder
@@ -31,12 +31,12 @@ public enum StandardLangPath implements LangPath {  // todo
     private final @NotNull String path;
     private final @NotNull String defaultValue;
 
-    StandardLangPath(@NotNull String path) {
+    SharedLangPath(@NotNull String path) {
         this.path = path;
         this.defaultValue = path; // we don't need to define a default value, but if something couldn't get loaded we have to return at least helpful information
     }
 
-    StandardLangPath(@NotNull String path, @NotNull String defaultValue) {
+    SharedLangPath(@NotNull String path, @NotNull String defaultValue) {
         this.path = path;
         this.defaultValue = defaultValue;
     }
@@ -47,5 +47,10 @@ public enum StandardLangPath implements LangPath {  // todo
 
     public @NotNull String getDefaultValue() {
         return defaultValue;
+    }
+
+    @Override
+    public @NotNull String getModulName() {
+        return "shared";
     }
 }

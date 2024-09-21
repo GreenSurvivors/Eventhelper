@@ -11,12 +11,15 @@ import net.kyori.adventure.util.UTF8ResourceBundleControl;
 import org.apache.commons.io.FileUtils;
 import org.bukkit.Bukkit;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.CodeSource;
 import java.util.*;
 import java.util.logging.Level;
@@ -24,22 +27,22 @@ import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-/**
- * @implNote all built-in features use the same lang file as the rest of this plugin, just because I would find it really
- * annoying to have to open what feels like 100 mini translation files just to translate the plugin instead of one big one.
- * In fact since all sign labels are inside the config files instead of being managed by this class, you already kinda have to.
- * However, if it ever comes down to it, just differentiation on the bases of theLanPath classes should be enough.
- */
 public class MessageManager {
-    private static final String BUNDLE_NAME = "lang";
-    private static final Pattern BUNDLE_FILE_NAME_PATTERN = Pattern.compile(BUNDLE_NAME + "(?:_.*)?.properties");
+    private static final @NotNull String BUNDLE_FILE_PROTO_PATTERN = "(?:_.*)?.properties";
     private final @NotNull EventHelper plugin;
-    private ResourceBundle lang;
+    private final @NotNull LoadingCache<@NotNull String, @NotNull ResourceBundle> resourceBundles = Caffeine.newBuilder().build(
+        modulName -> loadBundle(modulName)); // todo check
+
     /**
      * caches every component without placeholder for faster access in future and loads missing values automatically
      */
-    private final LoadingCache<LangPath, Component> langCache = Caffeine.newBuilder().build(
-        path -> MiniMessage.miniMessage().deserialize(getStringFromLang(path)));
+    private final @NotNull LoadingCache<@NotNull LangPath, @NotNull Component> langCache = Caffeine.newBuilder().build(
+        path -> MiniMessage.miniMessage().deserialize(
+            getRawString(path)
+        )
+    );
+
+    private @NotNull Locale locale = Locale.ENGLISH;
 
     public MessageManager(@NotNull EventHelper plugin) {
         this.plugin = plugin;
@@ -47,23 +50,21 @@ public class MessageManager {
 
     /**
      * Use with care, as this fetches raw strings.
-     *
-     * @param path
-     * @return
      */
-    public @NotNull String getStringFromLang(@NotNull LangPath path) {
+    public @NotNull String getRawString(final @NotNull LangPath path) {
         try {
-            return lang.getString(path.getPath());
+            return resourceBundles.get(path.getModulName()).getString(path.getPath());
         } catch (MissingResourceException | ClassCastException e) {
             plugin.getLogger().log(Level.WARNING, "couldn't find path: \"" + path.getPath() + "\" in lang files using fallback.", e);
             return path.getDefaultValue();
         }
     }
 
-    private @NotNull Set<@NotNull String> getStringSetFromLang(@NotNull LangPath path) {
+    private @NotNull Set<@NotNull String> getRawStringSet(final @NotNull String modulName,
+                                                          final @NotNull LangPath path) {
         String value;
         try {
-            value = lang.getString(path.getPath());
+            value = resourceBundles.get(modulName).getString(path.getPath());
         } catch (MissingResourceException | ClassCastException e) {
             plugin.getLogger().log(Level.WARNING, "couldn't find path: \"" + path.getPath() + "\" in lang files using fallback.", e);
             value = path.getDefaultValue();
@@ -72,44 +73,63 @@ public class MessageManager {
         return Set.of(value.split("\\s?+,\\s?+"));
     }
 
+    public void setLocale(final @NotNull Locale locale) {
+        if (this.locale.equals(locale)) {
+            this.locale = locale;
+            plugin.getLogger().info("Locale set to language: " + locale.toLanguageTag());
+
+            // clear all cache
+            langCache.invalidateAll();
+            langCache.cleanUp();
+            langCache.asMap().clear();
+            resourceBundles.invalidateAll();
+            resourceBundles.cleanUp();
+            resourceBundles.asMap().clear();
+        }
+    }
+
     /**
      * reload language file.
      */
-    public void reload(@NotNull Locale locale) {
-        lang = null; // reset last bundle
+    public @Nullable ResourceBundle loadBundle(final @NotNull String modulName) {
+        ResourceBundle resourceBundle = null; // reset last bundle
 
         // save all missing keys
-        initLangFiles();
+        initLangFiles(modulName);
 
-        plugin.getLogger().info("Locale set to language: " + locale.toLanguageTag());
-        File langDictionary = new File(plugin.getDataFolder(), BUNDLE_NAME);
+        final Path langDictionary = plugin.getDataFolder().toPath().resolve(modulName);
+        final String bundleName = makeBundleName(modulName);
 
-        URL[] urls;
         try {
-            urls = new URL[]{langDictionary.toURI().toURL()};
-            lang = ResourceBundle.getBundle(BUNDLE_NAME, locale, new URLClassLoader(urls), UTF8ResourceBundleControl.get());
+            URL[] urls = new URL[]{langDictionary.toUri().toURL()};
+            resourceBundle = ResourceBundle.getBundle(bundleName, locale, new URLClassLoader(urls), UTF8ResourceBundleControl.get());
 
         } catch (SecurityException | MalformedURLException e) {
             plugin.getLogger().log(Level.WARNING, "Exception while reading lang bundle. Using internal", e);
         } catch (MissingResourceException ignored) { // how? missing write access?
-            plugin.getLogger().log(Level.WARNING, "No translation file for " + UTF8ResourceBundleControl.get().toBundleName(BUNDLE_NAME, locale) + " found on disc. Using internal");
+            plugin.getLogger().log(Level.WARNING, "No translation file for " + UTF8ResourceBundleControl.get().toBundleName(bundleName, locale) + " found on disc. Using internal");
         }
 
-        if (lang == null) { // fallback, since we are always trying to save defaults this never should happen
+        if (resourceBundle == null) { // fallback, since we are always trying to save defaults this never should happen
             try {
-                lang = PropertyResourceBundle.getBundle(BUNDLE_NAME, locale, plugin.getClass().getClassLoader(), new UTF8ResourceBundleControl());
+                resourceBundle = PropertyResourceBundle.getBundle(bundleName, locale, plugin.getClass().getClassLoader(), new UTF8ResourceBundleControl());
             } catch (MissingResourceException e) {
                 plugin.getLogger().log(Level.SEVERE, "Couldn't get Ressource bundle \"lang\" for locale \"" + locale.toLanguageTag() + "\". Messages WILL be broken!", e);
             }
         }
 
         // clear component cache
-        langCache.invalidateAll();
-        langCache.cleanUp();
-        langCache.asMap().clear();
+        langCache.asMap().remove(modulName);
+
+        return resourceBundle;
     }
 
-    private String saveConvert(String theString, boolean escapeSpace) {
+    private static @NotNull String makeBundleName(final @NotNull String modulName) {
+        return modulName + "Lang";
+    }
+
+    private @NotNull String saveConvert(final @NotNull String theString,
+                                        final boolean escapeSpace) {
         int len = theString.length();
         int bufLen = len * 2;
         if (bufLen < 0) {
@@ -169,9 +189,9 @@ public class MessageManager {
     }
 
     /**
-     * saves all missing lang files from resources to the plugins datafolder
+     * saves all missing lang files from resources to the modules folder
      */
-    private void initLangFiles() {
+    private void initLangFiles(final @NotNull String modulName) {
         //this.getClass().getResourceAsStream("");
 
         CodeSource src = this.getClass().getProtectionDomain().getCodeSource();
@@ -179,30 +199,33 @@ public class MessageManager {
             URL jarUrl = src.getLocation();
 
             try (ZipInputStream zipStream = new ZipInputStream(jarUrl.openStream())) {
+                final @NotNull String bundleName = makeBundleName(modulName);
+                final @NotNull Pattern bundlePattern = Pattern.compile(bundleName + BUNDLE_FILE_PROTO_PATTERN);
+
                 ZipEntry zipEntry;
                 while ((zipEntry = zipStream.getNextEntry()) != null) {
                     // I don't know exactly why but ZipInputStream doesn't list all toplevel entries first anymore,
                     // So we have to iterate over the whole f*ing jar to find our lang files.
                     String entryName = zipEntry.getName();
 
-                    if (BUNDLE_FILE_NAME_PATTERN.matcher(entryName).matches()) {
-                        File langFile = new File(new File(plugin.getDataFolder(), BUNDLE_NAME), entryName);
-                        if (!langFile.exists()) { // don't overwrite existing files
-                            FileUtils.copyToFile(zipStream, langFile);
+                    if (bundlePattern.matcher(entryName).matches()) {
+                        Path langFilePath = plugin.getDataFolder().toPath().resolve(modulName).resolve(entryName);
+                        if (!Files.isRegularFile(langFilePath)) { // don't overwrite existing files
+                            FileUtils.copyToFile(zipStream, langFilePath.toFile());
                         } else { // add defaults to file to expand in case there are key-value pairs missing
                             Properties defaults = new Properties();
                             // don't close reader, since we need the stream to be still open for the next entry!
                             defaults.load(new InputStreamReader(zipStream, StandardCharsets.UTF_8));
 
                             Properties current = new Properties();
-                            try (InputStreamReader reader = new InputStreamReader(new FileInputStream(langFile), StandardCharsets.UTF_8)) {
+                            try (InputStreamReader reader = new InputStreamReader(new FileInputStream(langFilePath.toFile()), StandardCharsets.UTF_8)) {
                                 current.load(reader);
                             } catch (Exception e) {
                                 plugin.getLogger().log(Level.WARNING, "couldn't get current properties file for " + entryName + "!", e);
                                 continue;
                             }
 
-                            try (FileWriter fw = new FileWriter(langFile, StandardCharsets.UTF_8, true);
+                            try (FileWriter fw = new FileWriter(langFilePath.toFile(), StandardCharsets.UTF_8, true);
                                  // we are NOT using Properties#store since it gets rid of comments and doesn't guarantee ordering
                                  BufferedWriter bw = new BufferedWriter(fw)) {
                                 boolean updated = false; // only write comment once
@@ -242,50 +265,101 @@ public class MessageManager {
      * get a component from lang file and apply the given tag resolver.
      * Note: might be slightly slower than {@link #getLang(LangPath)} since this can not use cache.
      */
-    public @NotNull Component getLang(@NotNull LangPath path, @NotNull TagResolver... resolver) {
-        return MiniMessage.miniMessage().deserialize(getStringFromLang(path), resolver);
+    public @NotNull Component getLang(final @NotNull LangPath path,
+                                      final @NotNull TagResolver... resolver) {
+        return MiniMessage.miniMessage().deserialize(getRawString(path), resolver);
     }
 
     /**
      * get a component from lang file
      */
-    public @NotNull Component getLang(@NotNull LangPath path) {
+    public @NotNull Component getLang(final @NotNull LangPath path) {
         return langCache.get(path);
     }
 
     /**
-     * send a component from the lang file to the audience, prefixed with this plugins prefix.
+     * send a component from the lang file to the audience, prefixed with this prefix.
      */
-    public void sendLang(@NotNull Audience audience, @NotNull LangPath path) {
-        audience.sendMessage(langCache.get(StandardLangPath.PLUGIN_PREFIX).appendSpace().append(langCache.get(path)));
+    public void sendPrefixedLang(final @NotNull Audience audience,
+                                 final @NotNull LangPath prefix,
+                                 final @NotNull LangPath path) {
+
+        audience.sendMessage(langCache.get(prefix).appendSpace().append(langCache.get(path)));
     }
 
-    public void sendLang(@NotNull Audience audience, @NotNull Component message) {
-        audience.sendMessage(langCache.get(StandardLangPath.PLUGIN_PREFIX).appendSpace().append(message));
+    /**
+     * send a component from the lang file to the audience, prefixed with this prefix.
+     */
+    public void sendLang(final @NotNull Audience audience,
+                         final @NotNull LangPath path) {
+        audience.sendMessage(langCache.get(path));
+    }
+
+    public void sendPrefixedLang(final @NotNull LangPath prefix,
+                                 final @NotNull Audience audience,
+                                 final @NotNull Component message) {
+        audience.sendMessage(langCache.get(prefix).appendSpace().append(message));
+    }
+
+    public void sendLang(final @NotNull Audience audience,
+                         final @NotNull Component message) {
+        audience.sendMessage(message);
     }
 
     /**
      * broadcast a component from the lang file on the server, prefixed with this plugins prefix.
      */
-    public void broadcastLang(@NotNull LangPath path) {
-        Bukkit.broadcast(langCache.get(StandardLangPath.PLUGIN_PREFIX).appendSpace().append(langCache.get(path)));
+    public void broadcastPrefixedLang(final @NotNull LangPath prefix,
+                                      final @NotNull LangPath path) {
+        Bukkit.broadcast(langCache.get(prefix).appendSpace().append(langCache.get(path)));
+    }
+
+    /**
+     * broadcast a component from the lang file on the server
+     */
+    public void broadcastLang(final @NotNull LangPath path) {
+        Bukkit.broadcast(langCache.get(path));
     }
 
     /**
      * send a component from the lang file to the audience, prefixed with this plugins prefix and applying the given tag resolver.
+     * Note: might be slightly slower than {@link #sendPrefixedLang(Audience, LangPath, LangPath)} since this can not use cache.
+     */
+    public void sendPrefixedLang(final @NotNull Audience audience,
+                                 final @NotNull LangPath prefix,
+                                 final @NotNull LangPath path,
+                                 final @NotNull TagResolver... resolver) {
+        audience.sendMessage(langCache.get(prefix).appendSpace().append(
+            MiniMessage.miniMessage().deserialize(getRawString(path), resolver)));
+    }
+
+    /**
+     * send a component from the lang file to the audience, applying the given tag resolver.
      * Note: might be slightly slower than {@link #sendLang(Audience, LangPath)} since this can not use cache.
      */
-    public void sendLang(@NotNull Audience audience, @NotNull LangPath path, @NotNull TagResolver... resolver) {
-        audience.sendMessage(langCache.get(StandardLangPath.PLUGIN_PREFIX).appendSpace().append(
-            MiniMessage.miniMessage().deserialize(getStringFromLang(path), resolver)));
+    public void sendLang(final @NotNull Audience audience,
+                         final @NotNull LangPath path,
+                         final @NotNull TagResolver... resolver) {
+        audience.sendMessage(MiniMessage.miniMessage().deserialize(getRawString(path), resolver));
+    }
+
+    /**
+     * broadcast a component from the lang file on the server, prefixed with this plugins prefix and applying the given tag resolver.
+     * Note: might be slightly slower than {@link #broadcastPrefixedLang(LangPath, LangPath)} since this can not use cache.
+     */
+    public void broadcastLang(final @NotNull LangPath prefix,
+                              final @NotNull LangPath path,
+                              final @NotNull TagResolver... resolver) {
+        Bukkit.broadcast(langCache.get(prefix).appendSpace().append(
+            MiniMessage.miniMessage().deserialize(getRawString(path), resolver)));
     }
 
     /**
      * broadcast a component from the lang file on the server, prefixed with this plugins prefix and applying the given tag resolver.
      * Note: might be slightly slower than {@link #broadcastLang(LangPath)} since this can not use cache.
      */
-    public void broadcastLang(@NotNull LangPath path, @NotNull TagResolver... resolver) {
-        Bukkit.broadcast(langCache.get(StandardLangPath.PLUGIN_PREFIX).appendSpace().append(
-            MiniMessage.miniMessage().deserialize(getStringFromLang(path), resolver)));
+    public void broadcastLang(final @NotNull LangPath path,
+                              final @NotNull TagResolver... resolver) {
+        Bukkit.broadcast(MiniMessage.miniMessage().deserialize(getRawString(path), resolver));
     }
 }
