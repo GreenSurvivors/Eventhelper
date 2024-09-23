@@ -5,7 +5,7 @@ import org.jetbrains.annotations.NotNull;
 /**
  * Paths of all translatable
  */
-public enum SharedLangPath implements LangPath {  // todo
+public enum SharedLangPath implements LangPath {
     //plugin prefix
     MESSAGE_PREFIX("prefix", "<gold>[EventHelper]</gold> "),
     ERROR_SIGN_BACKSIDE("error.sign.backside"),
@@ -23,7 +23,7 @@ public enum SharedLangPath implements LangPath {  // todo
     ARG_NOT_A_BOOL("cmd.error.arg.not-a-bool"),
     ARG_NOT_A_NUMBER("cmd.error.arg.not-a-number"),
     ARG_NOT_A_PLAYER("cmd.error.arg.not-a-player"),
-    ARG_NUMBER_OUT_OF_BOUNDS(""),
+    ARG_NUMBER_OUT_OF_BOUNDS("cmd.error.arg.number-out-of-bounds"),
     NOT_ENOUGH_ARGS("cmd.error.arg.not-enough-args"),
     UNKNOWN_ARG("cmd.error.arg.unknown"),
     NO_PERMISSION("no-permission");

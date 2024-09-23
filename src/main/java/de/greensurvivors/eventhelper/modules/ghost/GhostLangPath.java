@@ -6,7 +6,7 @@ import org.jetbrains.annotations.NotNull;
 public record GhostLangPath(@NotNull String path, @NotNull String defaultValue) implements LangPath { // todo
     public static final GhostLangPath
         MESSAGE_PREFIX = new GhostLangPath("message-prefix", "[GhostGame]"),
-        COMMAND_CREATE_ERROR_EXISTS = new GhostLangPath("command.create.error.exists"),
+        COMMAND_CREATE_ERROR_EXISTS = new GhostLangPath("command.create.game.error.exists"),
         COMMAND_CREATE_SUCCESS = new GhostLangPath("command.create.success"),
         COMMAND_START_SUCCESS = new GhostLangPath("command.start.success"),
         COMMAND_END_SUCCESS = new GhostLangPath("command.end.success"),
@@ -20,7 +20,7 @@ public record GhostLangPath(@NotNull String path, @NotNull String defaultValue) 
         COMMAND_SET_START_PLAYERTIME_ERROR_LARGER_THEN_END = new GhostLangPath("command.set.player-time.start.error.larger-then-end"),
         COMMAND_SET_END_PLAYERTIME_SUCCESS = new GhostLangPath("command.set.player-time.end.success"),
         COMMAND_SET_END_PLAYERTIME_ERROR_SMALLER_THEN_START = new GhostLangPath("command.set.player-time.end.error.smaller-then-start"),
-        COMMAND_SET_LATEJOIN_SUCCESS = new GhostLangPath("command.set.latejoin.success"),
+        COMMAND_SET_LATEJOIN_SUCCESS = new GhostLangPath("command.set.late-join.success"),
         COMMAND_SET_MIN_PLAYERS_SUCCESS = new GhostLangPath("command.min-players.success"),
         COMMAND_SET_MIN_PLAYERS_ERROR_LARGER_THEN_MAX = new GhostLangPath("command.set.min-players.error.larger-then-max"),
         COMMAND_SET_MAX_PLAYERS_SUCCESS = new GhostLangPath("command.set.max-players.success"),
@@ -29,18 +29,18 @@ public record GhostLangPath(@NotNull String path, @NotNull String defaultValue) 
         COMMAND_ADD_GHOST_SPAWNPOINT_SUCCESS = new GhostLangPath("command.add.ghost.spawnpoint.success"),
         COMMAND_REMOVEALL_GHOST_SPAWNPOINT_SUCCESS = new GhostLangPath("command.remove-all.ghost.spawnpoint.success"),
 
-    PLAYER_GAME_JOIN = new GhostLangPath("game.player.join.self"),
-        PLAYER_GAME_JOIN_BROADCAST = new GhostLangPath("game.player.join.broadcast"),
-        PLAYER_GAME_QUIT = new GhostLangPath("game.player.quit.self"),
-        PLAYER_GAME_QUIT_BROADCAST = new GhostLangPath("game.player.quit.broadcast"),
-        GAME_WIN_BROADCAST = new GhostLangPath("game.win.broadcast"),
-        GAME_LOOSE_TIME_BROADCAST = new GhostLangPath("game.loose.time.broadcast"),
-        GAME_LOOSE_DEATH_BROADCAST = new GhostLangPath("game.loose.death.broadcast"),
+    PLAYER_GAME_JOIN = new GhostLangPath("game.player.join.self"), // todo per game override
+        PLAYER_GAME_JOIN_BROADCAST = new GhostLangPath("game.player.join.broadcast"), // todo per game override
+        PLAYER_GAME_QUIT = new GhostLangPath("game.player.quit.self"), // todo per game override
+        PLAYER_GAME_QUIT_BROADCAST = new GhostLangPath("game.player.quit.broadcast"), // todo per game override
+        GAME_WIN_BROADCAST = new GhostLangPath("game.win.broadcast"), // todo per game override
+        GAME_LOOSE_TIME_BROADCAST = new GhostLangPath("game.loose.time.broadcast"), // todo per game override
+        GAME_LOOSE_DEATH_BROADCAST = new GhostLangPath("game.loose.death.broadcast"), // todo per game override
         ERROR_GAME_FULL = new GhostLangPath("error.game-full"),
         ERROR_NO_LATE_JOIN = new GhostLangPath("error.no-late-join"),
         ERROR_ALREADY_PLAYING = new GhostLangPath("error.already-playing"),
-        ERROR_NOT_PLAYING = new GhostLangPath("error.not-playing"),
-        ERROR_GAME_STATE = new GhostLangPath("error.game-state"),
+        ERROR_NOT_PLAYING_SELF = new GhostLangPath("error.not-playing.self"),
+        ERROR_JOIN_GAME_STATE = new GhostLangPath("error.join.game-state"),
         ERROR_MODUL_NOT_ENABLED = new GhostLangPath("error.module-not-enabled"),
         ARG_NOT_A_GAME = new GhostLangPath("error.arg.not-a-game");
 
