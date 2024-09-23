@@ -2,7 +2,10 @@ package de.greensurvivors.eventhelper.modules.ghost;
 
 import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.messages.LangPath;
+import de.greensurvivors.eventhelper.messages.SharedPlaceHolder;
 import de.greensurvivors.eventhelper.modules.ghost.ghostEntity.IGhost;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -21,9 +24,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class GhostGame implements Listener {
-    private final @NotNull GhostGameConfig config;
     private final @NotNull EventHelper plugin;
-    private final @NotNull String name;
+    private final @NotNull GhostModul ghostModul;
+    private final @NotNull GhostGameConfig config;
+    private final @NotNull String name_id;
 
     private final @NotNull Set<UUID> players = new HashSet<>();
     private final @NotNull Set<IGhost> ghosts = new HashSet<>();
@@ -31,12 +35,13 @@ public class GhostGame implements Listener {
     private long amountOfTicksRun;
     private @Nullable BukkitTask timeTask = null; // this has to be sync!
 
-    public GhostGame(final @NotNull EventHelper plugin, final @NotNull GhostModul modul, final @NotNull String name) {
+    public GhostGame(final @NotNull EventHelper plugin, final @NotNull GhostModul modul, final @NotNull String name_id) {
         this.plugin = plugin;
-        this.name = name;
+        this.ghostModul = modul;
+        this.name_id = name_id;
 
         this.gameState = GameState.IDLE;
-        this.config = new GhostGameConfig(plugin, name);
+        this.config = new GhostGameConfig(plugin, name_id);
         this.config.setModul(modul);
     }
 
@@ -165,7 +170,7 @@ public class GhostGame implements Listener {
     }
 
     public void playerJoin(final @NotNull Player player) { // permission
-        if (!players.contains(player.getUniqueId())) {
+        if (ghostModul.getGameOfPlayer(player) != null) {
             switch (gameState) {
                 case IDLE -> {
                     if (!isGameFull()) {
@@ -173,8 +178,10 @@ public class GhostGame implements Listener {
 
                         player.teleportAsync(config.getLobbyLocation());
 
-                        plugin.getMessageManager().sendLang(player, GhostLangPath.PLAYER_GAME_JOIN);
-                        broadcastExcept(GhostLangPath.PLAYER_GAME_JOIN_BROADCAST, player.getUniqueId());
+                        plugin.getMessageManager().sendLang(player, GhostLangPath.PLAYER_GAME_JOIN,
+                            Placeholder.component(SharedPlaceHolder.TEXT.getKey(), getConfig().getDisplayName()));
+                        broadcastExcept(GhostLangPath.PLAYER_GAME_JOIN_BROADCAST, player.getUniqueId(),
+                            Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), player.displayName()));
                     } else {
                         plugin.getMessageManager().sendLang(player, GhostLangPath.ERROR_GAME_FULL);
                     }
@@ -185,7 +192,8 @@ public class GhostGame implements Listener {
                             player.teleportAsync(config.getStartLocation());
 
                             plugin.getMessageManager().sendLang(player, GhostLangPath.PLAYER_GAME_JOIN);
-                            broadcastExcept(GhostLangPath.PLAYER_GAME_JOIN_BROADCAST, player.getUniqueId());
+                            broadcastExcept(GhostLangPath.PLAYER_GAME_JOIN_BROADCAST, player.getUniqueId(),
+                                Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), player.displayName()));
                         } else {
                             plugin.getMessageManager().sendLang(player, GhostLangPath.ERROR_GAME_FULL);
                         }
@@ -193,7 +201,8 @@ public class GhostGame implements Listener {
                         plugin.getMessageManager().sendLang(player, GhostLangPath.ERROR_NO_LATE_JOIN);
                     }
                 }
-                case STARTING, RESETTING -> plugin.getMessageManager().sendLang(player, GhostLangPath.ERROR_GAME_STATE);
+                case STARTING, RESETTING ->
+                    plugin.getMessageManager().sendLang(player, GhostLangPath.ERROR_JOIN_GAME_STATE);
             }
         } else {
             plugin.getMessageManager().sendLang(player, GhostLangPath.ERROR_ALREADY_PLAYING);
@@ -204,19 +213,40 @@ public class GhostGame implements Listener {
         if (players.contains(player.getUniqueId())) {
             if (teleport) {
                 player.teleport(config.getEndLocation());
+                player.resetPlayerTime();
             }
 
             players.remove(player.getUniqueId());
 
             if (gameState != GameState.RESETTING) {
                 plugin.getMessageManager().sendLang(player, GhostLangPath.PLAYER_GAME_QUIT);
-                broadcastExcept(GhostLangPath.PLAYER_GAME_QUIT_BROADCAST, player.getUniqueId());
+                broadcastExcept(GhostLangPath.PLAYER_GAME_QUIT_BROADCAST, player.getUniqueId(),
+                    Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), player.displayName()));
             }
         } else {
             if (gameState != GameState.RESETTING) {
-                plugin.getMessageManager().sendLang(player, GhostLangPath.ERROR_NOT_PLAYING);
+                plugin.getMessageManager().sendLang(player, GhostLangPath.ERROR_NOT_PLAYING_SELF);
             }
         }
+    }
+
+    public void broadcastExcept(@NotNull LangPath langPath, final @Nullable UUID exception, @NotNull TagResolver... resolvers) {
+        for (Iterator<UUID> iterator = players.iterator(); iterator.hasNext(); ) {
+            UUID uuid = iterator.next();
+            if (!uuid.equals(exception)) {
+                Player player = Bukkit.getPlayer(uuid);
+
+                if (player != null) {
+                    plugin.getMessageManager().sendLang(player, langPath, resolvers);
+                } else {
+                    iterator.remove();
+                }
+            }
+        }
+    }
+
+    public void broadcastAll(@NotNull LangPath langPath, @NotNull TagResolver... resolvers) {
+        broadcastExcept(langPath, null, resolvers);
     }
 
     public void broadcastExcept(@NotNull LangPath langPath, final @Nullable UUID exception) {
@@ -245,8 +275,8 @@ public class GhostGame implements Listener {
         });
     }
 
-    public @NotNull String getName() {
-        return name;
+    public @NotNull String getName_id() {
+        return name_id;
     }
 
     public @NotNull GameState getGameState() {
@@ -255,6 +285,10 @@ public class GhostGame implements Listener {
 
     public @NotNull GhostGameConfig getConfig() {
         return config;
+    }
+
+    public boolean isPlaying(@NotNull Player player) {
+        return this.players.contains(player.getUniqueId());
     }
 
     public enum EndReason {

@@ -3,7 +3,7 @@ package de.greensurvivors.eventhelper.modules.ghost.command;
 import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.command.ASubCommand;
 import de.greensurvivors.eventhelper.messages.SharedLangPath;
-import de.greensurvivors.eventhelper.messages.SharedPlaceHolders;
+import de.greensurvivors.eventhelper.messages.SharedPlaceHolder;
 import de.greensurvivors.eventhelper.modules.ghost.GhostGame;
 import de.greensurvivors.eventhelper.modules.ghost.GhostLangPath;
 import de.greensurvivors.eventhelper.modules.ghost.GhostModul;
@@ -71,10 +71,11 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
                     if (newGame != null) {
                         plugin.getMessageManager().sendPrefixedLang(sender,
                             GhostLangPath.MESSAGE_PREFIX, GhostLangPath.COMMAND_CREATE_SUCCESS,
-                            Placeholder.parsed(SharedPlaceHolders.TEXT.getPlaceholder(), newGame.getName()));
+                            Placeholder.parsed(SharedPlaceHolder.TEXT.getKey(), newGame.getName_id()));
                     } else {
                         plugin.getMessageManager().sendPrefixedLang(sender,
-                            GhostLangPath.MESSAGE_PREFIX, GhostLangPath.COMMAND_CREATE_ERROR_EXISTS);
+                            GhostLangPath.MESSAGE_PREFIX, GhostLangPath.COMMAND_CREATE_ERROR_EXISTS,
+                            Placeholder.unparsed(SharedPlaceHolder.TEXT.getKey(), args.get(1)));
                         return true;
                     }
                 } else {
@@ -87,13 +88,15 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
                                 game.startGame();
 
                                 plugin.getMessageManager().sendPrefixedLang(sender,
-                                    GhostLangPath.MESSAGE_PREFIX, GhostLangPath.COMMAND_START_SUCCESS);
+                                    GhostLangPath.MESSAGE_PREFIX, GhostLangPath.COMMAND_START_SUCCESS,
+                                    Placeholder.unparsed(SharedPlaceHolder.TEXT.getKey(), game.getName_id()));
                             }
                             case END_GAME -> {
                                 game.endGame(GhostGame.EndReason.EXTERN);
 
                                 plugin.getMessageManager().sendPrefixedLang(sender,
-                                    GhostLangPath.MESSAGE_PREFIX, GhostLangPath.COMMAND_END_SUCCESS);
+                                    GhostLangPath.MESSAGE_PREFIX, GhostLangPath.COMMAND_END_SUCCESS,
+                                    Placeholder.unparsed(SharedPlaceHolder.TEXT.getKey(), game.getName_id()));
                             }
                             case RELOAD -> {
                                 game.reload();
@@ -114,18 +117,18 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
 
                                                         plugin.getMessageManager().sendPrefixedLang(sender,
                                                             GhostLangPath.MESSAGE_PREFIX, GhostLangPath.COMMAND_SET_GHOST_OFFSET_SUCCESS,
-                                                            Placeholder.unparsed(SharedPlaceHolders.NUMBER.getPlaceholder(), String.valueOf(newGhostOffset)));
+                                                            Placeholder.unparsed(SharedPlaceHolder.NUMBER.getKey(), String.valueOf(newGhostOffset)));
                                                     } else {
                                                         plugin.getMessageManager().sendPrefixedLang(sender,
                                                             GhostLangPath.MESSAGE_PREFIX, SharedLangPath.ARG_NUMBER_OUT_OF_BOUNDS,
-                                                            Placeholder.unparsed(SharedPlaceHolders.NUMBER.getPlaceholder(), String.valueOf(newGhostOffset)),
-                                                            Placeholder.unparsed(SharedPlaceHolders.MIN.getPlaceholder(), String.valueOf(0)),
-                                                            Placeholder.unparsed(SharedPlaceHolders.MAX.getPlaceholder(), String.valueOf(Double.MAX_VALUE)));
+                                                            Placeholder.unparsed(SharedPlaceHolder.NUMBER.getKey(), String.valueOf(newGhostOffset)),
+                                                            Placeholder.unparsed(SharedPlaceHolder.MIN.getKey(), String.valueOf(0)),
+                                                            Placeholder.unparsed(SharedPlaceHolder.MAX.getKey(), String.valueOf(Double.MAX_VALUE)));
                                                     }
                                                 } catch (NumberFormatException e) {
                                                     plugin.getMessageManager().sendPrefixedLang(sender,
                                                         GhostLangPath.MESSAGE_PREFIX, SharedLangPath.ARG_NOT_A_NUMBER,
-                                                        Placeholder.unparsed(SharedPlaceHolders.TEXT.getPlaceholder(), args.get(3)));
+                                                        Placeholder.unparsed(SharedPlaceHolder.TEXT.getKey(), args.get(3)));
 
                                                     plugin.getComponentLogger().debug("could not decode Integer argument {} in command to set max player amount!", args.get(3), e);
 
@@ -147,18 +150,18 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
 
                                                         plugin.getMessageManager().sendPrefixedLang(sender,
                                                             GhostLangPath.MESSAGE_PREFIX, GhostLangPath.COMMAND_SET_GHOST_AMOUNT_SUCCESS,
-                                                            Placeholder.unparsed(SharedPlaceHolders.NUMBER.getPlaceholder(), String.valueOf(newGhostAmount)));
+                                                            Placeholder.unparsed(SharedPlaceHolder.NUMBER.getKey(), String.valueOf(newGhostAmount)));
                                                     } else {
                                                         plugin.getMessageManager().sendPrefixedLang(sender,
                                                             GhostLangPath.MESSAGE_PREFIX, SharedLangPath.ARG_NUMBER_OUT_OF_BOUNDS,
-                                                            Placeholder.unparsed(SharedPlaceHolders.NUMBER.getPlaceholder(), String.valueOf(newGhostAmount)),
-                                                            Placeholder.unparsed(SharedPlaceHolders.MIN.getPlaceholder(), String.valueOf(1)),
-                                                            Placeholder.unparsed(SharedPlaceHolders.MAX.getPlaceholder(), String.valueOf(Double.MAX_VALUE)));
+                                                            Placeholder.unparsed(SharedPlaceHolder.NUMBER.getKey(), String.valueOf(newGhostAmount)),
+                                                            Placeholder.unparsed(SharedPlaceHolder.MIN.getKey(), String.valueOf(1)),
+                                                            Placeholder.unparsed(SharedPlaceHolder.MAX.getKey(), String.valueOf(Double.MAX_VALUE)));
                                                     }
                                                 } catch (NumberFormatException e) {
                                                     plugin.getMessageManager().sendPrefixedLang(sender,
                                                         GhostLangPath.MESSAGE_PREFIX, SharedLangPath.ARG_NOT_A_NUMBER,
-                                                        Placeholder.unparsed(SharedPlaceHolders.TEXT.getPlaceholder(), args.get(3)));
+                                                        Placeholder.unparsed(SharedPlaceHolder.TEXT.getKey(), args.get(3)));
 
                                                     plugin.getComponentLogger().debug("could not decode Integer argument {} in command to set max player amount!", args.get(3), e);
 
@@ -217,24 +220,24 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
 
                                                             plugin.getMessageManager().sendPrefixedLang(sender,
                                                                 GhostLangPath.MESSAGE_PREFIX, GhostLangPath.COMMAND_SET_START_PLAYERTIME_SUCCESS,
-                                                                Placeholder.unparsed(SharedPlaceHolders.NUMBER.getPlaceholder(), String.valueOf(newStartPlayerTime)));
+                                                                Placeholder.unparsed(SharedPlaceHolder.NUMBER.getKey(), String.valueOf(newStartPlayerTime)));
                                                         } else {
                                                             plugin.getMessageManager().sendPrefixedLang(sender,
                                                                 GhostLangPath.MESSAGE_PREFIX, GhostLangPath.COMMAND_SET_START_PLAYERTIME_ERROR_LARGER_THEN_END,
-                                                                Placeholder.unparsed(SharedPlaceHolders.NUMBER.getPlaceholder(), String.valueOf(newStartPlayerTime)),
-                                                                Placeholder.unparsed(SharedPlaceHolders.MAX.getPlaceholder(), String.valueOf(game.getConfig().getEndPlayerTime())));
+                                                                Placeholder.unparsed(SharedPlaceHolder.NUMBER.getKey(), String.valueOf(newStartPlayerTime)),
+                                                                Placeholder.unparsed(SharedPlaceHolder.MAX.getKey(), String.valueOf(game.getConfig().getEndPlayerTime())));
                                                         }
                                                     } else {
                                                         plugin.getMessageManager().sendPrefixedLang(sender,
                                                             GhostLangPath.MESSAGE_PREFIX, SharedLangPath.ARG_NUMBER_OUT_OF_BOUNDS,
-                                                            Placeholder.unparsed(SharedPlaceHolders.NUMBER.getPlaceholder(), String.valueOf(newStartPlayerTime)),
-                                                            Placeholder.unparsed(SharedPlaceHolders.MIN.getPlaceholder(), "0"),
-                                                            Placeholder.unparsed(SharedPlaceHolders.MAX.getPlaceholder(), "24000"));
+                                                            Placeholder.unparsed(SharedPlaceHolder.NUMBER.getKey(), String.valueOf(newStartPlayerTime)),
+                                                            Placeholder.unparsed(SharedPlaceHolder.MIN.getKey(), "0"),
+                                                            Placeholder.unparsed(SharedPlaceHolder.MAX.getKey(), "24000"));
                                                     }
                                                 } catch (NumberFormatException e) {
                                                     plugin.getMessageManager().sendPrefixedLang(sender,
                                                         GhostLangPath.MESSAGE_PREFIX, SharedLangPath.ARG_NOT_A_NUMBER,
-                                                        Placeholder.unparsed(SharedPlaceHolders.TEXT.getPlaceholder(), args.get(3)));
+                                                        Placeholder.unparsed(SharedPlaceHolder.TEXT.getKey(), args.get(3)));
 
                                                     plugin.getComponentLogger().debug("could not decode Integer argument {} in command to set max player amount!", args.get(3), e);
 
@@ -257,24 +260,24 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
 
                                                             plugin.getMessageManager().sendPrefixedLang(sender,
                                                                 GhostLangPath.MESSAGE_PREFIX, GhostLangPath.COMMAND_SET_END_PLAYERTIME_SUCCESS,
-                                                                Placeholder.unparsed(SharedPlaceHolders.NUMBER.getPlaceholder(), String.valueOf(newEndPlayerTime)));
+                                                                Placeholder.unparsed(SharedPlaceHolder.NUMBER.getKey(), String.valueOf(newEndPlayerTime)));
                                                         } else {
                                                             plugin.getMessageManager().sendPrefixedLang(sender,
                                                                 GhostLangPath.MESSAGE_PREFIX, GhostLangPath.COMMAND_SET_END_PLAYERTIME_ERROR_SMALLER_THEN_START,
-                                                                Placeholder.unparsed(SharedPlaceHolders.NUMBER.getPlaceholder(), String.valueOf(newEndPlayerTime)),
-                                                                Placeholder.unparsed(SharedPlaceHolders.MIN.getPlaceholder(), String.valueOf(game.getConfig().getEndPlayerTime())));
+                                                                Placeholder.unparsed(SharedPlaceHolder.NUMBER.getKey(), String.valueOf(newEndPlayerTime)),
+                                                                Placeholder.unparsed(SharedPlaceHolder.MIN.getKey(), String.valueOf(game.getConfig().getEndPlayerTime())));
                                                         }
                                                     } else {
                                                         plugin.getMessageManager().sendPrefixedLang(sender,
                                                             GhostLangPath.MESSAGE_PREFIX, SharedLangPath.ARG_NUMBER_OUT_OF_BOUNDS,
-                                                            Placeholder.unparsed(SharedPlaceHolders.NUMBER.getPlaceholder(), String.valueOf(newEndPlayerTime)),
-                                                            Placeholder.unparsed(SharedPlaceHolders.MIN.getPlaceholder(), "0"),
-                                                            Placeholder.unparsed(SharedPlaceHolders.MAX.getPlaceholder(), "24000"));
+                                                            Placeholder.unparsed(SharedPlaceHolder.NUMBER.getKey(), String.valueOf(newEndPlayerTime)),
+                                                            Placeholder.unparsed(SharedPlaceHolder.MIN.getKey(), "0"),
+                                                            Placeholder.unparsed(SharedPlaceHolder.MAX.getKey(), "24000"));
                                                     }
                                                 } catch (NumberFormatException e) {
                                                     plugin.getMessageManager().sendPrefixedLang(sender,
                                                         GhostLangPath.MESSAGE_PREFIX, SharedLangPath.ARG_NOT_A_NUMBER,
-                                                        Placeholder.unparsed(SharedPlaceHolders.TEXT.getPlaceholder(), args.get(3)));
+                                                        Placeholder.unparsed(SharedPlaceHolder.TEXT.getKey(), args.get(3)));
 
                                                     plugin.getComponentLogger().debug("could not decode Integer argument {} in command to set max player amount!", args.get(3), e);
 
@@ -295,11 +298,11 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
 
                                                     plugin.getMessageManager().sendPrefixedLang(sender,
                                                         GhostLangPath.MESSAGE_PREFIX, GhostLangPath.COMMAND_SET_LATEJOIN_SUCCESS,
-                                                        Placeholder.unparsed(SharedPlaceHolders.BOOL.getPlaceholder(), String.valueOf(isallowed)));
+                                                        Placeholder.unparsed(SharedPlaceHolder.BOOL.getKey(), String.valueOf(isallowed)));
                                                 } else {
                                                     plugin.getMessageManager().sendPrefixedLang(sender,
                                                         GhostLangPath.MESSAGE_PREFIX, SharedLangPath.ARG_NOT_A_BOOL,
-                                                        Placeholder.unparsed(SharedPlaceHolders.TEXT.getPlaceholder(), args.get(3)));
+                                                        Placeholder.unparsed(SharedPlaceHolder.TEXT.getKey(), args.get(3)));
 
                                                     return false;
                                                 }
@@ -320,24 +323,24 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
 
                                                             plugin.getMessageManager().sendPrefixedLang(sender,
                                                                 GhostLangPath.MESSAGE_PREFIX, GhostLangPath.COMMAND_SET_MIN_PLAYERS_SUCCESS,
-                                                                Placeholder.unparsed(SharedPlaceHolders.NUMBER.getPlaceholder(), String.valueOf(newMinAmount)));
+                                                                Placeholder.unparsed(SharedPlaceHolder.NUMBER.getKey(), String.valueOf(newMinAmount)));
                                                         } else {
                                                             plugin.getMessageManager().sendPrefixedLang(sender,
                                                                 GhostLangPath.MESSAGE_PREFIX, GhostLangPath.COMMAND_SET_MIN_PLAYERS_ERROR_LARGER_THEN_MAX,
-                                                                Placeholder.unparsed(SharedPlaceHolders.NUMBER.getPlaceholder(), String.valueOf(newMinAmount)),
-                                                                Placeholder.unparsed(SharedPlaceHolders.MAX.getPlaceholder(), String.valueOf(game.getConfig().getMaxAmountPlayers())));
+                                                                Placeholder.unparsed(SharedPlaceHolder.NUMBER.getKey(), String.valueOf(newMinAmount)),
+                                                                Placeholder.unparsed(SharedPlaceHolder.MAX.getKey(), String.valueOf(game.getConfig().getMaxAmountPlayers())));
                                                         }
                                                     } else {
                                                         plugin.getMessageManager().sendPrefixedLang(sender,
                                                             GhostLangPath.MESSAGE_PREFIX, SharedLangPath.ARG_NUMBER_OUT_OF_BOUNDS,
-                                                            Placeholder.unparsed(SharedPlaceHolders.NUMBER.getPlaceholder(), String.valueOf(newMinAmount)),
-                                                            Placeholder.unparsed(SharedPlaceHolders.MIN.getPlaceholder(), "-1"),
-                                                            Placeholder.unparsed(SharedPlaceHolders.MAX.getPlaceholder(), String.valueOf(game.getConfig().getMaxAmountPlayers())));
+                                                            Placeholder.unparsed(SharedPlaceHolder.NUMBER.getKey(), String.valueOf(newMinAmount)),
+                                                            Placeholder.unparsed(SharedPlaceHolder.MIN.getKey(), "-1"),
+                                                            Placeholder.unparsed(SharedPlaceHolder.MAX.getKey(), String.valueOf(game.getConfig().getMaxAmountPlayers())));
                                                     }
                                                 } catch (NumberFormatException e) {
                                                     plugin.getMessageManager().sendPrefixedLang(sender,
                                                         GhostLangPath.MESSAGE_PREFIX, SharedLangPath.ARG_NOT_A_NUMBER,
-                                                        Placeholder.unparsed(SharedPlaceHolders.TEXT.getPlaceholder(), args.get(3)));
+                                                        Placeholder.unparsed(SharedPlaceHolder.TEXT.getKey(), args.get(3)));
                                                     plugin.getComponentLogger().debug("could not decode Integer argument {} in command to set min player amount!", args.get(3), e);
 
                                                     return false;
@@ -359,24 +362,24 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
 
                                                             plugin.getMessageManager().sendPrefixedLang(sender,
                                                                 GhostLangPath.MESSAGE_PREFIX, GhostLangPath.COMMAND_SET_MAX_PLAYERS_SUCCESS,
-                                                                Placeholder.unparsed(SharedPlaceHolders.NUMBER.getPlaceholder(), String.valueOf(newMaxAmount)));
+                                                                Placeholder.unparsed(SharedPlaceHolder.NUMBER.getKey(), String.valueOf(newMaxAmount)));
                                                         } else {
                                                             plugin.getMessageManager().sendPrefixedLang(sender,
                                                                 GhostLangPath.MESSAGE_PREFIX, GhostLangPath.COMMAND_SET_MAX_PLAYERS_ERROR_SMALLER_THEN_MIN,
-                                                                Placeholder.unparsed(SharedPlaceHolders.NUMBER.getPlaceholder(), String.valueOf(newMaxAmount)),
-                                                                Placeholder.unparsed(SharedPlaceHolders.MIN.getPlaceholder(), String.valueOf(game.getConfig().getMinAmountPlayers())));
+                                                                Placeholder.unparsed(SharedPlaceHolder.NUMBER.getKey(), String.valueOf(newMaxAmount)),
+                                                                Placeholder.unparsed(SharedPlaceHolder.MIN.getKey(), String.valueOf(game.getConfig().getMinAmountPlayers())));
                                                         }
                                                     } else {
                                                         plugin.getMessageManager().sendPrefixedLang(sender,
                                                             GhostLangPath.MESSAGE_PREFIX, SharedLangPath.ARG_NUMBER_OUT_OF_BOUNDS,
-                                                            Placeholder.unparsed(SharedPlaceHolders.NUMBER.getPlaceholder(), String.valueOf(newMaxAmount)),
-                                                            Placeholder.unparsed(SharedPlaceHolders.MIN.getPlaceholder(), String.valueOf(game.getConfig().getMinAmountPlayers())),
-                                                            Placeholder.unparsed(SharedPlaceHolders.MAX.getPlaceholder(), String.valueOf(Integer.MAX_VALUE)));
+                                                            Placeholder.unparsed(SharedPlaceHolder.NUMBER.getKey(), String.valueOf(newMaxAmount)),
+                                                            Placeholder.unparsed(SharedPlaceHolder.MIN.getKey(), String.valueOf(game.getConfig().getMinAmountPlayers())),
+                                                            Placeholder.unparsed(SharedPlaceHolder.MAX.getKey(), String.valueOf(Integer.MAX_VALUE)));
                                                     }
                                                 } catch (NumberFormatException e) {
                                                     plugin.getMessageManager().sendPrefixedLang(sender,
                                                         GhostLangPath.MESSAGE_PREFIX, SharedLangPath.ARG_NOT_A_NUMBER,
-                                                        Placeholder.unparsed(SharedPlaceHolders.TEXT.getPlaceholder(), args.get(3)));
+                                                        Placeholder.unparsed(SharedPlaceHolder.TEXT.getKey(), args.get(3)));
                                                     plugin.getComponentLogger().debug("could not decode Integer argument {} in command to set max player amount!", args.get(3), e);
 
                                                     return false;
@@ -397,18 +400,18 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
 
                                                         plugin.getMessageManager().sendPrefixedLang(sender,
                                                             GhostLangPath.MESSAGE_PREFIX, GhostLangPath.COMMAND_SET_PLAYER_SPEAD_SUCCESS,
-                                                            Placeholder.unparsed(SharedPlaceHolders.NUMBER.getPlaceholder(), String.valueOf(newMaxSpread)));
+                                                            Placeholder.unparsed(SharedPlaceHolder.NUMBER.getKey(), String.valueOf(newMaxSpread)));
                                                     } else {
                                                         plugin.getMessageManager().sendPrefixedLang(sender,
                                                             GhostLangPath.MESSAGE_PREFIX, SharedLangPath.ARG_NUMBER_OUT_OF_BOUNDS,
-                                                            Placeholder.unparsed(SharedPlaceHolders.NUMBER.getPlaceholder(), String.valueOf(newMaxSpread)),
-                                                            Placeholder.unparsed(SharedPlaceHolders.MIN.getPlaceholder(), "0"),
-                                                            Placeholder.unparsed(SharedPlaceHolders.MAX.getPlaceholder(), String.valueOf(Double.MAX_VALUE)));
+                                                            Placeholder.unparsed(SharedPlaceHolder.NUMBER.getKey(), String.valueOf(newMaxSpread)),
+                                                            Placeholder.unparsed(SharedPlaceHolder.MIN.getKey(), "0"),
+                                                            Placeholder.unparsed(SharedPlaceHolder.MAX.getKey(), String.valueOf(Double.MAX_VALUE)));
                                                     }
                                                 } catch (NumberFormatException e) {
                                                     plugin.getMessageManager().sendPrefixedLang(sender,
                                                         GhostLangPath.MESSAGE_PREFIX, SharedLangPath.ARG_NOT_A_NUMBER,
-                                                        Placeholder.unparsed(SharedPlaceHolders.TEXT.getPlaceholder(), args.get(3)));
+                                                        Placeholder.unparsed(SharedPlaceHolder.TEXT.getKey(), args.get(3)));
                                                     plugin.getComponentLogger().debug("could not decode Integer argument {} in command to set player teleport max spread distance!", args.get(3), e);
 
                                                     return false;
@@ -435,7 +438,7 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
 
                                                 plugin.getMessageManager().sendPrefixedLang(sender,
                                                     GhostLangPath.MESSAGE_PREFIX, GhostLangPath.COMMAND_ADD_GHOST_SPAWNPOINT_SUCCESS,
-                                                    Placeholder.unparsed(SharedPlaceHolders.NUMBER.getPlaceholder(), String.valueOf(game.getConfig().getGhostSpawnLocations().size())));
+                                                    Placeholder.unparsed(SharedPlaceHolder.NUMBER.getKey(), String.valueOf(game.getConfig().getGhostSpawnLocations().size())));
                                             } else {
                                                 plugin.getMessageManager().sendPrefixedLang(sender,
                                                     GhostLangPath.MESSAGE_PREFIX, SharedLangPath.NOT_A_PLAYER);

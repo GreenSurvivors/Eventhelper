@@ -5,6 +5,7 @@ import de.greensurvivors.eventhelper.command.MainCmd;
 import de.greensurvivors.eventhelper.modules.AModul;
 import de.greensurvivors.eventhelper.modules.ghost.command.GhostCmd;
 import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.PluginManager;
 import org.jetbrains.annotations.NotNull;
@@ -46,7 +47,7 @@ public class GhostModul extends AModul<GeneralGhostConfig> {
                 map(path -> new GhostGame(plugin, this, path.getFileName().toString())). // create a new game instance
                 forEach(game -> {
                 // register game
-                games.put(game.getName().toLowerCase(Locale.ENGLISH), game);
+                games.put(game.getName_id().toLowerCase(Locale.ENGLISH), game);
                 pluginManager.registerEvents(game, plugin);
 
                 // reload game
@@ -90,5 +91,15 @@ public class GhostModul extends AModul<GeneralGhostConfig> {
 
     public @NotNull Set<String> getGameNames() {
         return games.keySet();
+    }
+
+    public @Nullable GhostGame getGameOfPlayer(@NotNull Player player) {
+        for (GhostGame game : games.values()) {
+            if (game.isPlaying(player)) {
+                return game;
+            }
+        }
+
+        return null;
     }
 }
