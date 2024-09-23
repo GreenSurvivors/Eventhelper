@@ -3,6 +3,8 @@ package de.greensurvivors.eventhelper.modules.ghost;
 import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.config.ConfigOption;
 import de.greensurvivors.eventhelper.modules.AModulConfig;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.apache.maven.artifact.versioning.ComparableVersion;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -37,7 +39,8 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     private final @NotNull ConfigOption<@NotNull List<@NotNull Location>> ghostSpawnLocations = new ConfigOption<>("ghost.spawnLocations", List.of()); // we need fast random access. But the locations should be unique! // todo check for very close together locations!
     private final @NotNull ConfigOption<@NotNull @Range(from = 1, to = Integer.MAX_VALUE) Integer> ghostAmount = new ConfigOption<>("ghost.amount", 1);
     // general
-    private final @NotNull String gameName;
+    private final @NotNull String name_id;
+    private final @NotNull ConfigOption<@NotNull Component> displayName;
     private final @NotNull ConfigOption<@NotNull List<@NotNull MouseTrap>> mouseTraps = new ConfigOption<>("game.mouseTraps", List.of()); // we need fast random access. But the MouseTraps should be unique!
     private final @NotNull ConfigOption<@NotNull List<@NotNull String>> gameInitCommands = new ConfigOption<>("game.commands.gameInit", List.of());
     private final @NotNull ConfigOption<@NotNull Location> lobbyLocation = new ConfigOption<>("game.lobbyLocation", Bukkit.getWorlds().get(0).getSpawnLocation());
@@ -53,10 +56,11 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     private final @NotNull ConfigOption<@NotNull @Range(from = -1, to = Integer.MAX_VALUE) Integer> maxAmountPlayers = new ConfigOption<>("game.maxAmountPlayers", -1);
     private final @NotNull ConfigOption<@NotNull Double> playerSpreadDistance = new ConfigOption<>("game.teleport.playerSpread.distance", 0.5); // todo use
 
-    public GhostGameConfig(final @NotNull EventHelper plugin, final @NotNull String gameName) {
-        super(plugin, Path.of("games", gameName + ".yaml"));
+    public GhostGameConfig(final @NotNull EventHelper plugin, final @NotNull String name_id) {
+        super(plugin, Path.of("games", name_id + ".yaml"));
 
-        this.gameName = gameName;
+        this.name_id = name_id;
+        this.displayName = new ConfigOption<>("game.displayName", Component.text(name_id));
     }
 
     @Override
@@ -89,12 +93,12 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                             ComparableVersion lastVersion = new ComparableVersion(dataVersionStr);
 
                             if (dataVersion.compareTo(lastVersion) < 0) {
-                                plugin.getLogger().warning("Found ghost game config for \"" + gameName + "\" was saved in a newer data version " +
+                                plugin.getLogger().warning("Found ghost game config for \"" + name_id + "\" was saved in a newer data version " +
                                     "(" + lastVersion + "), expected: " + dataVersion + ". " +
                                     "Trying to load anyway but some this most definitely will be broken!");
                             }
                         } else {
-                            plugin.getLogger().warning("The data version for ghost game \"" + gameName + "\" was missing." +
+                            plugin.getLogger().warning("The data version for ghost game \"" + name_id + "\" was missing." +
                                 "proceed with care!");
                         }
 
@@ -160,6 +164,13 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                         ghostSpawnLocations.setValue(newSpawnLocations);
 
                         ghostAmount.setValue(config.getInt(ghostAmount.getPath(), ghostAmount.getFallback()));
+
+                        final @Nullable String rawDisplayName = config.getString(displayName.getPath());
+                        if (rawDisplayName == null) {
+                            displayName.setValue(displayName.getFallback());
+                        } else {
+                            displayName.setValue(MiniMessage.miniMessage().deserialize(rawDisplayName));
+                        }
 
                         mouseTraps.setValue((List<MouseTrap>) config.getList(mouseTraps.getPath(), mouseTraps.getFallback()));
                         gameInitCommands.setValue(config.getStringList(gameInitCommands.getPath()));
@@ -356,6 +367,10 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
         ghostAmount.setValue(newAmount);
 
         save().thenRun(this::reload);
+    }
+
+    public @NotNull Component getDisplayName() {
+        return displayName.getValueOrFallback();
     }
 
     public @NotNull List<@NotNull MouseTrap> getMouseTraps() { // todo make editable via command
