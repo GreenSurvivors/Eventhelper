@@ -29,7 +29,8 @@ public class ModulRegistery {
     public void registerDefault() {
         registerNewModule(new GhostModul(plugin));
 
-        if (plugin.getDependencyManager().isWorldGuardEnabled()) {
+        // don't check if worldguard is enabled yet, since we have to do our registration before it does load
+        if (plugin.getDependencyManager().isWorldGuardInstanceSafe()) {
             registerNewModule(new TNTKnockbackModul(plugin));
             registerNewModule(new InventoryRegionModul(plugin));
         } else {
