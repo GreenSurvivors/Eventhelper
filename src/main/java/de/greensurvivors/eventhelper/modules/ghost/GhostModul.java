@@ -40,21 +40,28 @@ public class GhostModul extends AModul<GeneralGhostConfig> {
         GhostLangPath.moduleName = getName(); // set here, not in constructor, so this class can expanded by another one if ever needed in the future
         games.clear();
 
-        try (Stream<Path> stream = Files.list(plugin.getDataFolder().toPath().resolve(getName()))) { // stream need to get closed
-            PluginManager pluginManager = Bukkit.getPluginManager();
+        Path gamesPath = plugin.getDataFolder().toPath().resolve(getName()).resolve("games");
+        if (Files.isDirectory(gamesPath)) {
+            try (Stream<Path> stream = Files.list(gamesPath)) { // stream need to get closed
+                PluginManager pluginManager = Bukkit.getPluginManager();
 
-            stream.filter(Files::isDirectory).
-                map(path -> new GhostGame(plugin, this, path.getFileName().toString())). // create a new game instance
-                forEach(game -> {
-                // register game
-                games.put(game.getName_id().toLowerCase(Locale.ENGLISH), game);
-                pluginManager.registerEvents(game, plugin);
+                stream.filter(Files::isRegularFile).
+                    map(path -> {
+                        String fileName = path.getFileName().toString();
+                        return fileName.endsWith(".yaml") ? fileName.substring(0, fileName.length() - 5) : fileName;
+                    }).
+                    map(gameName -> new GhostGame(plugin, this, gameName)). // create a new game instance
+                    forEach(game -> {
+                    // register game
+                    games.put(game.getName_id().toLowerCase(Locale.ENGLISH), game);
+                    pluginManager.registerEvents(game, plugin);
 
-                // reload game
-                game.getConfig().reload();
-            });
-        } catch (IOException e) {
-            plugin.getComponentLogger().error("could open ghost game directories.", e);
+                    // reload game
+                    game.getConfig().reload();
+                });
+            } catch (IOException e) {
+                plugin.getComponentLogger().error("could open ghost game directories.", e);
+            }
         }
     }
 

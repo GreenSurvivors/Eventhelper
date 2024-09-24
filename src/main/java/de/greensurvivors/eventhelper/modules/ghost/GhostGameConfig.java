@@ -29,8 +29,8 @@ import java.util.stream.Collectors;
 // wanders around looking for player if no target. can target through walls but must path find there
 public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create and call events
     // ghost
-    private final @NotNull ConfigOption<@NotNull Map<Material, PathModifier>> pathFindableMats = new ConfigOption<>("ghost.pathfind.validMaterials", new HashMap<>(Map.of(Material.YELLOW_GLAZED_TERRACOTTA, new PathModifier())));
-    private final @NotNull ConfigOption<@NotNull Double> pathFindOffset = new ConfigOption<>("ghost.pathfind.offset", -30.0D);
+    private final @NotNull ConfigOption<@NotNull Map<Material, PathModifier>> pathFindableMats = new ConfigOption<>("ghost.pathfind.pathFindables", new HashMap<>(Map.of(Material.YELLOW_GLAZED_TERRACOTTA, new PathModifier())));
+    private final @NotNull ConfigOption<@NotNull Double> pathFindOffset = new ConfigOption<>("ghost.pathfind.offset", 30.0D);
     private final @NotNull ConfigOption<@NotNull Integer> followRange = new ConfigOption<>("ghost.follow.range", 30); // in blocks
     private final @NotNull ConfigOption<@NotNull Long> followTimeOut = new ConfigOption<>("ghost.follow.timeout", 1L); // in milliseconds
     private final @NotNull ConfigOption<@NotNull Double> idleVelocity = new ConfigOption<>("ghost.velocity.idle", 1.0D);  // in blocks / s ?
@@ -182,7 +182,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                         gameEndCommands.setValue(config.getStringList(gameEndCommands.getPath()));
                         endLocation.setValue(config.getLocation(endLocation.getPath(), endLocation.getFallback()));
 
-                        gameDuration.setValue(Duration.ofSeconds(config.getLong(gameDuration.getPath(), gameDuration.getFallback().toSeconds())));
+                        gameDuration.setValue(Duration.ofSeconds(config.getLong(gameDuration.getPath(), gameDuration.getFallback().toSeconds()))); // todo check if bigger than 0
                         startPlayerTime.setValue(config.getLong(startPlayerTime.getPath(), startPlayerTime.getFallback()));
                         endPlayerTime.setValue(config.getLong(endPlayerTime.getPath(), endPlayerTime.getFallback()));
                         allowLateJoin.setValue(config.getBoolean(allowLateJoin.getPath(), allowLateJoin.getFallback()));
@@ -210,7 +210,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     }
 
     @Override
-    public @NotNull CompletableFuture<Void> save() { // todo update
+    public @NotNull CompletableFuture<Void> save() { // todo commands
         final CompletableFuture<Void> runAfter = new CompletableFuture<>();
 
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
@@ -241,13 +241,26 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                             pathFindableMats.getValueOrFallback().entrySet().stream().collect(Collectors.toMap(
                                 e -> e.getKey().getKey().asString(), // map materials to namespaced strings
                                 Map.Entry::getValue)));
+                        config.set(pathFindOffset.getPath(), pathFindOffset.getValueOrFallback());
                         config.set(followRange.getPath(), followRange.getValueOrFallback());
                         config.set(followTimeOut.getPath(), followTimeOut.getValueOrFallback());
                         config.set(idleVelocity.getPath(), idleVelocity.getValueOrFallback());
                         config.set(followVelocity.getPath(), followVelocity.getValueOrFallback());
                         config.set(ghostSpawnLocations.getPath(), ghostSpawnLocations.getValueOrFallback());
                         config.set(ghostAmount.getPath(), ghostAmount.getValueOrFallback());
+
+                        config.set(displayName.getPath(), MiniMessage.miniMessage().serialize(displayName.getValueOrFallback()));
                         config.set(mouseTraps.getPath(), mouseTraps.getValueOrFallback());
+                        config.set(lobbyLocation.getPath(), lobbyLocation.getValueOrFallback());
+                        config.set(startLocation.getPath(), startLocation.getValueOrFallback());
+                        config.set(endLocation.getPath(), endLocation.getValueOrFallback());
+                        config.set(gameDuration.getPath(), gameDuration.getValueOrFallback().toSeconds());
+                        config.set(startPlayerTime.getPath(), startPlayerTime.getValueOrFallback());
+                        config.set(endPlayerTime.getPath(), endPlayerTime.getValueOrFallback());
+                        config.set(allowLateJoin.getPath(), allowLateJoin.getValueOrFallback());
+                        config.set(minAmountPlayers.getPath(), minAmountPlayers.getValueOrFallback());
+                        config.set(maxAmountPlayers.getPath(), maxAmountPlayers.getValueOrFallback());
+                        config.set(playerSpreadDistance.getPath(), playerSpreadDistance.getValueOrFallback());
 
                         config.options().parseComments(true);
                         config.save(configPath.toFile());
