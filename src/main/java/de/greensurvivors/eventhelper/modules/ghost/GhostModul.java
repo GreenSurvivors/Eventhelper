@@ -89,7 +89,7 @@ public class GhostModul extends AModul<GeneralGhostConfig> {
         return games.get(gameName.toLowerCase(Locale.ENGLISH)); // todo locale??
     }
 
-    public @NotNull Set<String> getGameNames() {
+    public @NotNull Set<String> getGameNameIds() {
         return games.keySet();
     }
 

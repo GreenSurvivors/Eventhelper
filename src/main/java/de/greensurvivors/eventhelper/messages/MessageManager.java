@@ -112,7 +112,7 @@ public class MessageManager {
 
         if (resourceBundle == null) { // fallback, since we are always trying to save defaults this never should happen
             try {
-                resourceBundle = PropertyResourceBundle.getBundle(bundleName, locale, plugin.getClass().getClassLoader(), new UTF8ResourceBundleControl());
+                resourceBundle = PropertyResourceBundle.getBundle(modulName + "." + bundleName, locale, plugin.getClass().getClassLoader(), new UTF8ResourceBundleControl());
             } catch (MissingResourceException e) {
                 plugin.getLogger().log(Level.SEVERE, "Couldn't get Ressource bundle \"lang\" for locale \"" + locale.toLanguageTag() + "\". Messages WILL be broken!", e);
             }
@@ -200,7 +200,8 @@ public class MessageManager {
 
             try (ZipInputStream zipStream = new ZipInputStream(jarUrl.openStream())) {
                 final @NotNull String bundleName = makeBundleName(modulName);
-                final @NotNull Pattern bundlePattern = Pattern.compile(bundleName + BUNDLE_FILE_PROTO_PATTERN);
+                // don't worry about system specific path separators, zipEntry always uses "/"
+                final @NotNull Pattern bundlePattern = Pattern.compile(modulName + "/" + bundleName + BUNDLE_FILE_PROTO_PATTERN);
 
                 ZipEntry zipEntry;
                 while ((zipEntry = zipStream.getNextEntry()) != null) {
@@ -209,7 +210,8 @@ public class MessageManager {
                     String entryName = zipEntry.getName();
 
                     if (bundlePattern.matcher(entryName).matches()) {
-                        Path langFilePath = plugin.getDataFolder().toPath().resolve(modulName).resolve(entryName);
+                        Path langFilePath = plugin.getDataFolder().toPath().resolve(entryName);
+
                         if (!Files.isRegularFile(langFilePath)) { // don't overwrite existing files
                             FileUtils.copyToFile(zipStream, langFilePath.toFile());
                         } else { // add defaults to file to expand in case there are key-value pairs missing

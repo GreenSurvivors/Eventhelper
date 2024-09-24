@@ -46,7 +46,7 @@ public class GeneralGhostConfig extends AModulConfig<GhostModul> {
                                 " Proceed with care!", modul.getName());
                         }
 
-                        isEnabled.setValue(config.getBoolean(isEnabled.getPath()));
+                        isEnabled.setValue(config.getBoolean(isEnabled.getPath(), isEnabled.getFallback()));
                         Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(isEnabled.getValueOrFallback())); // back to main thread
                     } catch (IOException e) {
                         plugin.getComponentLogger().error("Could not load modul config for {} from file!", modul.getName(), e);
