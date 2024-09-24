@@ -82,7 +82,6 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
                     final @Nullable GhostGame game = ghostModul.getGameByName(args.get(0));
 
                     if (game != null) {
-
                         switch (args.get(1).toLowerCase(Locale.ENGLISH)) {
                             case START_GAME -> {
                                 game.startGame();
@@ -102,7 +101,8 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
                                 game.reload();
 
                                 plugin.getMessageManager().sendPrefixedLang(sender,
-                                    GhostLangPath.MESSAGE_PREFIX, GhostLangPath.COMMAND_RELOAD_SUCCESS);
+                                    GhostLangPath.MESSAGE_PREFIX, GhostLangPath.COMMAND_RELOAD_GAME_SUCCESS,
+                                    Placeholder.component(SharedPlaceHolder.TEXT.getKey(), game.getConfig().getDisplayName()));
                             }
                             case SET -> {
                                 if (args.size() >= 3) {
@@ -512,14 +512,26 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
     public List<String> tabComplete(@NotNull CommandSender sender, @NotNull List<String> args) {
         switch (args.size()) {
             case 0 -> {
-                return new ArrayList<>(ghostModul.getGameNames());
+                Set<String> gameIds = ghostModul.getGameNameIds();
+                List<String> result = new ArrayList<>(gameIds.size() + 1);
+                result.add(CREATE); // fist;
+                result.addAll(gameIds);
+
+                return result;
             }
             case 1 -> {
-                List<String> result = new ArrayList<>();
+                Set<String> gameIds = ghostModul.getGameNameIds();
 
-                for (String gameName : ghostModul.getGameNames()) {
-                    if (StringUtils.startsWithIgnoreCase(gameName, args.get(0))) {
-                        result.add(gameName);
+                List<String> result = new ArrayList<>(gameIds.size());
+
+                final String arg_0 = args.get(0);
+                if (StringUtils.startsWithIgnoreCase(START_GAME, arg_0)) {
+                    result.add(START_GAME);
+                }
+
+                for (String gameNameId : gameIds) {
+                    if (StringUtils.startsWithIgnoreCase(gameNameId, arg_0)) {
+                        result.add(gameNameId);
                     }
                 }
 
