@@ -52,18 +52,10 @@ public class PathModifier implements ConfigurationSerializable {
     public @NotNull Map<String, Object> serialize() {
         final @NotNull Map<String, Object> result = new HashMap<>(5);
 
-        if (followRange.getValueOrFallback() > 0) {
-            result.put(followRange.getPath(), followRange.getValueOrFallback());
-        }
-        if (followTimeOut.getValueOrFallback() > 0) {
-            result.put(followTimeOut.getPath(), followTimeOut.getValueOrFallback());
-        }
-        if (idleVelocity.getValueOrFallback() > 0) {
-            result.put(idleVelocity.getPath(), idleVelocity.getValueOrFallback());
-        }
-        if (followVelocity.getValueOrFallback() > 0) {
-            result.put(followVelocity.getPath(), followVelocity.getValueOrFallback());
-        }
+        result.put(followRange.getPath(), followRange.getValueOrFallback());
+        result.put(followTimeOut.getPath(), followTimeOut.getValueOrFallback());
+        result.put(idleVelocity.getPath(), idleVelocity.getValueOrFallback());
+        result.put(followVelocity.getPath(), followVelocity.getValueOrFallback());
 
         return result;
     }
