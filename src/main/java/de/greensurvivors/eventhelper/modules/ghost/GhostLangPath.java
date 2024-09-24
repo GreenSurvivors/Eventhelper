@@ -10,7 +10,7 @@ public record GhostLangPath(@NotNull String path, @NotNull String defaultValue) 
         COMMAND_CREATE_SUCCESS = new GhostLangPath("command.create.success"),
         COMMAND_START_SUCCESS = new GhostLangPath("command.start.success"),
         COMMAND_END_SUCCESS = new GhostLangPath("command.end.success"),
-        COMMAND_RELOAD_SUCCESS = new GhostLangPath("command.reload.success"),
+        COMMAND_RELOAD_GAME_SUCCESS = new GhostLangPath("command.reload.game.success"),
         COMMAND_SET_GHOST_OFFSET_SUCCESS = new GhostLangPath("command.set.ghost.offset.success"),
         COMMAND_SET_GHOST_AMOUNT_SUCCESS = new GhostLangPath("command.set.ghost.amount.success"),
         COMMAND_SET_LOBBY_LOCATION_SUCCESS = new GhostLangPath("command.set.lobby.success"),

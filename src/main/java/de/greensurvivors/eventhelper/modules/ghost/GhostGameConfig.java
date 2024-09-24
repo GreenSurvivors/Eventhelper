@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -56,8 +55,9 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     private final @NotNull ConfigOption<@NotNull @Range(from = -1, to = Integer.MAX_VALUE) Integer> maxAmountPlayers = new ConfigOption<>("game.maxAmountPlayers", -1);
     private final @NotNull ConfigOption<@NotNull Double> playerSpreadDistance = new ConfigOption<>("game.teleport.playerSpread.distance", 0.5); // todo use
 
-    public GhostGameConfig(final @NotNull EventHelper plugin, final @NotNull String name_id) {
+    public GhostGameConfig(final @NotNull EventHelper plugin, final @NotNull String name_id, final @NotNull GhostModul modul) {
         super(plugin, Path.of("games", name_id + ".yaml"));
+        super.setModul(modul);
 
         this.name_id = name_id;
         this.displayName = new ConfigOption<>("game.displayName", Component.text(name_id));
@@ -74,7 +74,9 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                     if (!Files.isRegularFile(configPath)) {
                         try (final InputStream inputStream = plugin.getResource(modul.getName() + "/defaultGhostGame.yaml")) {
                             if (inputStream != null) {
-                                Files.copy(inputStream, configPath, StandardCopyOption.ATOMIC_MOVE);
+                                Files.createDirectories(configPath.getParent());
+                                //Files.createFile(configPath);
+                                Files.copy(inputStream, configPath);
                             } else {
                                 plugin.getComponentLogger().error("Could not find defaultGhostGame.yaml");
                                 runAfter.complete(false);
@@ -215,7 +217,19 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
             synchronized (this) {
                 if (this.modul != null) {
                     if (!Files.isRegularFile(configPath)) {
-                        plugin.saveResource(modul.getName() + "/" + configPath.getFileName().toString(), false);
+                        try (final InputStream inputStream = plugin.getResource(modul.getName() + "/defaultGhostGame.yaml")) {
+                            if (inputStream != null) {
+                                Files.createDirectories(configPath.getParent());
+                                //Files.createFile(configPath);
+                                Files.copy(inputStream, configPath);
+                            } else {
+                                plugin.getComponentLogger().error("Could not find defaultGhostGame.yaml");
+                                runAfter.complete(null);
+                                return;
+                            }
+                        } catch (final @NotNull IOException e) {
+                            plugin.getComponentLogger().error("Exception was thrown when trying to save default ghost game config!", e);
+                        }
                     }
 
                     try (BufferedReader bufferedReader = Files.newBufferedReader(configPath)) {

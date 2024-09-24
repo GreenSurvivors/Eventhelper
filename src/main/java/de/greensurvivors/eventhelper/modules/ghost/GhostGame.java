@@ -41,8 +41,7 @@ public class GhostGame implements Listener {
         this.name_id = name_id;
 
         this.gameState = GameState.IDLE;
-        this.config = new GhostGameConfig(plugin, name_id);
-        this.config.setModul(modul);
+        this.config = new GhostGameConfig(plugin, name_id, modul);
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -107,21 +106,37 @@ public class GhostGame implements Listener {
 
         long gameDurationInTicks = config.getGameDuration().toSeconds() * 20;
         if (gameDurationInTicks < amountOfTicksRun) {
-            long diff = config.getEndPlayerTime() - config.getStartPlayerTime();
+            if (config.getStartPlayerTime() >= 0 && config.getEndPlayerTime() >= 0) {
+                long diff = config.getEndPlayerTime() - config.getStartPlayerTime();
 
-            long playerTimeNow = config.getStartPlayerTime() + amountOfTicksRun * gameDurationInTicks / diff;
+                if (diff > 0) {
+                    long playerTimeNow = config.getStartPlayerTime() + amountOfTicksRun * gameDurationInTicks / diff;
 
-            for (Iterator<UUID> iterator = players.iterator(); iterator.hasNext(); ) {
-                UUID uuid = iterator.next();
-                Player player = Bukkit.getPlayer(uuid);
+                    for (Iterator<UUID> iterator = players.iterator(); iterator.hasNext(); ) {
+                        UUID uuid = iterator.next();
+                        Player player = Bukkit.getPlayer(uuid);
 
-                if (player != null) {
-                    player.setPlayerTime(playerTimeNow, false);
+                        if (player != null) {
+                            player.setPlayerTime(playerTimeNow, false);
+                        } else {
+                            iterator.remove();
+                        }
+                    }
                 } else {
-                    iterator.remove();
+                    // just set to start time
+                    for (Iterator<UUID> iterator = players.iterator(); iterator.hasNext(); ) {
+                        UUID uuid = iterator.next();
+                        Player player = Bukkit.getPlayer(uuid);
+
+                        if (player != null) {
+                            player.setPlayerTime(config.getStartPlayerTime(), false);
+                        } else {
+                            iterator.remove();
+                        }
+                    }
                 }
             }
-        } else { // todo game end because of time
+        } else {
             endGame(EndReason.TIME);
         }
     }
