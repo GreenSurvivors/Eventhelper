@@ -11,9 +11,12 @@ import java.util.UUID;
 public class DeadPlayer extends AGhostGamePlayer { // todo
     private final List<String> stillPossibleTasks;
 
-    public DeadPlayer(final @NotNull UUID uuid, final @NotNull GhostGame game, final @NotNull EventHelper plugin,
+    public DeadPlayer(final @NotNull EventHelper plugin,
+                      final @NotNull GhostGame game,
+                      final @NotNull UUID uuid,
+                      final @NotNull PlayerData playerData,
                       final @NotNull List<@NotNull String> perishedTasks) {
-        super(uuid, game, plugin);
+        super(plugin, game, uuid, playerData);
         this.stillPossibleTasks = perishedTasks;
     }
 
@@ -24,5 +27,15 @@ public class DeadPlayer extends AGhostGamePlayer { // todo
         } else {
             return stillPossibleTasks.get(0);
         }
+    }
+
+    @Override
+    public void finishCurrentQuest() {
+        stillPossibleTasks.remove(0);
+    }
+
+    // used for spectating
+    public @NotNull PlayerData getPlayerData() {
+        return playerData;
     }
 }
