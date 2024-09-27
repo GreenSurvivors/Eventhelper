@@ -10,8 +10,8 @@ import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
 
 public abstract class AModulConfig<ModulType extends AModul<?>> {
-    protected final @NotNull ComparableVersion dataVersion;
     protected final static @NotNull String VERSION_PATH = "dataVersion";
+    protected final @NotNull ComparableVersion dataVersion;
     protected final @NotNull ConfigOption<Boolean> isEnabled = new ConfigOption<>("enabled", Boolean.TRUE);
     protected final @NotNull EventHelper plugin;
     protected @Nullable ModulType modul;
