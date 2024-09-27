@@ -4,10 +4,7 @@ import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.messages.LangPath;
 import de.greensurvivors.eventhelper.messages.SharedPlaceHolder;
 import de.greensurvivors.eventhelper.modules.ghost.ghostEntity.IGhost;
-import de.greensurvivors.eventhelper.modules.ghost.payer.AGhostGamePlayer;
-import de.greensurvivors.eventhelper.modules.ghost.payer.AlivePlayer;
-import de.greensurvivors.eventhelper.modules.ghost.payer.DeadPlayer;
-import de.greensurvivors.eventhelper.modules.ghost.payer.SpectatingPlayer;
+import de.greensurvivors.eventhelper.modules.ghost.payer.*;
 import de.greensurvivors.simplequests.events.QuestCompleatedEvent;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
@@ -222,6 +219,10 @@ public class GhostGame implements Listener { // todo spectating command
     public void resetGame() {
         gameState = GameState.RESETTING;
 
+        for (MouseTrap mouseTrap : mouseTraps) {
+            mouseTrap.releaseAllPlayers();
+        }
+
         for (Iterator<Map.Entry<UUID, AGhostGamePlayer>> iterator = players.entrySet().iterator(); iterator.hasNext(); ) {
             Map.Entry<UUID, AGhostGamePlayer> entry = iterator.next();
             @Nullable Player player = Bukkit.getPlayer(entry.getKey());
@@ -229,11 +230,8 @@ public class GhostGame implements Listener { // todo spectating command
                 player.teleportAsync(config.getEndLocation());
             }
 
+            entry.getValue().restorePlayer();
             iterator.remove();
-        }
-
-        for (MouseTrap mouseTrap : mouseTraps) {
-            mouseTrap.releaseAllPlayers();
         }
 
         // kill entities
@@ -285,10 +283,19 @@ public class GhostGame implements Listener { // todo spectating command
     }
 
     private void setUpJoinedPlayer(final @NotNull Player player) {
-        players.put(player.getUniqueId(), new AlivePlayer(player.getUniqueId(), this, plugin));
+        players.put(player.getUniqueId(), new AlivePlayer(plugin, this, player.getUniqueId()));
 
         player.teleportAsync(config.getLobbyLocation());
-        player.setExp(0.0f);
+
+        // hide players
+        for (AGhostGamePlayer otherPlayer : players.values()) {
+            if (otherPlayer instanceof DeadPlayer) {
+                player.hidePlayer(plugin, otherPlayer.getBukkitPlayer());
+            }
+        }
+        for (SpectatingPlayer spectatingPlayer : spectators.values()) {
+            player.hidePlayer(plugin, spectatingPlayer.getBukkitPlayer());
+        }
 
         plugin.getMessageManager().sendLang(player, GhostLangPath.PLAYER_GAME_JOIN,
             Placeholder.component(SharedPlaceHolder.TEXT.getKey(), getConfig().getDisplayName()));
@@ -297,8 +304,12 @@ public class GhostGame implements Listener { // todo spectating command
     }
 
     protected void makePlayerSpectator(final @NotNull Player player) {
+        makePlayerSpectator(player, new PlayerData(plugin, player));
+    }
+
+    protected void makePlayerSpectator(final @NotNull Player player, final @NotNull PlayerData playerData) {
         players.remove(player.getUniqueId());
-        spectators.put(player.getUniqueId(), new SpectatingPlayer(player.getUniqueId(), this));
+        spectators.put(player.getUniqueId(), new SpectatingPlayer(plugin, this, player.getUniqueId(), playerData));
 
         for (AGhostGamePlayer ghostGamePlayer : players.values()) {
             Player otherPlayer = ghostGamePlayer.getBukkitPlayer();
@@ -322,7 +333,7 @@ public class GhostGame implements Listener { // todo spectating command
 
             // reset Scoreboard
             perishedTeam.removePlayer(player);
-            player.setScoreboard(plugin.getServer().getScoreboardManager().getMainScoreboard());
+            ghostGamePlayer.restorePlayer();
 
             if (ghostGamePlayer instanceof AlivePlayer alivePlayer) {
                 MouseTrap trap = alivePlayer.getMouseTrapTrappedIn();
@@ -363,7 +374,7 @@ public class GhostGame implements Listener { // todo spectating command
             if (spectatingPlayer != null) {
                 // reset Scoreboard
                 perishedTeam.removePlayer(player);
-                player.setScoreboard(plugin.getServer().getScoreboardManager().getMainScoreboard());
+                spectatingPlayer.restorePlayer();
 
                 for (Iterator<AGhostGamePlayer> iterator = players.values().iterator(); iterator.hasNext(); ) {
                     AGhostGamePlayer otherGhostGamePlayer = iterator.next();

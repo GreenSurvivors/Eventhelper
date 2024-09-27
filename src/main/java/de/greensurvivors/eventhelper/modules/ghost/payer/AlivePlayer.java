@@ -14,8 +14,10 @@ public class AlivePlayer extends AGhostGamePlayer { // todo
     private @Nullable String currentTaskId;
     private @Nullable MouseTrap trappedIn;
 
-    public AlivePlayer(final @NotNull UUID uuid, final @NotNull GhostGame game, final @NotNull EventHelper plugin) {
-        super(uuid, game, plugin);
+    public AlivePlayer(final @NotNull EventHelper plugin,
+                       final @NotNull GhostGame game,
+                       final @NotNull UUID uuid) {
+        super(plugin, game, uuid, new PlayerData(plugin, plugin.getServer().getPlayer(uuid)));
     }
 
     public void setNewTaskId(final @NotNull String newTaskId) {
@@ -36,6 +38,7 @@ public class AlivePlayer extends AGhostGamePlayer { // todo
         return trappedIn;
     }
 
+    @Override
     public void finishCurrentQuest() {
         doneTaskIds.add(currentTaskId);
 
@@ -57,6 +60,7 @@ public class AlivePlayer extends AGhostGamePlayer { // todo
         }
     }
 
+    // used for dying
     public @NotNull Set<@NotNull String> generateGhostTasks() {
         final Set<String> result = new HashSet<>();
 
@@ -82,5 +86,10 @@ public class AlivePlayer extends AGhostGamePlayer { // todo
         }
 
         return result;
+    }
+
+    // used for dying
+    public @NotNull PlayerData getPlayerData() {
+        return playerData;
     }
 }

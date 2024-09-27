@@ -40,7 +40,7 @@ public class TNTKnockbackConfig extends AModulConfig<TNTKnockbackModul> {
 
                             if (dataVersion.compareTo(lastVersion) < 0) {
                                 plugin.getComponentLogger().warn("Found modul config for \"{}\" was saved in a newer data version ({}), " +
-                                    "expected: {}. Trying to load anyway but some this most definitely will be broken!",
+                                        "expected: {}. Trying to load anyway but some this most definitely will be broken!",
                                     modul.getName(), lastVersion, dataVersion);
                             }
                         } else {
