@@ -45,8 +45,8 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
             noSave(). // don't save this entity to disk.
                 clientTrackingRange(10)));
     private static final EntityDataAccessor<Boolean> DATA_IS_CHARGING = SynchedEntityData.defineId(GhostNMSEntity.class, EntityDataSerializers.BOOLEAN);
-    private volatile @Nullable GhostCraftEntity bukkitEntity;
     private final @NotNull GhostGame ghostGame;
+    private volatile @Nullable GhostCraftEntity bukkitEntity;
     private UnderWorldGhostNMSEntity underWorldGhost;
 
     @SuppressWarnings("unchecked")

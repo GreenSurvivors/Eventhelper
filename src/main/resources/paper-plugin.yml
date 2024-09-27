@@ -12,3 +12,7 @@ dependencies:
     WorldGuard:
       load: AFTER
       required: false
+    SimpleQuests:
+      required: false
+      load: BEFORE
+      join-classpath: true

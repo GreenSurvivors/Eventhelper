@@ -42,13 +42,6 @@ public class UnderWorldGhostNMSEntity extends Monster {
     private final @NotNull GhostNMSEntity parentMob;
     private volatile @Nullable UnderWorldGhostCraftEntity bukkitEntity;
 
-    @SuppressWarnings("unchecked")
-    // has to be called while the server is bootstrapping, or else the registry will be frozen!
-    private static <T extends Entity> EntityType<T> registerEntityType(EntityType.Builder<Entity> type) {
-        return (EntityType<T>) Registry.register(BuiltInRegistries.ENTITY_TYPE, "underworld_ghost",
-            type.build("underworld_ghost"));
-    }
-
     public UnderWorldGhostNMSEntity(final @NotNull GhostNMSEntity parentMob, final @NotNull GhostGame ghostGame) {
         super(UNDERWORLD_GHOST_TYPE, parentMob.level());
 
@@ -56,6 +49,13 @@ public class UnderWorldGhostNMSEntity extends Monster {
 
         this.ghostGame = ghostGame;
         this.parentMob = parentMob;
+    }
+
+    @SuppressWarnings("unchecked")
+    // has to be called while the server is bootstrapping, or else the registry will be frozen!
+    private static <T extends Entity> EntityType<T> registerEntityType(EntityType.Builder<Entity> type) {
+        return (EntityType<T>) Registry.register(BuiltInRegistries.ENTITY_TYPE, "underworld_ghost",
+            type.build("underworld_ghost"));
     }
 
     public static AttributeSupplier.Builder createAttributes() {

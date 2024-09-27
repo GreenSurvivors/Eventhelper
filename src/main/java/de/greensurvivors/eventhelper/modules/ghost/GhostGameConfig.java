@@ -44,7 +44,8 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     private final @NotNull ConfigOption<@NotNull List<@NotNull String>> gameInitCommands = new ConfigOption<>("game.commands.gameInit", List.of());
     private final @NotNull ConfigOption<@NotNull Location> lobbyLocation = new ConfigOption<>("game.lobbyLocation", Bukkit.getWorlds().get(0).getSpawnLocation());
     private final @NotNull ConfigOption<@NotNull List<@NotNull String>> gameStartCommands = new ConfigOption<>("game.commands.gameStart", List.of());
-    private final @NotNull ConfigOption<@NotNull Location> startLocation = new ConfigOption<>("game.startLocation", Bukkit.getWorlds().get(0).getSpawnLocation());
+    private final @NotNull ConfigOption<@NotNull Location> playerStartLocation = new ConfigOption<>("game.playerStartLocation", Bukkit.getWorlds().get(0).getSpawnLocation());
+    private final @NotNull ConfigOption<@NotNull Location> spectatorStartLocation = new ConfigOption<>("game.spectatorStartLocation", Bukkit.getWorlds().get(0).getSpawnLocation());
     private final @NotNull ConfigOption<@NotNull List<@NotNull String>> gameEndCommands = new ConfigOption<>("game.commands.gameEnd", List.of());
     private final @NotNull ConfigOption<@NotNull Location> endLocation = new ConfigOption<>("game.endLocation", Bukkit.getWorlds().get(0).getSpawnLocation());
     private final @NotNull ConfigOption<@NotNull Duration> gameDuration = new ConfigOption<>("game.duration", Duration.of(10, ChronoUnit.MINUTES)); // saved in seconds
@@ -54,6 +55,10 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     private final @NotNull ConfigOption<@NotNull @Range(from = -1, to = Integer.MAX_VALUE) Integer> minAmountPlayers = new ConfigOption<>("game.minAmountPlayers", -1);
     private final @NotNull ConfigOption<@NotNull @Range(from = -1, to = Integer.MAX_VALUE) Integer> maxAmountPlayers = new ConfigOption<>("game.maxAmountPlayers", -1);
     private final @NotNull ConfigOption<@NotNull Double> playerSpreadDistance = new ConfigOption<>("game.teleport.playerSpread.distance", 0.5); // todo use
+    private final @NotNull ConfigOption<@NotNull @Range(from = 1, to = Integer.MAX_VALUE) Integer> pointGoal = new ConfigOption<>("game.points.goal", 100);
+    private final @NotNull ConfigOption<@NotNull Duration> durationInTrapUntilDeath = new ConfigOption<>("game.mouseTrap.secondsUntilDeath", Duration.ofSeconds(90));
+    private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = Integer.MAX_VALUE) Integer> perishedTaskAmount = new ConfigOption<>("game.tasks.perished.amount", 3);
+    private final @NotNull ConfigOption<@NotNull Map<String, Integer>> tasks = new ConfigOption<>("game.tasks.points", new HashMap<>()); // todo
 
     public GhostGameConfig(final @NotNull EventHelper plugin, final @NotNull String name_id, final @NotNull GhostModul modul) {
         super(plugin, Path.of("games", name_id + ".yaml"));
@@ -178,7 +183,8 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                         gameInitCommands.setValue(config.getStringList(gameInitCommands.getPath()));
                         lobbyLocation.setValue(config.getLocation(lobbyLocation.getPath(), lobbyLocation.getFallback()));
                         gameStartCommands.setValue(config.getStringList(gameStartCommands.getPath()));
-                        startLocation.setValue(config.getLocation(startLocation.getPath(), startLocation.getFallback()));
+                        playerStartLocation.setValue(config.getLocation(playerStartLocation.getPath(), playerStartLocation.getFallback()));
+                        spectatorStartLocation.setValue(config.getLocation(spectatorStartLocation.getPath(), spectatorStartLocation.getFallback()));
                         gameEndCommands.setValue(config.getStringList(gameEndCommands.getPath()));
                         endLocation.setValue(config.getLocation(endLocation.getPath(), endLocation.getFallback()));
 
@@ -189,6 +195,9 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                         minAmountPlayers.setValue(config.getInt(minAmountPlayers.getPath(), minAmountPlayers.getFallback()));
                         maxAmountPlayers.setValue(config.getInt(maxAmountPlayers.getPath(), maxAmountPlayers.getFallback()));
                         playerSpreadDistance.setValue(config.getDouble(playerSpreadDistance.getPath(), playerSpreadDistance.getFallback()));
+                        pointGoal.setValue(config.getInt(pointGoal.getPath(), pointGoal.getFallback()));
+                        durationInTrapUntilDeath.setValue(Duration.ofSeconds(config.getLong(durationInTrapUntilDeath.getPath(), durationInTrapUntilDeath.getFallback().toSeconds())));
+                        perishedTaskAmount.setValue(config.getInt(perishedTaskAmount.getPath(), perishedTaskAmount.getFallback()));
 
                         Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(isEnabled.getValueOrFallback())); // back to main thread
                     } catch (IOException e) {
@@ -252,7 +261,8 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                         config.set(displayName.getPath(), MiniMessage.miniMessage().serialize(displayName.getValueOrFallback()));
                         config.set(mouseTraps.getPath(), mouseTraps.getValueOrFallback());
                         config.set(lobbyLocation.getPath(), lobbyLocation.getValueOrFallback());
-                        config.set(startLocation.getPath(), startLocation.getValueOrFallback());
+                        config.set(playerStartLocation.getPath(), playerStartLocation.getValueOrFallback());
+                        config.set(spectatorStartLocation.getPath(), spectatorStartLocation.getValueOrFallback());
                         config.set(endLocation.getPath(), endLocation.getValueOrFallback());
                         config.set(gameDuration.getPath(), gameDuration.getValueOrFallback().toSeconds());
                         config.set(startPlayerTime.getPath(), startPlayerTime.getValueOrFallback());
@@ -261,6 +271,9 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                         config.set(minAmountPlayers.getPath(), minAmountPlayers.getValueOrFallback());
                         config.set(maxAmountPlayers.getPath(), maxAmountPlayers.getValueOrFallback());
                         config.set(playerSpreadDistance.getPath(), playerSpreadDistance.getValueOrFallback());
+                        config.set(pointGoal.getPath(), pointGoal.getValueOrFallback());
+                        config.set(durationInTrapUntilDeath.getPath(), durationInTrapUntilDeath.getValueOrFallback().toSeconds());
+                        config.set(perishedTaskAmount.getPath(), perishedTaskAmount.getValueOrFallback());
 
                         config.options().parseComments(true);
                         config.save(configPath.toFile());
@@ -422,14 +435,22 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
         return gameStartCommands.getValueOrFallback();
     }
 
-    public @NotNull Location getStartLocation() {
-        return startLocation.getValueOrFallback();
+    public @NotNull Location getPlayerStartLocation() {
+        return playerStartLocation.getValueOrFallback();
     }
 
-    public void setStartLocation(final @NotNull Location newStartingLocation) {
-        startLocation.setValue(newStartingLocation);
+    public void setPlayerStartLocation(final @NotNull Location newStartingLocation) {
+        playerStartLocation.setValue(newStartingLocation);
 
         save().thenRun(this::reload);
+    }
+
+    public @NotNull Location getSpectatorStartLocation() { // todo
+        return spectatorStartLocation.getValueOrFallback();
+    }
+
+    public void setSpectatorStartLocation(final @NotNull Location newStartingLocation) {
+        spectatorStartLocation.setValue(newStartingLocation);
     }
 
     public @NotNull List<String> getGameEndCommands() { // todo use and make editable
@@ -514,5 +535,33 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
         playerSpreadDistance.setValue(newDistance);
 
         save().thenRun(this::reload);
+    }
+
+    public int getPointGoal() {
+        return pointGoal.getValueOrFallback();
+    }
+
+    public void setPointGoal(int newGoal) { // todo
+        pointGoal.setValue(newGoal);
+    }
+
+    public Duration getDurationTrappedUntilDeath() {
+        return durationInTrapUntilDeath.getValueOrFallback();
+    }
+
+    public void setDurationTrappedUntilDeath(final @NotNull Duration newDuration) { // todo
+        durationInTrapUntilDeath.setValue(newDuration);
+    }
+
+    public @Range(from = 0, to = Integer.MAX_VALUE) int getPerishedTaskAmount() {
+        return perishedTaskAmount.getValueOrFallback();
+    }
+
+    public void setPerishedTaskAmount(final @Range(from = 0, to = Integer.MAX_VALUE) int newAmountOfTasks) {
+        perishedTaskAmount.setValue(newAmountOfTasks);
+    }
+
+    public @NotNull Map<@NotNull String, @NotNull Integer> getTasks() {
+        return tasks.getValueOrFallback();
     }
 }

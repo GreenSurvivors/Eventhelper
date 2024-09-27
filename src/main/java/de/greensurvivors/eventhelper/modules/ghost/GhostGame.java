@@ -4,6 +4,11 @@ import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.messages.LangPath;
 import de.greensurvivors.eventhelper.messages.SharedPlaceHolder;
 import de.greensurvivors.eventhelper.modules.ghost.ghostEntity.IGhost;
+import de.greensurvivors.eventhelper.modules.ghost.payer.AGhostGamePlayer;
+import de.greensurvivors.eventhelper.modules.ghost.payer.AlivePlayer;
+import de.greensurvivors.eventhelper.modules.ghost.payer.DeadPlayer;
+import de.greensurvivors.eventhelper.modules.ghost.payer.SpectatingPlayer;
+import de.greensurvivors.simplequests.events.QuestCompleatedEvent;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import org.bukkit.Bukkit;
@@ -13,9 +18,10 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
-import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.scoreboard.Scoreboard;
+import org.bukkit.scoreboard.Team;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -23,17 +29,22 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
 
-public class GhostGame implements Listener {
+public class GhostGame implements Listener { // todo spectating command
     private final @NotNull EventHelper plugin;
     private final @NotNull GhostModul ghostModul;
     private final @NotNull GhostGameConfig config;
     private final @NotNull String name_id;
 
-    private final @NotNull Set<UUID> players = new HashSet<>();
-    private final @NotNull Set<IGhost> ghosts = new HashSet<>();
+    private final @NotNull Map<@NotNull UUID, @NotNull AGhostGamePlayer> players = new HashMap<>();
+    private final @NotNull Map<@NotNull UUID, @NotNull SpectatingPlayer> spectators = new HashMap<>();
+    private final @NotNull Set<@NotNull MouseTrap> mouseTraps = new HashSet<>();
+    private final @NotNull Set<@NotNull IGhost> ghosts = new HashSet<>();
+    private final @NotNull Scoreboard scoreboard;
+    private final @NotNull Team perishedTeam;
     private @NotNull GameState gameState;
     private long amountOfTicksRun;
     private @Nullable BukkitTask timeTask = null; // this has to be sync!
+    private int gainedPoints = 0;
 
     public GhostGame(final @NotNull EventHelper plugin, final @NotNull GhostModul modul, final @NotNull String name_id) {
         this.plugin = plugin;
@@ -42,27 +53,38 @@ public class GhostGame implements Listener {
 
         this.gameState = GameState.IDLE;
         this.config = new GhostGameConfig(plugin, name_id, modul);
+
+        scoreboard = Bukkit.getScoreboardManager().getNewScoreboard();
+
+        perishedTeam = scoreboard.registerNewTeam("perished");
+        perishedTeam.setOption(Team.Option.COLLISION_RULE, Team.OptionStatus.NEVER);
+        perishedTeam.setCanSeeFriendlyInvisibles(true);
     }
 
     @EventHandler(ignoreCancelled = true)
     private void onPlayerQuit(final @NotNull PlayerQuitEvent event) {
-        if (players.contains(event.getPlayer().getUniqueId())) {
+        if (players.containsKey(event.getPlayer().getUniqueId())) {
             playerQuit(event.getPlayer(), true);
         }
     }
 
     @EventHandler(ignoreCancelled = true)
     private void onPlayerChangeWorld(final @NotNull PlayerChangedWorldEvent event) {
-        if (players.contains(event.getPlayer().getUniqueId())) {
+        if (players.containsKey(event.getPlayer().getUniqueId())) {
             playerQuit(event.getPlayer(), false);
         }
     }
 
+    /* // probably not needed, since PlayerQuitEvent should get called anyways
     @EventHandler(ignoreCancelled = true)
     private void onPlayerKick(final @NotNull PlayerKickEvent event) {
-        if (players.contains(event.getPlayer().getUniqueId())) {
+        if (players.containsKey(event.getPlayer().getUniqueId())) {
             playerQuit(event.getPlayer(), true);
         }
+    }*/
+
+    @EventHandler(ignoreCancelled = true)
+    private void onQuestComplete(final @NotNull QuestCompleatedEvent event) {
     }
 
     public void startGame() { // todo start count down
@@ -85,16 +107,31 @@ public class GhostGame implements Listener {
             timeTask.cancel();
         }
 
-        for (Iterator<UUID> iterator = players.iterator(); iterator.hasNext(); ) {
-            UUID uuid = iterator.next();
-            Player player = Bukkit.getPlayer(uuid);
+        for (Iterator<Map.Entry<UUID, AGhostGamePlayer>> iterator = players.entrySet().iterator(); iterator.hasNext(); ) {
+            Map.Entry<UUID, AGhostGamePlayer> entry = iterator.next();
+            Player player = Bukkit.getPlayer(entry.getKey());
 
-            if (player != null) {
-                player.teleportAsync(config.getStartLocation());
-                player.setPlayerTime(config.getStartPlayerTime(), false);
-            } else {
+            if (player == null) {
+                if (entry.getValue() instanceof AlivePlayer alivePlayer) {
+                    MouseTrap trap = alivePlayer.getMouseTrapTrappedIn();
+
+                    if (trap != null) {
+                        trap.removePlayer(alivePlayer);
+                    }
+                }
+
+                plugin.getComponentLogger().error("Removed player \"{}\" from game since they got missing. They couldn't get reset correctly!", entry.getKey());
                 iterator.remove();
+            } else {
+                player.teleportAsync(config.getPlayerStartLocation());
+                player.setPlayerTime(config.getStartPlayerTime(), false);
             }
+        }
+
+        if (players.isEmpty()) { // all players magically vanished.
+            endGame(EndReason.ALL_DEAD);
+
+            return;
         }
 
         timeTask = Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 0, 1);
@@ -107,34 +144,60 @@ public class GhostGame implements Listener {
         long gameDurationInTicks = config.getGameDuration().toSeconds() * 20;
         if (gameDurationInTicks < amountOfTicksRun) {
             if (config.getStartPlayerTime() >= 0 && config.getEndPlayerTime() >= 0) {
-                long diff = config.getEndPlayerTime() - config.getStartPlayerTime();
+                long timeDiff = config.getEndPlayerTime() - config.getStartPlayerTime();
 
-                if (diff > 0) {
-                    long playerTimeNow = config.getStartPlayerTime() + amountOfTicksRun * gameDurationInTicks / diff;
+                if (timeDiff > 0) {
+                    long playerTimeNow = config.getStartPlayerTime() + amountOfTicksRun * gameDurationInTicks / timeDiff;
 
-                    for (Iterator<UUID> iterator = players.iterator(); iterator.hasNext(); ) {
-                        UUID uuid = iterator.next();
-                        Player player = Bukkit.getPlayer(uuid);
+                    // set playerTime for alive players
+                    for (Iterator<Map.Entry<UUID, AGhostGamePlayer>> iterator = players.entrySet().iterator(); iterator.hasNext(); ) {
+                        Map.Entry<UUID, AGhostGamePlayer> entry = iterator.next();
+                        Player player = Bukkit.getPlayer(entry.getKey());
 
-                        if (player != null) {
-                            player.setPlayerTime(playerTimeNow, false);
-                        } else {
+                        if (player == null) {
+                            if (entry.getValue() instanceof AlivePlayer alivePlayer) {
+                                MouseTrap trap = alivePlayer.getMouseTrapTrappedIn();
+
+                                if (trap != null) {
+                                    trap.removePlayer(alivePlayer);
+                                }
+                            }
+
+                            plugin.getComponentLogger().error("Removed player \"{}\" from game since they got missing. They couldn't get reset correctly!", entry.getKey());
                             iterator.remove();
+                        } else {
+                            player.setPlayerTime(playerTimeNow, false);
                         }
                     }
                 } else {
-                    // just set to start time
-                    for (Iterator<UUID> iterator = players.iterator(); iterator.hasNext(); ) {
-                        UUID uuid = iterator.next();
-                        Player player = Bukkit.getPlayer(uuid);
+                    // just set to start time for players
+                    for (Iterator<Map.Entry<UUID, AGhostGamePlayer>> iterator = players.entrySet().iterator(); iterator.hasNext(); ) {
+                        Map.Entry<UUID, AGhostGamePlayer> entry = iterator.next();
+                        Player player = Bukkit.getPlayer(entry.getKey());
 
-                        if (player != null) {
-                            player.setPlayerTime(config.getStartPlayerTime(), false);
-                        } else {
+                        if (player == null) {
+                            if (entry.getValue() instanceof AlivePlayer alivePlayer) {
+                                MouseTrap trap = alivePlayer.getMouseTrapTrappedIn();
+
+                                if (trap != null) {
+                                    trap.removePlayer(alivePlayer);
+                                }
+                            }
+
+                            plugin.getComponentLogger().error("Removed player \"{}\" from game since they got missing. They couldn't get reset correctly!", entry.getKey());
                             iterator.remove();
+                        } else {
+                            player.setPlayerTime(config.getStartPlayerTime(), false);
                         }
                     }
                 }
+
+                // check if players just vanished
+                if (players.isEmpty()) {
+                    endGame(EndReason.GAME_EMPTY);
+                }
+
+                // todo tick mouse traps here
             }
         } else {
             endGame(EndReason.TIME);
@@ -149,6 +212,8 @@ public class GhostGame implements Listener {
             case TIME -> broadcastAll(GhostLangPath.GAME_LOOSE_TIME_BROADCAST);
             case ALL_DEAD -> broadcastAll(GhostLangPath.GAME_LOOSE_DEATH_BROADCAST);
             case WIN -> broadcastAll(GhostLangPath.GAME_WIN_BROADCAST);
+            case GAME_EMPTY -> {
+            } // nothing to do
         }
 
         resetGame();
@@ -157,9 +222,9 @@ public class GhostGame implements Listener {
     public void resetGame() {
         gameState = GameState.RESETTING;
 
-        for (Iterator<UUID> iterator = players.iterator(); iterator.hasNext(); ) {
-            UUID uuid = iterator.next();
-            @Nullable Player player = Bukkit.getPlayer(uuid);
+        for (Iterator<Map.Entry<UUID, AGhostGamePlayer>> iterator = players.entrySet().iterator(); iterator.hasNext(); ) {
+            Map.Entry<UUID, AGhostGamePlayer> entry = iterator.next();
+            @Nullable Player player = Bukkit.getPlayer(entry.getKey());
             if (player != null) {
                 player.teleportAsync(config.getEndLocation());
             }
@@ -167,9 +232,15 @@ public class GhostGame implements Listener {
             iterator.remove();
         }
 
+        for (MouseTrap mouseTrap : mouseTraps) {
+            mouseTrap.releaseAllPlayers();
+        }
+
+        // kill entities
         for (IGhost ghost : ghosts) {
             ghost.remove();
         }
+        ghosts.clear();
 
         if (timeTask != null) {
             timeTask.cancel();
@@ -189,14 +260,7 @@ public class GhostGame implements Listener {
             switch (gameState) {
                 case IDLE -> {
                     if (!isGameFull()) {
-                        players.add(player.getUniqueId());
-
-                        player.teleportAsync(config.getLobbyLocation());
-
-                        plugin.getMessageManager().sendLang(player, GhostLangPath.PLAYER_GAME_JOIN,
-                            Placeholder.component(SharedPlaceHolder.TEXT.getKey(), getConfig().getDisplayName()));
-                        broadcastExcept(GhostLangPath.PLAYER_GAME_JOIN_BROADCAST, player.getUniqueId(),
-                            Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), player.displayName()));
+                        setUpJoinedPlayer(player);
                     } else {
                         plugin.getMessageManager().sendLang(player, GhostLangPath.ERROR_GAME_FULL);
                     }
@@ -204,11 +268,7 @@ public class GhostGame implements Listener {
                 case RUNNING -> {
                     if (config.isLateJoinAllowed()) {
                         if (!isGameFull()) {
-                            player.teleportAsync(config.getStartLocation());
-
-                            plugin.getMessageManager().sendLang(player, GhostLangPath.PLAYER_GAME_JOIN);
-                            broadcastExcept(GhostLangPath.PLAYER_GAME_JOIN_BROADCAST, player.getUniqueId(),
-                                Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), player.displayName()));
+                            setUpJoinedPlayer(player);
                         } else {
                             plugin.getMessageManager().sendLang(player, GhostLangPath.ERROR_GAME_FULL);
                         }
@@ -224,58 +284,162 @@ public class GhostGame implements Listener {
         }
     }
 
+    private void setUpJoinedPlayer(final @NotNull Player player) {
+        players.put(player.getUniqueId(), new AlivePlayer(player.getUniqueId(), this, plugin));
+
+        player.teleportAsync(config.getLobbyLocation());
+        player.setExp(0.0f);
+
+        plugin.getMessageManager().sendLang(player, GhostLangPath.PLAYER_GAME_JOIN,
+            Placeholder.component(SharedPlaceHolder.TEXT.getKey(), getConfig().getDisplayName()));
+        broadcastExcept(GhostLangPath.PLAYER_GAME_JOIN_BROADCAST, player.getUniqueId(),
+            Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), player.displayName()));
+    }
+
+    protected void makePlayerSpectator(final @NotNull Player player) {
+        players.remove(player.getUniqueId());
+        spectators.put(player.getUniqueId(), new SpectatingPlayer(player.getUniqueId(), this));
+
+        for (AGhostGamePlayer ghostGamePlayer : players.values()) {
+            Player otherPlayer = ghostGamePlayer.getBukkitPlayer();
+
+            if (otherPlayer != null) {
+                otherPlayer.hidePlayer(plugin, player);
+            }
+        }
+
+        player.setScoreboard(scoreboard);
+        perishedTeam.addPlayer(player);
+    }
+
     public void playerQuit(final @NotNull Player player, boolean teleport) {
-        if (players.contains(player.getUniqueId())) {
+        AGhostGamePlayer ghostGamePlayer = players.get(player.getUniqueId());
+        if (ghostGamePlayer != null) {
             if (teleport) {
                 player.teleport(config.getEndLocation());
                 player.resetPlayerTime();
             }
 
+            // reset Scoreboard
+            perishedTeam.removePlayer(player);
+            player.setScoreboard(plugin.getServer().getScoreboardManager().getMainScoreboard());
+
+            if (ghostGamePlayer instanceof AlivePlayer alivePlayer) {
+                MouseTrap trap = alivePlayer.getMouseTrapTrappedIn();
+
+                if (trap != null) {
+                    trap.removePlayer(alivePlayer);
+                }
+            } else if (ghostGamePlayer instanceof DeadPlayer deadPlayer) { // todo make visible again
+
+                for (Iterator<AGhostGamePlayer> iterator = players.values().iterator(); iterator.hasNext(); ) {
+                    AGhostGamePlayer otherGhostGamePlayer = iterator.next();
+                    Player otherPlayer = otherGhostGamePlayer.getBukkitPlayer();
+
+                    if (otherPlayer != null) {
+                        otherPlayer.showPlayer(plugin, player);
+                    } else {
+                        iterator.remove();
+                    }
+                }
+            }
+
             players.remove(player.getUniqueId());
 
             if (gameState != GameState.RESETTING) {
-                plugin.getMessageManager().sendLang(player, GhostLangPath.PLAYER_GAME_QUIT);
-                broadcastExcept(GhostLangPath.PLAYER_GAME_QUIT_BROADCAST, player.getUniqueId(),
-                    Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), player.displayName()));
+                if (players.isEmpty()) {
+                    endGame(EndReason.GAME_EMPTY);
+                } else if (areAllPlayersDead()) {
+                    endGame(EndReason.ALL_DEAD);
+                } else {
+                    plugin.getMessageManager().sendLang(player, GhostLangPath.PLAYER_GAME_QUIT);
+                    broadcastExcept(GhostLangPath.PLAYER_GAME_QUIT_BROADCAST, player.getUniqueId(),
+                        Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), player.displayName()));
+                }
             }
         } else {
-            if (gameState != GameState.RESETTING) {
-                plugin.getMessageManager().sendLang(player, GhostLangPath.ERROR_NOT_PLAYING_SELF);
+            SpectatingPlayer spectatingPlayer = spectators.get(player.getUniqueId());
+
+            if (spectatingPlayer != null) {
+                // reset Scoreboard
+                perishedTeam.removePlayer(player);
+                player.setScoreboard(plugin.getServer().getScoreboardManager().getMainScoreboard());
+
+                for (Iterator<AGhostGamePlayer> iterator = players.values().iterator(); iterator.hasNext(); ) {
+                    AGhostGamePlayer otherGhostGamePlayer = iterator.next();
+                    Player otherPlayer = otherGhostGamePlayer.getBukkitPlayer();
+
+                    if (otherPlayer != null) {
+                        otherPlayer.showPlayer(plugin, player);
+                    } else {
+                        iterator.remove();
+                    }
+                }
+            } else {
+                if (gameState != GameState.RESETTING) {
+                    plugin.getMessageManager().sendLang(player, GhostLangPath.ERROR_NOT_PLAYING_SELF);
+                }
             }
         }
     }
 
-    public void broadcastExcept(@NotNull LangPath langPath, final @Nullable UUID exception, @NotNull TagResolver... resolvers) {
-        for (Iterator<UUID> iterator = players.iterator(); iterator.hasNext(); ) {
-            UUID uuid = iterator.next();
-            if (!uuid.equals(exception)) {
-                Player player = Bukkit.getPlayer(uuid);
+    public void broadcastExcept(final @NotNull LangPath langPath,
+                                final @Nullable UUID exception,
+                                final @NotNull TagResolver... resolvers) {
+        for (Iterator<Map.Entry<UUID, AGhostGamePlayer>> iterator = players.entrySet().iterator(); iterator.hasNext(); ) {
+            Map.Entry<UUID, AGhostGamePlayer> entry = iterator.next();
+            if (!entry.getKey().equals(exception)) {
+                Player player = Bukkit.getPlayer(entry.getKey());
 
                 if (player != null) {
                     plugin.getMessageManager().sendLang(player, langPath, resolvers);
                 } else {
+                    if (entry.getValue() instanceof AlivePlayer alivePlayer) {
+                        MouseTrap trap = alivePlayer.getMouseTrapTrappedIn();
+
+                        if (trap != null) {
+                            trap.removePlayer(alivePlayer);
+                        }
+                    }
+
                     iterator.remove();
                 }
             }
         }
+
+        if (players.isEmpty()) {
+            endGame(EndReason.GAME_EMPTY);
+        }
     }
 
-    public void broadcastAll(@NotNull LangPath langPath, @NotNull TagResolver... resolvers) {
+    public void broadcastAll(final @NotNull LangPath langPath, final @NotNull TagResolver... resolvers) {
         broadcastExcept(langPath, null, resolvers);
     }
 
     public void broadcastExcept(@NotNull LangPath langPath, final @Nullable UUID exception) {
-        for (Iterator<UUID> iterator = players.iterator(); iterator.hasNext(); ) {
-            UUID uuid = iterator.next();
-            if (!uuid.equals(exception)) {
-                Player player = Bukkit.getPlayer(uuid);
+        for (Iterator<Map.Entry<UUID, AGhostGamePlayer>> iterator = players.entrySet().iterator(); iterator.hasNext(); ) {
+            Map.Entry<UUID, AGhostGamePlayer> entry = iterator.next();
+            if (!entry.getKey().equals(exception)) {
+                Player player = Bukkit.getPlayer(entry.getKey());
 
                 if (player != null) {
                     plugin.getMessageManager().sendLang(player, langPath);
                 } else {
+                    if (entry.getValue() instanceof AlivePlayer alivePlayer) {
+                        MouseTrap trap = alivePlayer.getMouseTrapTrappedIn();
+
+                        if (trap != null) {
+                            trap.removePlayer(alivePlayer);
+                        }
+                    }
+
                     iterator.remove();
                 }
             }
+        }
+
+        if (players.isEmpty()) {
+            endGame(EndReason.GAME_EMPTY);
         }
     }
 
@@ -302,14 +466,72 @@ public class GhostGame implements Listener {
         return config;
     }
 
-    public boolean isPlaying(@NotNull Player player) {
-        return this.players.contains(player.getUniqueId());
+    protected boolean areAllPlayersDead() {
+        return players.values().stream().noneMatch(p -> p instanceof AlivePlayer);
+    }
+
+    public boolean isPlaying(final @NotNull Player player) {
+        return this.players.containsKey(player.getUniqueId());
+    }
+
+    public void gainPoints(final @NotNull Player pointGainingPlayer, final int newGainedPoints) {
+        if (players.containsKey(pointGainingPlayer.getUniqueId())) { // todo make better use of player - include in message something like <player got x points>?
+            this.gainedPoints += newGainedPoints;
+
+            if (gainedPoints >= getConfig().getPointGoal()) {
+                endGame(EndReason.WIN);
+            } else {
+                float percent = (float) getConfig().getPointGoal() / gainedPoints;
+                float stepSize = 1.0f / config.getPointGoal();
+
+                for (Iterator<Map.Entry<UUID, AGhostGamePlayer>> iterator = players.entrySet().iterator(); iterator.hasNext(); ) {
+                    Map.Entry<UUID, AGhostGamePlayer> entry = iterator.next();
+
+                    Player playerInGame = Bukkit.getPlayer(entry.getKey());
+
+                    if (playerInGame == null) {
+                        if (entry.getValue() instanceof AlivePlayer alivePlayer) {
+                            MouseTrap trap = alivePlayer.getMouseTrapTrappedIn();
+
+                            if (trap != null) {
+                                trap.removePlayer(alivePlayer);
+                            }
+                        }
+
+                        iterator.remove();
+                    } else {
+                        playerInGame.setExp(percent);
+                    }
+                }
+
+                if (players.isEmpty()) {
+                    endGame(EndReason.ALL_DEAD);
+
+                    return;
+                }
+
+                if (percent - 0.25f < stepSize) {
+                    broadcastAll(GhostLangPath.GAME_POINTS_MILESTONE_25);
+                } else if (percent - 0.5f < stepSize) {
+                    broadcastAll(GhostLangPath.GAME_POINTS_MILESTONE_50);
+                } else if (percent - 0.75f < stepSize) {
+                    broadcastAll(GhostLangPath.GAME_POINTS_MILESTONE_75);
+                } else if (percent - 0.9f < stepSize) {
+                    broadcastAll(GhostLangPath.GAME_POINTS_MILESTONE_75);
+                }
+            }
+        }
+    }
+
+    public @NotNull Set<MouseTrap> getMouseTraps() {
+        return mouseTraps;
     }
 
     public enum EndReason {
         EXTERN,
         TIME,
         ALL_DEAD,
+        GAME_EMPTY,
         WIN,
     }
 

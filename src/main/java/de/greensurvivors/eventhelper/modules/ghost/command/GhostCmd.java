@@ -22,8 +22,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
+// todo spectating command
+// todo quit and join command
 // todo rework this once Bridgadier is a thing
-public class GhostCmd extends ASubCommand { // todo make toplevel command; check sub permissions!
+public class GhostCmd extends ASubCommand { // todo make toplevel command; check sub permissions!; list --> lists all games; ghost locations; commands
     // arg pos0
     private static final @NotNull String CREATE = "create";
     // args pos2
@@ -186,7 +188,7 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
                                         }
                                         case START_LOCATION -> {
                                             if (sender instanceof Entity entity) {
-                                                game.getConfig().setStartLocation(entity.getLocation());
+                                                game.getConfig().setPlayerStartLocation(entity.getLocation());
 
                                                 plugin.getMessageManager().sendPrefixedLang(sender,
                                                     GhostLangPath.MESSAGE_PREFIX, GhostLangPath.COMMAND_SET_START_LOCATION_SUCCESS);

@@ -27,7 +27,11 @@ public class ModulRegistery {
     }
 
     public void registerDefault() {
-        registerNewModule(new GhostModul(plugin));
+        if (plugin.getDependencyManager().isSimpleQuestsEnabled()) {
+            registerNewModule(new GhostModul(plugin));
+        } else {
+            plugin.getComponentLogger().warn("Could not enable all Modules because optional dependency SimpleQuests is missing!");
+        }
 
         // don't check if worldguard is enabled yet, since we have to do our registration before it does load
         if (plugin.getDependencyManager().isWorldGuardInstanceSafe()) {
@@ -45,7 +49,7 @@ public class ModulRegistery {
             modul.getConfig().reload().thenAccept(isEnabled -> {
                 if (isEnabled) {
                     modul.onEnable();
-                } else if (wasEnabled){
+                } else if (wasEnabled) {
                     modul.onDisable();
                 }
             });
