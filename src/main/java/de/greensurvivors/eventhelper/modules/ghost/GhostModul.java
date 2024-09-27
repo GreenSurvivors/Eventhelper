@@ -58,6 +58,9 @@ public class GhostModul extends AModul<GeneralGhostConfig> {
 
                     // reload game
                     game.getConfig().reload();
+
+                    // enable all now loaded mouseTraps
+                    game.getMouseTraps().forEach(MouseTrap::onEnable);
                 });
             } catch (IOException e) {
                 plugin.getComponentLogger().error("could open ghost game directories.", e);
@@ -70,6 +73,8 @@ public class GhostModul extends AModul<GeneralGhostConfig> {
         for (GhostGame ghostGame : games.values()) {
             ghostGame.resetGame();
             HandlerList.unregisterAll(ghostGame);
+
+            ghostGame.getMouseTraps().forEach(MouseTrap::onDisable);
         }
     }
 
