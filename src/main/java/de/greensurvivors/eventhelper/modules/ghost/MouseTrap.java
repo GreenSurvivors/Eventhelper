@@ -102,6 +102,10 @@ public class MouseTrap implements ConfigurationSerializable, Listener { // todo 
             RELEASE_BUTTON_POS_KEY, Utils.serializePosition(releaseButtonPosition));
     }
 
+    /**
+     * important: use AlivePlayer.trapInMouseTrap instead of this one!
+     * the AlivePlayer will call this method. But if you skip that part it will not now it was trapped!
+     */
     public boolean trapPlayer(final @NotNull AlivePlayer alivePlayer) {
         final @Nullable World world = Bukkit.getWorld(worldName);
 

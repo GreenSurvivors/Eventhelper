@@ -13,20 +13,20 @@ public abstract class AGhostGameParticipant {
     protected final @NotNull EventHelper plugin;
     private final @NotNull UUID uuid;
     private final @NotNull GhostGame game;
-    protected final @NotNull PlayerData playerData;
+    protected final @NotNull PlayerData playerDataBeforeGame;
 
     public AGhostGameParticipant(final @NotNull EventHelper plugin,
                                  final @NotNull GhostGame game,
                                  final @NotNull UUID uuid,
-                                 final @NotNull PlayerData playerData) {
+                                 final @NotNull PlayerData playerDataBeforeGame) {
         this.plugin = plugin;
         this.uuid = uuid;
         this.game = game;
-        this.playerData = playerData;
+        this.playerDataBeforeGame = playerDataBeforeGame;
     }
 
     public @Nullable Player getBukkitPlayer() {
-        return Bukkit.getPlayer(uuid);
+        return Bukkit.getPlayer(getUuid());
     }
 
     public @NotNull UUID getUuid() {
@@ -38,6 +38,6 @@ public abstract class AGhostGameParticipant {
     }
 
     public void restorePlayer() {
-        playerData.restorePlayer();
+        playerDataBeforeGame.restorePlayer();
     }
 }

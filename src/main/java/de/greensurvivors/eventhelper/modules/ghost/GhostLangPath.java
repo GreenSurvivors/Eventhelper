@@ -39,6 +39,7 @@ public record GhostLangPath(@NotNull String path, @NotNull String defaultValue) 
         GAME_LOOSE_DEATH_BROADCAST = new GhostLangPath("game.loose.death.broadcast"), // todo per game override
         ERROR_GAME_FULL = new GhostLangPath("error.game-full"),
         ERROR_NO_LATE_JOIN = new GhostLangPath("error.no-late-join"),
+        ERROR_NO_REJOIN = new GhostLangPath("error.no-rejion"),
         ERROR_ALREADY_PLAYING = new GhostLangPath("error.already-playing"),
         ERROR_NOT_PLAYING_SELF = new GhostLangPath("error.not-playing.self"),
         ERROR_JOIN_GAME_STATE = new GhostLangPath("error.join.game-state"),

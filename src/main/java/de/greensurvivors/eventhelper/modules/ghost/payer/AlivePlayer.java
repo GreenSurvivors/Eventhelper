@@ -20,6 +20,16 @@ public class AlivePlayer extends AGhostGamePlayer { // todo
         super(plugin, game, uuid, new PlayerData(plugin, plugin.getServer().getPlayer(uuid)));
     }
 
+    /**
+     * creates a new Alive player with new player data, untrapped, but with the same task progress
+     * Used when a player rejoins a game
+     */
+    public AlivePlayer(final @NotNull AlivePlayer alivePlayer) {
+        super(alivePlayer.plugin, alivePlayer.getGame(), alivePlayer.getUuid(), new PlayerData(alivePlayer.plugin, alivePlayer.getBukkitPlayer()));
+        this.doneTaskIds.addAll(alivePlayer.doneTaskIds);
+        this.currentTaskId = alivePlayer.currentTaskId;
+    }
+
     public void setNewTaskId(final @NotNull String newTaskId) {
         this.currentTaskId = newTaskId;
     }
@@ -29,9 +39,9 @@ public class AlivePlayer extends AGhostGamePlayer { // todo
         return currentTaskId;
     }
 
-    public void trapInMouseTrap(final @NotNull MouseTrap trap) {
+    public boolean trapInMouseTrap(final @NotNull MouseTrap trap) {
         this.trappedIn = trap;
-        trap.trapPlayer(this);
+        return trap.trapPlayer(this);
     }
 
     public @Nullable MouseTrap getMouseTrapTrappedIn() {
@@ -56,7 +66,7 @@ public class AlivePlayer extends AGhostGamePlayer { // todo
             currentTaskId = null;
         } else {
             int index = ThreadLocalRandom.current().nextInt(allTaskIds.size());
-            currentTaskId = availebleTaskIds.get(index);
+            setNewTaskId(availebleTaskIds.get(index));
         }
     }
 

@@ -57,6 +57,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = 24000) Long> startPlayerTime = new ConfigOption<>("game.playerTime.start", 14000L); // in ticks
     private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = 24000) Long> endPlayerTime = new ConfigOption<>("game.playerTime.end", 23000L); // in ticks
     private final @NotNull ConfigOption<@NotNull Boolean> allowLateJoin = new ConfigOption<>("game.allowLateJoin", false);
+    private final @NotNull ConfigOption<@NotNull Boolean> allowRejoin = new ConfigOption<>("game.allowRejoin", false);
     private final @NotNull ConfigOption<@NotNull @Range(from = -1, to = Integer.MAX_VALUE) Integer> minAmountPlayers = new ConfigOption<>("game.minAmountPlayers", -1);
     private final @NotNull ConfigOption<@NotNull @Range(from = -1, to = Integer.MAX_VALUE) Integer> maxAmountPlayers = new ConfigOption<>("game.maxAmountPlayers", -1);
     private final @NotNull ConfigOption<@NotNull Double> playerSpreadDistance = new ConfigOption<>("game.teleport.playerSpread.distance", 0.5); // todo use
@@ -197,6 +198,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                         startPlayerTime.setValue(config.getLong(startPlayerTime.getPath(), startPlayerTime.getFallback()));
                         endPlayerTime.setValue(config.getLong(endPlayerTime.getPath(), endPlayerTime.getFallback()));
                         allowLateJoin.setValue(config.getBoolean(allowLateJoin.getPath(), allowLateJoin.getFallback()));
+                        allowRejoin.setValue(config.getBoolean(allowRejoin.getPath(), allowRejoin.getFallback()));
                         minAmountPlayers.setValue(config.getInt(minAmountPlayers.getPath(), minAmountPlayers.getFallback()));
                         maxAmountPlayers.setValue(config.getInt(maxAmountPlayers.getPath(), maxAmountPlayers.getFallback()));
                         playerSpreadDistance.setValue(config.getDouble(playerSpreadDistance.getPath(), playerSpreadDistance.getFallback()));
@@ -273,6 +275,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                         config.set(startPlayerTime.getPath(), startPlayerTime.getValueOrFallback());
                         config.set(endPlayerTime.getPath(), endPlayerTime.getValueOrFallback());
                         config.set(allowLateJoin.getPath(), allowLateJoin.getValueOrFallback());
+                        config.set(allowRejoin.getPath(), allowRejoin.getValueOrFallback());
                         config.set(minAmountPlayers.getPath(), minAmountPlayers.getValueOrFallback());
                         config.set(maxAmountPlayers.getPath(), maxAmountPlayers.getValueOrFallback());
                         config.set(playerSpreadDistance.getPath(), playerSpreadDistance.getValueOrFallback());
@@ -552,6 +555,20 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
 
     public void setIsLateJoinAllowed(boolean isAllowed) {
         allowLateJoin.setValue(isAllowed);
+
+        save().thenAccept(result -> {
+            if (result) {
+                reload();
+            }
+        });
+    }
+
+    public boolean isRejoinAllowed() {
+        return allowRejoin.getValueOrFallback();
+    }
+
+    public void setIsRejoinAllowed(boolean isAllowed) { // todo
+        allowRejoin.setValue(isAllowed);
 
         save().thenAccept(result -> {
             if (result) {
