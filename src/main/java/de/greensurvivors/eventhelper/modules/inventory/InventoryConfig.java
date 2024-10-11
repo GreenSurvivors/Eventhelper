@@ -98,8 +98,8 @@ public class InventoryConfig extends AModulConfig<InventoryRegionModul> {
     }
 
     @Override
-    public @NotNull CompletableFuture<Void> save() {
-        final CompletableFuture<Void> runAfter = new CompletableFuture<>();
+    public @NotNull CompletableFuture<@NotNull Boolean> save() {
+        final CompletableFuture<@NotNull Boolean> runAfter = new CompletableFuture<>();
 
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             synchronized (this) {
@@ -111,24 +111,24 @@ public class InventoryConfig extends AModulConfig<InventoryRegionModul> {
                     try (BufferedReader bufferedReader = Files.newBufferedReader(configPath)) {
                         @NotNull YamlConfiguration config = YamlConfiguration.loadConfiguration(bufferedReader);
 
-                        config.set(VERSION_PATH, dataVersion);
+                        config.set(VERSION_PATH, dataVersion.toString());
                         config.set(isEnabled.getPath(), isEnabled.getValueOrFallback());
 
                         config.options().parseComments(true);
                         config.save(configPath.toFile());
 
-                        Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(null)); // back to main thread
+                        Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(Boolean.TRUE)); // back to main thread
                     } catch (IOException e) {
                         plugin.getComponentLogger().error("Could not load modul config for {} from file!", modul.getName(), e);
 
                         isEnabled.setValue(Boolean.FALSE);
-                        Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(null)); // back to main thread
+                        Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(Boolean.TRUE)); // back to main thread
                     }
                 } else {
                     plugin.getComponentLogger().error("Could not save modul config, since the module of {} was not set!", this.getClass().getName());
 
                     isEnabled.setValue(Boolean.FALSE);
-                    Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(null)); // back to main thread
+                    Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(Boolean.TRUE)); // back to main thread
                 }
             }
         });
@@ -158,7 +158,7 @@ public class InventoryConfig extends AModulConfig<InventoryRegionModul> {
      * @param player     player whose inventory is about to be saved
      * @param identifier the identifier what inventory should be saved.
      */
-    public void savePlayerData(Player player, String identifier) {
+    public void savePlayerData(final @NotNull Player player, final @NotNull String identifier) {
         File file = new File(plugin.getDataFolder(), "inventory_regions" + File.separator + player.getUniqueId() + ".yml");
         FileConfiguration cfg = YamlConfiguration.loadConfiguration(file);
 
@@ -189,7 +189,7 @@ public class InventoryConfig extends AModulConfig<InventoryRegionModul> {
      * @param player     player whose inventory is about to be loaded
      * @param identifier the identifier what inventory should be loaded.
      */
-    public void loadPlayerData(Player player, String identifier) {
+    public void loadPlayerData(final @NotNull Player player, final @NotNull String identifier) {
         File file = new File(plugin.getDataFolder(), "inventory_regions" + File.separator + player.getUniqueId() + ".yml");
         FileConfiguration cfg = YamlConfiguration.loadConfiguration(file);
 
@@ -251,7 +251,7 @@ public class InventoryConfig extends AModulConfig<InventoryRegionModul> {
      *
      * @param player player whose inventory identifier is about to be loaded
      */
-    public String loadIdentifier(Player player) {
+    public @NotNull String loadIdentifier(final @NotNull Player player) {
         File file = new File(plugin.getDataFolder(), "inventory_regions" + File.separator + player.getUniqueId() + ".yml");
         FileConfiguration cfg = YamlConfiguration.loadConfiguration(file);
 

@@ -28,6 +28,7 @@ public record GhostLangPath(@NotNull String path, @NotNull String defaultValue) 
         COMMAND_SET_PLAYER_SPEAD_SUCCESS = new GhostLangPath("command.set.player-spread.success"),
         COMMAND_ADD_GHOST_SPAWNPOINT_SUCCESS = new GhostLangPath("command.add.ghost.spawnpoint.success"),
         COMMAND_REMOVEALL_GHOST_SPAWNPOINT_SUCCESS = new GhostLangPath("command.remove-all.ghost.spawnpoint.success"),
+        COMMAD_HELP_TEXT = new GhostLangPath("command.help-text"),
 
     PLAYER_GAME_JOIN = new GhostLangPath("game.player.join.self"), // todo per game override
         PLAYER_GAME_JOIN_BROADCAST = new GhostLangPath("game.player.join.broadcast"), // todo per game override

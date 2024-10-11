@@ -31,7 +31,7 @@ public class MessageManager {
     private static final @NotNull String BUNDLE_FILE_PROTO_PATTERN = "(?:_.*)?.properties";
     private final @NotNull EventHelper plugin;
     private final @NotNull LoadingCache<@NotNull String, @NotNull ResourceBundle> resourceBundles = Caffeine.newBuilder().build(
-        modulName -> loadBundle(modulName)); // todo check
+        this::loadBundle); // todo check
 
     /**
      * caches every component without placeholder for faster access in future and loads missing values automatically
@@ -74,7 +74,7 @@ public class MessageManager {
     }
 
     public void setLocale(final @NotNull Locale locale) {
-        if (this.locale.equals(locale)) {
+        if (!this.locale.equals(locale)) {
             this.locale = locale;
             plugin.getLogger().info("Locale set to language: " + locale.toLanguageTag());
 

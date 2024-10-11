@@ -16,13 +16,15 @@ public class MainCmd extends Command {
     private final static @NotNull String label = "eventhelper";
     private final @NotNull EventHelper plugin;
     private final @NotNull Set<ASubCommand> registeredCommands = new LinkedHashSet<>(); // SequenzedSet
-    private final @NotNull Map<String, ASubCommand> registeredCommandMap = new LinkedHashMap<>(); // SequencedMap
+    protected final @NotNull Map<String, ASubCommand> registeredCommandMap = new LinkedHashMap<>(); // SequencedMap
 
     public MainCmd(@NotNull EventHelper plugin) {
         super(label, description, "use /evh help", List.of("evhelper", "evh"));
 
         this.plugin = plugin;
-        plugin.getServer().getCommandMap().register(plugin.getName().toLowerCase(Locale.ENGLISH), MainCmd.label, this);
+        plugin.getServer().getCommandMap().register(MainCmd.label, plugin.getName().toLowerCase(Locale.ENGLISH), this);
+
+        registerSubCommand(new HelpSubCommand(plugin, permission, this));
     }
 
     public static @NotNull Permission getParentPermission() {
@@ -46,8 +48,8 @@ public class MainCmd extends Command {
 
             if (subCommand != null) {
                 if (subCommand.hasPermission(sender)) {
-                    List<String> shortenedArgs = new ArrayList<>(Arrays.asList(args));
-                    shortenedArgs.remove(0);
+                    LinkedList<String> shortenedArgs = new LinkedList<>(Arrays.asList(args));
+                    shortenedArgs.removeFirst();
 
                     return subCommand.execute(sender, shortenedArgs);
                 } else {
@@ -90,8 +92,8 @@ public class MainCmd extends Command {
             ASubCommand subCommand = registeredCommandMap.get(args[0]);
 
             if (subCommand != null && subCommand.hasPermission(sender)) {
-                List<String> shortenedArgs = new ArrayList<>(Arrays.asList(args));
-                shortenedArgs.remove(0);
+                LinkedList<String> shortenedArgs = new LinkedList<>(Arrays.asList(args));
+                shortenedArgs.removeFirst();
 
                 return subCommand.tabComplete(sender, shortenedArgs);
             }

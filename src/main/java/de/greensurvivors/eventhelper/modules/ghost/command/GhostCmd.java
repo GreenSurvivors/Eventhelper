@@ -2,6 +2,7 @@ package de.greensurvivors.eventhelper.modules.ghost.command;
 
 import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.command.ASubCommand;
+import de.greensurvivors.eventhelper.messages.LangPath;
 import de.greensurvivors.eventhelper.messages.SharedLangPath;
 import de.greensurvivors.eventhelper.messages.SharedPlaceHolder;
 import de.greensurvivors.eventhelper.modules.ghost.GhostGame;
@@ -17,10 +18,7 @@ import org.bukkit.permissions.PermissionDefault;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Set;
+import java.util.*;
 
 // todo spectating command
 // todo quit and join command
@@ -64,7 +62,12 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
     }
 
     @Override
-    public boolean execute(final @NotNull CommandSender sender, final @NotNull List<String> args) {
+    public @NotNull LangPath getHelpTextPath() {
+        return GhostLangPath.COMMAD_HELP_TEXT;
+    }
+
+    @Override
+    public boolean execute(final @NotNull CommandSender sender, final @NotNull LinkedList<@NotNull String> args) {
         if (ghostModul.getConfig().isEnabled()) {
             if (args.size() >= 2) {
                 if (args.get(0).equalsIgnoreCase(CREATE)) {
@@ -130,7 +133,7 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
                                                 } catch (NumberFormatException e) {
                                                     plugin.getMessageManager().sendPrefixedLang(sender,
                                                         GhostLangPath.MESSAGE_PREFIX, SharedLangPath.ARG_NOT_A_NUMBER,
-                                                        Placeholder.unparsed(SharedPlaceHolder.TEXT.getKey(), args.get(3)));
+                                                        Placeholder.unparsed(SharedPlaceHolder.ARGUMENT.getKey(), args.get(3)));
 
                                                     plugin.getComponentLogger().debug("could not decode Integer argument {} in command to set max player amount!", args.get(3), e);
 
@@ -183,7 +186,7 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
                                                     GhostLangPath.MESSAGE_PREFIX, GhostLangPath.COMMAND_SET_LOBBY_LOCATION_SUCCESS);
                                             } else {
                                                 plugin.getMessageManager().sendPrefixedLang(sender,
-                                                    GhostLangPath.MESSAGE_PREFIX, SharedLangPath.NOT_A_PLAYER);
+                                                    GhostLangPath.MESSAGE_PREFIX, SharedLangPath.CMD_ERROR_SENDER_NOT_A_PLAYER);
                                             }
                                         }
                                         case START_LOCATION -> {
@@ -194,7 +197,7 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
                                                     GhostLangPath.MESSAGE_PREFIX, GhostLangPath.COMMAND_SET_START_LOCATION_SUCCESS);
                                             } else {
                                                 plugin.getMessageManager().sendPrefixedLang(sender,
-                                                    GhostLangPath.MESSAGE_PREFIX, SharedLangPath.NOT_A_PLAYER);
+                                                    GhostLangPath.MESSAGE_PREFIX, SharedLangPath.CMD_ERROR_SENDER_NOT_A_PLAYER);
                                             }
                                         }
                                         case END_LOCATION -> {
@@ -205,7 +208,7 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
                                                     GhostLangPath.MESSAGE_PREFIX, GhostLangPath.COMMAND_SET_END_LOCATION_SUCCESS);
                                             } else {
                                                 plugin.getMessageManager().sendPrefixedLang(sender,
-                                                    GhostLangPath.MESSAGE_PREFIX, SharedLangPath.NOT_A_PLAYER);
+                                                    GhostLangPath.MESSAGE_PREFIX, SharedLangPath.CMD_ERROR_SENDER_NOT_A_PLAYER);
                                             }
                                         }
                                         case GAME_DURATION -> {
@@ -304,7 +307,7 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
                                                 } else {
                                                     plugin.getMessageManager().sendPrefixedLang(sender,
                                                         GhostLangPath.MESSAGE_PREFIX, SharedLangPath.ARG_NOT_A_BOOL,
-                                                        Placeholder.unparsed(SharedPlaceHolder.TEXT.getKey(), args.get(3)));
+                                                        Placeholder.unparsed(SharedPlaceHolder.ARGUMENT.getKey(), args.get(3)));
 
                                                     return false;
                                                 }
@@ -443,7 +446,7 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
                                                     Placeholder.unparsed(SharedPlaceHolder.NUMBER.getKey(), String.valueOf(game.getConfig().getGhostSpawnLocations().size())));
                                             } else {
                                                 plugin.getMessageManager().sendPrefixedLang(sender,
-                                                    GhostLangPath.MESSAGE_PREFIX, SharedLangPath.NOT_A_PLAYER);
+                                                    GhostLangPath.MESSAGE_PREFIX, SharedLangPath.CMD_ERROR_SENDER_NOT_A_PLAYER);
                                             }
                                         }
                                     }
@@ -490,11 +493,10 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
                                 }
                             }
                         }
-
-
                     } else {
                         plugin.getMessageManager().sendPrefixedLang(sender,
-                            GhostLangPath.MESSAGE_PREFIX, GhostLangPath.ARG_NOT_A_GAME);
+                            GhostLangPath.MESSAGE_PREFIX, GhostLangPath.ARG_NOT_A_GAME,
+                            Placeholder.unparsed(SharedPlaceHolder.ARGUMENT.getKey(), args.get(0)));
                     }
                 }
             } else {
@@ -511,7 +513,7 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
     }
 
     @Override
-    public List<String> tabComplete(@NotNull CommandSender sender, @NotNull List<String> args) {
+    public @NotNull List<String> tabComplete(@NotNull CommandSender sender, @NotNull LinkedList<@NotNull String> args) {
         switch (args.size()) {
             case 0 -> {
                 Set<String> gameIds = ghostModul.getGameNameIds();

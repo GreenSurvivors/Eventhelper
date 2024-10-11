@@ -61,8 +61,8 @@ public class AlivePlayer extends AGhostGamePlayer { // todo
     }
 
     // used for dying
-    public @NotNull Set<@NotNull String> generateGhostTasks() {
-        final Set<String> result = new HashSet<>();
+    public @NotNull List<@NotNull String> generateGhostTasks() {
+        final List<String> result = new ArrayList<>();
 
         final Set<String> allTaskIds = getGame().getConfig().getTasks().keySet();
         final List<String> availebleTaskIds = new ArrayList<>(allTaskIds.size());
@@ -86,10 +86,5 @@ public class AlivePlayer extends AGhostGamePlayer { // todo
         }
 
         return result;
-    }
-
-    // used for dying
-    public @NotNull PlayerData getPlayerData() {
-        return playerData;
     }
 }

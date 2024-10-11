@@ -19,14 +19,16 @@ public enum SharedLangPath implements LangPath {
     LIST_FOOTER_NEXT("list.footer.next"),
     LIST_FOOTER_NONE("list.footer.none"),
     // user cmd args errors
-    NOT_A_PLAYER("cmd.error.self-not-a-player"),
+    CMD_ERROR_SENDER_NOT_A_PLAYER("cmd.error.sender-not-a-player"),
     ARG_NOT_A_BOOL("cmd.error.arg.not-a-bool"),
     ARG_NOT_A_NUMBER("cmd.error.arg.not-a-number"),
+    ARG_NOT_A_SUBCMD("cmd.error.arg.not-a-subcommand"),
     ARG_NOT_A_PLAYER("cmd.error.arg.not-a-player"),
     ARG_NUMBER_OUT_OF_BOUNDS("cmd.error.arg.number-out-of-bounds"),
     NOT_ENOUGH_ARGS("cmd.error.arg.not-enough-args"),
     UNKNOWN_ARG("cmd.error.arg.unknown"),
-    NO_PERMISSION("no-permission");
+    NO_PERMISSION("no-permission"),
+    HELP_HELP_TEXT("cmd.help.help-text");
 
     private final @NotNull String path;
     private final @NotNull String defaultValue;
