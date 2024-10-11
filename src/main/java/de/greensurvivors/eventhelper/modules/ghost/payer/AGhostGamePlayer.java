@@ -21,6 +21,6 @@ public abstract class AGhostGamePlayer extends AGhostGameParticipant {
     public abstract void finishCurrentQuest();
 
     public @NotNull PlayerData getPlayerData() {
-        return playerData;
+        return playerDataBeforeGame;
     }
 }

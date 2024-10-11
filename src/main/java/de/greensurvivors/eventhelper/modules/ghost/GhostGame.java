@@ -35,6 +35,7 @@ public class GhostGame implements Listener { // todo spectating command
     private final @NotNull GhostGameConfig config;
     private final @NotNull String name_id;
 
+    private final @NotNull Map<@NotNull UUID, @NotNull AGhostGamePlayer> offlinePlayers = new HashMap<>();
     private final @NotNull Map<@NotNull UUID, @NotNull AGhostGamePlayer> players = new HashMap<>();
     private final @NotNull Map<@NotNull UUID, @NotNull SpectatingPlayer> spectators = new HashMap<>();
     private final @NotNull Set<@NotNull MouseTrap> mouseTraps = new HashSet<>();
@@ -86,7 +87,7 @@ public class GhostGame implements Listener { // todo spectating command
     }*/
 
     @EventHandler(ignoreCancelled = true)
-    private void onQuestComplete(final @NotNull QuestCompleatedEvent event) {
+    private void onQuestComplete(final @NotNull QuestCompleatedEvent event) { // todo
     }
 
     public void startGame() { // todo start count down
@@ -238,6 +239,7 @@ public class GhostGame implements Listener { // todo spectating command
             entry.getValue().restorePlayer();
             iterator.remove();
         }
+        offlinePlayers.clear();
 
         // kill entities
         for (IGhost ghost : ghosts) {
@@ -271,7 +273,22 @@ public class GhostGame implements Listener { // todo spectating command
                 case RUNNING -> {
                     if (config.isLateJoinAllowed()) {
                         if (!isGameFull()) {
-                            makeAlivePlayer(player);
+                            AGhostGamePlayer offlinePlayer = offlinePlayers.get(player.getUniqueId());
+
+                            if (offlinePlayer != null) {
+                                if (config.isRejoinAllowed()) {
+                                    // now sort them to what and where they were before quitting
+                                    if (offlinePlayer instanceof AlivePlayer alivePlayer) {
+                                        makeAlivePlayerAgain(alivePlayer);
+                                    } else if (offlinePlayer instanceof DeadPlayer deadPlayer) {
+                                        rePerishPlayer(deadPlayer);
+                                    }
+                                } else {
+                                    plugin.getMessageManager().sendLang(player, GhostLangPath.ERROR_NO_REJOIN);
+                                }
+                            } else {
+                                makeAlivePlayer(player);
+                            }
                         } else {
                             plugin.getMessageManager().sendLang(player, GhostLangPath.ERROR_GAME_FULL);
                         }
@@ -308,12 +325,40 @@ public class GhostGame implements Listener { // todo spectating command
             Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), player.displayName()));
     }
 
+    // used for rejoining a game
+    protected void makeAlivePlayerAgain(final @NotNull AlivePlayer oldAlivePlayer) {
+        final AlivePlayer newAlivePlayer = new AlivePlayer(oldAlivePlayer);
+        players.put(oldAlivePlayer.getUuid(), newAlivePlayer);
+        Player player = oldAlivePlayer.getBukkitPlayer();
+
+        if (oldAlivePlayer.getMouseTrapTrappedIn() == null) {
+            player.teleportAsync(config.getLobbyLocation());
+        } else {
+            newAlivePlayer.trapInMouseTrap(oldAlivePlayer.getMouseTrapTrappedIn());
+        }
+
+        // hide players
+        for (AGhostGamePlayer otherPlayer : players.values()) {
+            if (otherPlayer instanceof DeadPlayer) {
+                player.hidePlayer(plugin, otherPlayer.getBukkitPlayer());
+            }
+        }
+        for (SpectatingPlayer spectatingPlayer : spectators.values()) {
+            player.hidePlayer(plugin, spectatingPlayer.getBukkitPlayer());
+        }
+
+        plugin.getMessageManager().sendLang(player, GhostLangPath.PLAYER_GAME_JOIN,
+            Placeholder.component(SharedPlaceHolder.TEXT.getKey(), getConfig().getDisplayName()));
+        broadcastExcept(GhostLangPath.PLAYER_GAME_JOIN_BROADCAST, player.getUniqueId(),
+            Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), player.displayName()));
+    }
+
     protected void makePlayerSpectator(final @NotNull Player player) {
         final @Nullable AGhostGamePlayer ghostGamePlayer = players.get(player.getUniqueId());
 
-        if (ghostGamePlayer == null) {
+        if (ghostGamePlayer == null) {// used when joining as spectator
             makePlayerSpectator(player, new PlayerData(plugin, player));
-        } else {
+        } else {// used when dying permanently
             makePlayerSpectator(player, ghostGamePlayer.getPlayerData());
             players.remove(player.getUniqueId());
 
@@ -368,6 +413,24 @@ public class GhostGame implements Listener { // todo spectating command
         }
     }
 
+    protected void rePerishPlayer(final @NotNull DeadPlayer deadPlayer) { // damn necromancers!
+        final @Nullable Player player = deadPlayer.getBukkitPlayer();
+        players.put(deadPlayer.getUuid(), new DeadPlayer(plugin, this, deadPlayer.getUuid(), new PlayerData(plugin, player), deadPlayer.getGhostTasks()));
+        player.teleportAsync(config.getLobbyLocation());
+
+        perishedTeam.addPlayer(player);
+        player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, -1, 0, false, false, false));
+
+        for (SpectatingPlayer spectatingPlayer : spectators.values()) {
+            player.hidePlayer(plugin, spectatingPlayer.getBukkitPlayer());
+        }
+
+        plugin.getMessageManager().sendLang(player, GhostLangPath.PLAYER_GAME_JOIN,
+            Placeholder.component(SharedPlaceHolder.TEXT.getKey(), getConfig().getDisplayName()));
+        broadcastExcept(GhostLangPath.PLAYER_GAME_JOIN_BROADCAST, player.getUniqueId(),
+            Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), player.displayName()));
+    }
+
     public void playerQuit(final @NotNull Player player, boolean teleport) {
         final @Nullable AGhostGamePlayer ghostGamePlayer = players.get(player.getUniqueId());
         if (ghostGamePlayer != null) {
@@ -401,7 +464,7 @@ public class GhostGame implements Listener { // todo spectating command
                 }
             }
 
-            players.remove(player.getUniqueId());
+            offlinePlayers.put(player.getUniqueId(), players.remove(player.getUniqueId()));
 
             if (gameState != GameState.RESETTING) {
                 if (players.isEmpty()) {

@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.UUID;
 
 public class DeadPlayer extends AGhostGamePlayer { // todo
-    private final List<String> stillPossibleTasks;
+    private final @NotNull List<@NotNull String> stillPossibleTasks;
 
     public DeadPlayer(final @NotNull EventHelper plugin,
                       final @NotNull GhostGame game,
@@ -29,8 +29,16 @@ public class DeadPlayer extends AGhostGamePlayer { // todo
         }
     }
 
+    /**
+     * Importent: Check via {@link #getTask_id()} if the player has still a task left.
+     * Trying to finish a task, when the task list is empty will result in an exception
+     */
     @Override
-    public void finishCurrentQuest() {
+    public void finishCurrentQuest() throws IndexOutOfBoundsException {
         stillPossibleTasks.remove(0);
+    }
+
+    public @NotNull List<@NotNull String> getGhostTasks() {
+        return stillPossibleTasks;
     }
 }
