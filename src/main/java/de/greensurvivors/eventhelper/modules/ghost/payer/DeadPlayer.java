@@ -33,9 +33,4 @@ public class DeadPlayer extends AGhostGamePlayer { // todo
     public void finishCurrentQuest() {
         stillPossibleTasks.remove(0);
     }
-
-    // used for spectating
-    public @NotNull PlayerData getPlayerData() {
-        return playerData;
-    }
 }

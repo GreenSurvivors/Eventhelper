@@ -1,6 +1,7 @@
 package de.greensurvivors.eventhelper;
 
 import de.greensurvivors.eventhelper.command.MainCmd;
+import de.greensurvivors.eventhelper.config.SharedConfig;
 import de.greensurvivors.eventhelper.messages.MessageManager;
 import de.greensurvivors.eventhelper.modules.ModulRegistery;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -11,6 +12,7 @@ public class EventHelper extends JavaPlugin {
 
     private @NotNull MainCmd mainCmd;
     private @NotNull MessageManager messageManager;
+    private @NotNull SharedConfig sharedConfig;
     private @NotNull DependencyManager dependencyManager;
     private @NotNull ModulRegistery modulRegistery;
 
@@ -29,9 +31,10 @@ public class EventHelper extends JavaPlugin {
     public void onEnable() {
         // listener
         messageManager = new MessageManager(this);
+        sharedConfig = new SharedConfig(this);
+        sharedConfig.reload(); // this sets the language of the message manager
         dependencyManager = new DependencyManager(this);
         mainCmd = new MainCmd(this);
-
         // register modules
         modulRegistery = new ModulRegistery(this);
         modulRegistery.registerDefault();

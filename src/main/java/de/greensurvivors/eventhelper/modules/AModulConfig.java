@@ -45,7 +45,7 @@ public abstract class AModulConfig<ModulType extends AModul<?>> {
 
     public abstract @NotNull CompletableFuture<@NotNull Boolean> reload();
 
-    public abstract @NotNull CompletableFuture<Void> save();
+    public abstract @NotNull CompletableFuture<@NotNull Boolean> save();
 
     public boolean isEnabled() {
         return isEnabled.getValueOrFallback();

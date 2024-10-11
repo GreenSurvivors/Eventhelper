@@ -16,12 +16,15 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.Serial;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
@@ -60,14 +63,16 @@ public class GhostGame implements Listener { // todo spectating command
 
     @EventHandler(ignoreCancelled = true)
     private void onPlayerQuit(final @NotNull PlayerQuitEvent event) {
-        if (players.containsKey(event.getPlayer().getUniqueId())) {
+        if (players.containsKey(event.getPlayer().getUniqueId()) ||
+            spectators.containsKey(event.getPlayer().getUniqueId())) {
             playerQuit(event.getPlayer(), true);
         }
     }
 
     @EventHandler(ignoreCancelled = true)
     private void onPlayerChangeWorld(final @NotNull PlayerChangedWorldEvent event) {
-        if (players.containsKey(event.getPlayer().getUniqueId())) {
+        if (players.containsKey(event.getPlayer().getUniqueId()) ||
+            spectators.containsKey(event.getPlayer().getUniqueId())) {
             playerQuit(event.getPlayer(), false);
         }
     }
@@ -135,7 +140,7 @@ public class GhostGame implements Listener { // todo spectating command
         gameState = GameState.RUNNING;
     }
 
-    private void tick() {
+    protected void tick() {
         amountOfTicksRun++;
 
         long gameDurationInTicks = config.getGameDuration().toSeconds() * 20;
@@ -258,7 +263,7 @@ public class GhostGame implements Listener { // todo spectating command
             switch (gameState) {
                 case IDLE -> {
                     if (!isGameFull()) {
-                        setUpJoinedPlayer(player);
+                        makeAlivePlayer(player);
                     } else {
                         plugin.getMessageManager().sendLang(player, GhostLangPath.ERROR_GAME_FULL);
                     }
@@ -266,7 +271,7 @@ public class GhostGame implements Listener { // todo spectating command
                 case RUNNING -> {
                     if (config.isLateJoinAllowed()) {
                         if (!isGameFull()) {
-                            setUpJoinedPlayer(player);
+                            makeAlivePlayer(player);
                         } else {
                             plugin.getMessageManager().sendLang(player, GhostLangPath.ERROR_GAME_FULL);
                         }
@@ -282,7 +287,7 @@ public class GhostGame implements Listener { // todo spectating command
         }
     }
 
-    private void setUpJoinedPlayer(final @NotNull Player player) {
+    protected void makeAlivePlayer(final @NotNull Player player) {
         players.put(player.getUniqueId(), new AlivePlayer(plugin, this, player.getUniqueId()));
 
         player.teleportAsync(config.getLobbyLocation());
@@ -304,7 +309,22 @@ public class GhostGame implements Listener { // todo spectating command
     }
 
     protected void makePlayerSpectator(final @NotNull Player player) {
-        makePlayerSpectator(player, new PlayerData(plugin, player));
+        final @Nullable AGhostGamePlayer ghostGamePlayer = players.get(player.getUniqueId());
+
+        if (ghostGamePlayer == null) {
+            makePlayerSpectator(player, new PlayerData(plugin, player));
+        } else {
+            makePlayerSpectator(player, ghostGamePlayer.getPlayerData());
+            players.remove(player.getUniqueId());
+
+            if (players.isEmpty()) {
+                if (ghostGamePlayer instanceof AlivePlayer) { // should never happen
+                    endGame(EndReason.ALL_DEAD);
+                } else {
+                    endGame(EndReason.GAME_EMPTY);
+                }
+            }
+        }
     }
 
     protected void makePlayerSpectator(final @NotNull Player player, final @NotNull PlayerData playerData) {
@@ -312,10 +332,20 @@ public class GhostGame implements Listener { // todo spectating command
         spectators.put(player.getUniqueId(), new SpectatingPlayer(plugin, this, player.getUniqueId(), playerData));
 
         for (AGhostGamePlayer ghostGamePlayer : players.values()) {
-            Player otherPlayer = ghostGamePlayer.getBukkitPlayer();
+            final @Nullable Player otherPlayer = ghostGamePlayer.getBukkitPlayer();
 
             if (otherPlayer != null) {
                 otherPlayer.hidePlayer(plugin, player);
+            }
+        }
+        for (Iterator<SpectatingPlayer> iterator = spectators.values().iterator(); iterator.hasNext(); ) {
+            SpectatingPlayer otherSpectator = iterator.next();
+            final @Nullable Player otherPlayer = otherSpectator.getBukkitPlayer();
+
+            if (otherPlayer != null) {
+                otherPlayer.showPlayer(plugin, player);
+            } else {
+                iterator.remove();
             }
         }
 
@@ -323,8 +353,23 @@ public class GhostGame implements Listener { // todo spectating command
         perishedTeam.addPlayer(player);
     }
 
+    protected void makePerishedPlayer(final @NotNull UUID uuid) throws NoAlivePlayerException {
+        final @Nullable AGhostGamePlayer ghostGamePlayer = players.get(uuid);
+
+        if (ghostGamePlayer instanceof AlivePlayer alivePlayer) {
+            final @Nullable Player player = ghostGamePlayer.getBukkitPlayer();
+            players.put(uuid, new DeadPlayer(plugin, this, uuid, alivePlayer.getPlayerData(), alivePlayer.generateGhostTasks()));
+
+            perishedTeam.addPlayer(player);
+            player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, -1, 0, false, false, false));
+
+        } else {
+            throw new NoAlivePlayerException("Tried to perish player with UUID " + uuid + ", but they where not alive!");
+        }
+    }
+
     public void playerQuit(final @NotNull Player player, boolean teleport) {
-        AGhostGamePlayer ghostGamePlayer = players.get(player.getUniqueId());
+        final @Nullable AGhostGamePlayer ghostGamePlayer = players.get(player.getUniqueId());
         if (ghostGamePlayer != null) {
             if (teleport) {
                 player.teleport(config.getEndLocation());
@@ -333,6 +378,7 @@ public class GhostGame implements Listener { // todo spectating command
 
             // reset Scoreboard
             perishedTeam.removePlayer(player);
+            // player will get potion effects removed and dead players will be visible again, after the player data was restored
             ghostGamePlayer.restorePlayer();
 
             if (ghostGamePlayer instanceof AlivePlayer alivePlayer) {
@@ -341,7 +387,7 @@ public class GhostGame implements Listener { // todo spectating command
                 if (trap != null) {
                     trap.removePlayer(alivePlayer);
                 }
-            } else if (ghostGamePlayer instanceof DeadPlayer deadPlayer) { // todo make visible again
+            } else if (ghostGamePlayer instanceof DeadPlayer) {
 
                 for (Iterator<AGhostGamePlayer> iterator = players.values().iterator(); iterator.hasNext(); ) {
                     AGhostGamePlayer otherGhostGamePlayer = iterator.next();
@@ -551,5 +597,64 @@ public class GhostGame implements Listener { // todo spectating command
         STARTING,
         RUNNING,
         RESETTING
+    }
+
+    protected static class NoAlivePlayerException extends IllegalArgumentException {
+        @Serial
+        private static final long serialVersionUID = 6702629890736910312L;
+
+        /**
+         * Constructs an {@code NoAlivePlayerException} with no
+         * detail message.
+         */
+        public NoAlivePlayerException() {
+            super();
+        }
+
+        /**
+         * Constructs an {@code NoAlivePlayerException} with the
+         * specified detail message.
+         *
+         * @param s the detail message.
+         */
+        public NoAlivePlayerException(String s) {
+            super(s);
+        }
+
+        /**
+         * Constructs a new exception with the specified detail message and
+         * cause.
+         *
+         * <p>Note that the detail message associated with {@code cause} is
+         * <i>not</i> automatically incorporated in this exception's detail
+         * message.
+         *
+         * @param message the detail message (which is saved for later retrieval
+         *                by the {@link Throwable#getMessage()} method).
+         * @param cause   the cause (which is saved for later retrieval by the
+         *                {@link Throwable#getCause()} method).  (A {@code null} value
+         *                is permitted, and indicates that the cause is nonexistent or
+         *                unknown.)
+         */
+        public NoAlivePlayerException(String message, Throwable cause) {
+            super(message, cause);
+        }
+
+        /**
+         * Constructs a new exception with the specified cause and a detail
+         * message of {@code (cause==null ? null : cause.toString())} (which
+         * typically contains the class and detail message of {@code cause}).
+         * This constructor is useful for exceptions that are little more than
+         * wrappers for other throwables (for example, {@link
+         * java.security.PrivilegedActionException}).
+         *
+         * @param cause the cause (which is saved for later retrieval by the
+         *              {@link Throwable#getCause()} method).  (A {@code null} value is
+         *              permitted, and indicates that the cause is nonexistent or
+         *              unknown.)
+         */
+        public NoAlivePlayerException(Throwable cause) {
+            super(cause);
+        }
     }
 }

@@ -10,7 +10,6 @@ import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
-import org.bukkit.configuration.serialization.ConfigurationSerialization;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerTeleportEvent;
@@ -28,10 +27,6 @@ public class MouseTrap implements ConfigurationSerializable, Listener { // todo 
         SPAWN_POS_KEY = "spawnPosition",
         REDSTONE_PULSE_POS_KEY = "redstonePulsePosition",
         RELEASE_BUTTON_POS_KEY = "releaseButtonPosition";
-
-    static {
-        ConfigurationSerialization.registerClass(MouseTrap.class);
-    }
 
     private final @NotNull EventHelper plugin;
     private final @NotNull Position spawnPosition;

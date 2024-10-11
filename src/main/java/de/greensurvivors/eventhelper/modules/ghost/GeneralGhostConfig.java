@@ -67,8 +67,8 @@ public class GeneralGhostConfig extends AModulConfig<GhostModul> {
     }
 
     @Override
-    public @NotNull CompletableFuture<Void> save() {
-        final CompletableFuture<Void> runAfter = new CompletableFuture<>();
+    public @NotNull CompletableFuture<@NotNull Boolean> save() {
+        final CompletableFuture<@NotNull Boolean> runAfter = new CompletableFuture<>();
 
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             synchronized (this) {
@@ -81,24 +81,24 @@ public class GeneralGhostConfig extends AModulConfig<GhostModul> {
                     try (BufferedReader bufferedReader = Files.newBufferedReader(configPath)) {
                         @NotNull YamlConfiguration config = YamlConfiguration.loadConfiguration(bufferedReader);
 
-                        config.set(VERSION_PATH, dataVersion);
+                        config.set(VERSION_PATH, dataVersion.toString());
                         config.set(isEnabled.getPath(), isEnabled.getValueOrFallback());
 
                         config.options().parseComments(true);
                         config.save(configPath.toFile());
 
-                        Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(null)); // back to main thread
+                        Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(Boolean.TRUE)); // back to main thread
                     } catch (IOException e) {
                         plugin.getComponentLogger().error("Could not load modul config for {} from file!", modul.getName(), e);
 
                         isEnabled.setValue(Boolean.FALSE);
-                        Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(null)); // back to main thread
+                        Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(Boolean.FALSE)); // back to main thread
                     }
                 } else {
                     plugin.getComponentLogger().error("Could not save modul config, since the module of {} was not set!", this.getClass().getName());
 
                     isEnabled.setValue(Boolean.FALSE);
-                    Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(null)); // back to main thread
+                    Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(Boolean.FALSE)); // back to main thread
                 }
             }
         });

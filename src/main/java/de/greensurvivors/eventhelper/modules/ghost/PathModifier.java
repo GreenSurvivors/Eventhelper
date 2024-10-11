@@ -2,7 +2,6 @@ package de.greensurvivors.eventhelper.modules.ghost;
 
 import de.greensurvivors.eventhelper.config.ConfigOption;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
-import org.bukkit.configuration.serialization.ConfigurationSerialization;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -15,11 +14,6 @@ public class PathModifier implements ConfigurationSerializable {
         FOLLOW_TIMEOUT_KEY = "follow.timeout",
         IDLE_VELOCITY_KEY = "velocity.idle",
         FOLLOW_VELOCITY_KEY = "velocity.follow";
-
-    static {
-        ConfigurationSerialization.registerClass(PathModifier.class);
-    }
-
     private final @NotNull ConfigOption<@Nullable Integer> followRange = new ConfigOption<>(FOLLOW_RANGE_KEY, -1); // in blocks
     private final @NotNull ConfigOption<@Nullable Long> followTimeOut = new ConfigOption<>(FOLLOW_TIMEOUT_KEY, -1L); // in milliseconds
     private final @NotNull ConfigOption<@Nullable Double> idleVelocity = new ConfigOption<>(IDLE_VELOCITY_KEY, -1.0D);  // in blocks / s ?

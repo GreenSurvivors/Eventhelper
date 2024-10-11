@@ -11,6 +11,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.configuration.serialization.ConfigurationSerialization;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Range;
@@ -28,6 +29,10 @@ import java.util.stream.Collectors;
 
 // wanders around looking for player if no target. can target through walls but must path find there
 public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create and call events
+    static {
+        ConfigurationSerialization.registerClass(PathModifier.class);
+        ConfigurationSerialization.registerClass(MouseTrap.class);
+    }
     // ghost
     private final @NotNull ConfigOption<@NotNull Map<Material, PathModifier>> pathFindableMats = new ConfigOption<>("ghost.pathfind.pathFindables", new HashMap<>(Map.of(Material.YELLOW_GLAZED_TERRACOTTA, new PathModifier())));
     private final @NotNull ConfigOption<@NotNull Double> pathFindOffset = new ConfigOption<>("ghost.pathfind.offset", 30.0D);
@@ -219,8 +224,8 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     }
 
     @Override
-    public @NotNull CompletableFuture<Void> save() { // todo commands
-        final CompletableFuture<Void> runAfter = new CompletableFuture<>();
+    public @NotNull CompletableFuture<@NotNull Boolean> save() { // todo commands
+        final CompletableFuture<@NotNull Boolean> runAfter = new CompletableFuture<>();
 
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             synchronized (this) {
@@ -233,7 +238,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                                 Files.copy(inputStream, configPath);
                             } else {
                                 plugin.getComponentLogger().error("Could not find defaultGhostGame.yaml");
-                                runAfter.complete(null);
+                                runAfter.complete(Boolean.FALSE);
                                 return;
                             }
                         } catch (final @NotNull IOException e) {
@@ -278,18 +283,18 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                         config.options().parseComments(true);
                         config.save(configPath.toFile());
 
-                        Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(null)); // back to main thread
+                        Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(Boolean.TRUE)); // back to main thread
                     } catch (IOException e) {
                         plugin.getComponentLogger().error("Could not load modul config for {} from file!", modul.getName(), e);
 
                         isEnabled.setValue(Boolean.FALSE);
-                        Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(null)); // back to main thread
+                        Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(Boolean.FALSE)); // back to main thread
                     }
                 } else {
                     plugin.getComponentLogger().error("Could not save modul config, since the module of {} was not set!", this.getClass().getName());
 
                     isEnabled.setValue(Boolean.FALSE);
-                    Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(null)); // back to main thread
+                    Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(Boolean.FALSE)); // back to main thread
                 }
             }
         });
@@ -304,7 +309,11 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     public void setPathfindOffset(double newOffset) {
         pathFindOffset.setValue(newOffset);
 
-        save().thenRun(this::reload);
+        save().thenAccept(result -> {
+            if (result) {
+                reload();
+            }
+        });
     }
 
     public int getFollowRangeAt(final @NotNull Material material) { // todo setter
@@ -380,14 +389,22 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
             ghostSpawnLocations.setValue(locations);
         }
 
-        save().thenRun(this::reload);
+        save().thenAccept(result -> {
+            if (result) {
+                reload();
+            }
+        });
     }
 
     public void removeGhostSpawnLocation(final @NotNull Location newLocation) {
         if (ghostSpawnLocations.hasValue()) {
 
             if (ghostSpawnLocations.getValueOrFallback().remove(newLocation)) {
-                save().thenRun(this::reload);
+                save().thenAccept(result -> {
+                    if (result) {
+                        reload();
+                    }
+                });
             }
         }
     }
@@ -395,7 +412,11 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     public void removeAllGhostSpawnLocations() {
         if (ghostSpawnLocations.hasValue()) {
 
-            save().thenRun(this::reload);
+            save().thenAccept(result -> {
+                if (result) {
+                    reload();
+                }
+            });
         }
     }
 
@@ -406,7 +427,11 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     public void setAmountOfGhosts(@Range(from = 1, to = Integer.MAX_VALUE) int newAmount) {
         ghostAmount.setValue(newAmount);
 
-        save().thenRun(this::reload);
+        save().thenAccept(result -> {
+            if (result) {
+                reload();
+            }
+        });
     }
 
     public @NotNull Component getDisplayName() {
@@ -428,7 +453,11 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     public void setLobbyLocation(final @NotNull Location newLobbyLocation) {
         lobbyLocation.setValue(newLobbyLocation);
 
-        save().thenRun(this::reload);
+        save().thenAccept(result -> {
+            if (result) {
+                reload();
+            }
+        });
     }
 
     public @NotNull List<String> getGameStartCommands() { // todo use and make editable
@@ -442,7 +471,11 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     public void setPlayerStartLocation(final @NotNull Location newStartingLocation) {
         playerStartLocation.setValue(newStartingLocation);
 
-        save().thenRun(this::reload);
+        save().thenAccept(result -> {
+            if (result) {
+                reload();
+            }
+        });
     }
 
     public @NotNull Location getSpectatorStartLocation() { // todo
@@ -464,7 +497,11 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     public void setEndLocation(final @NotNull Location newEndLocation) {
         endLocation.setValue(newEndLocation);
 
-        save().thenRun(this::reload);
+        save().thenAccept(result -> {
+            if (result) {
+                reload();
+            }
+        });
     }
 
     public @NotNull Duration getGameDuration() {
@@ -474,7 +511,11 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     public void setGameDuration(final @NotNull Duration newGameDuration) { // todo maybe make all the setters nullable to reset to default?
         gameDuration.setValue(newGameDuration);
 
-        save().thenRun(this::reload);
+        save().thenAccept(result -> {
+            if (result) {
+                reload();
+            }
+        });
     }
 
     public long getStartPlayerTime() {
@@ -484,7 +525,11 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     public void setStartPlayerTime(@Range(from = 0, to = 24000) long newStartPlayerTime) {
         startPlayerTime.setValue(newStartPlayerTime);
 
-        save().thenRun(this::reload);
+        save().thenAccept(result -> {
+            if (result) {
+                reload();
+            }
+        });
     }
 
     public long getEndPlayerTime() {
@@ -494,7 +539,11 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     public void setEndPlayerTime(@Range(from = 0, to = 24000) long newEndPlayerTime) {
         endPlayerTime.setValue(newEndPlayerTime);
 
-        save().thenRun(this::reload);
+        save().thenAccept(result -> {
+            if (result) {
+                reload();
+            }
+        });
     }
 
     public boolean isLateJoinAllowed() {
@@ -504,7 +553,11 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     public void setIsLateJoinAllowed(boolean isAllowed) {
         allowLateJoin.setValue(isAllowed);
 
-        save().thenRun(this::reload);
+        save().thenAccept(result -> {
+            if (result) {
+                reload();
+            }
+        });
     }
 
     public double getMinAmountPlayers() { // todo use
@@ -514,7 +567,11 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     public void setMinAmountPlayers(@Range(from = -1, to = Integer.MAX_VALUE) int newMaxAmount) {
         minAmountPlayers.setValue(newMaxAmount);
 
-        save().thenRun(this::reload);
+        save().thenAccept(result -> {
+            if (result) {
+                reload();
+            }
+        });
     }
 
     public @Range(from = -1, to = Integer.MAX_VALUE) int getMaxAmountPlayers() {
@@ -524,7 +581,11 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     public void setMaxAmountPlayers(@Range(from = -1, to = Integer.MAX_VALUE) int newMaxAmount) {
         maxAmountPlayers.setValue(newMaxAmount);
 
-        save().thenRun(this::reload);
+        save().thenAccept(result -> {
+            if (result) {
+                reload();
+            }
+        });
     }
 
     public double getMaxPlayerSpreadTeleport() { // todo use
@@ -534,7 +595,11 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     public void setPlayerSpreadDistanceTeleport(double newDistance) {
         playerSpreadDistance.setValue(newDistance);
 
-        save().thenRun(this::reload);
+        save().thenAccept(result -> {
+            if (result) {
+                reload();
+            }
+        });
     }
 
     public int getPointGoal() {

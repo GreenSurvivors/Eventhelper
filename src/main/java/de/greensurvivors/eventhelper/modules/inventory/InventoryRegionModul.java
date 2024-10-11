@@ -20,6 +20,7 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.Objects;
@@ -57,15 +58,15 @@ public class InventoryRegionModul extends AModul<InventoryConfig> implements Lis
     }
 
     @EventHandler
-    public void onJoin(PlayerJoinEvent event) {
+    private void onJoin(PlayerJoinEvent event) {
         playerInventoryCache.put(event.getPlayer().getUniqueId(), config.loadIdentifier(event.getPlayer()));
     }
 
-    private void updateInventory(Player buk_player, com.sk89q.worldedit.util.Location we_location) {
+    private void updateInventory(final @NotNull Player buk_player, final @NotNull com.sk89q.worldedit.util.Location weLocation) {
         LocalPlayer we_Player = WorldGuardPlugin.inst().wrapPlayer(buk_player);
 
-        RegionQuery query = WorldGuard.getInstance().getPlatform().getRegionContainer().createQuery();
-        String identifier = query.getApplicableRegions(we_location).queryValue(we_Player, inventory_identifier);
+        final @NotNull RegionQuery query = WorldGuard.getInstance().getPlatform().getRegionContainer().createQuery();
+        final @Nullable String identifier = query.getApplicableRegions(weLocation).queryValue(we_Player, inventory_identifier);
 
         String oldIndentifier = playerInventoryCache.get(buk_player.getUniqueId());
         playerInventoryCache.putIfAbsent(buk_player.getUniqueId(), identifier);
@@ -81,7 +82,7 @@ public class InventoryRegionModul extends AModul<InventoryConfig> implements Lis
     }
 
     @EventHandler(ignoreCancelled = true)
-    public void onPlayerTeleport(PlayerTeleportEvent event) {
+    private void onPlayerTeleport(final @NotNull PlayerTeleportEvent event) {
         if (inventory_identifier == null) {
             return;
         }
@@ -90,7 +91,7 @@ public class InventoryRegionModul extends AModul<InventoryConfig> implements Lis
     }
 
     @EventHandler
-    public void onPlayerMove(PlayerMoveEvent event) {
+    private void onPlayerMove(final @NotNull PlayerMoveEvent event) {
         if (!event.isCancelled()) {
             if (inventory_identifier == null) {
                 return;
@@ -107,7 +108,6 @@ public class InventoryRegionModul extends AModul<InventoryConfig> implements Lis
 
     @Override
     public void onEnable() {
-
         if (plugin.getDependencyManager().isWorldGuardEnabled()) {
             Bukkit.getPluginManager().registerEvents(this, plugin);
         }
