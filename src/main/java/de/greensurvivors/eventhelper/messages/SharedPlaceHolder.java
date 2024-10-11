@@ -15,6 +15,7 @@ public enum SharedPlaceHolder implements PlaceHolder {
     NUMBER("number"),
     PLAYER("player"),
     PLAYER2("other-player"),
+    ARGUMENT("argument"),
     TEXT("text");
 
     @Subst("name") // substitution; will be inserted if the IDE/compiler tests if input is valid.

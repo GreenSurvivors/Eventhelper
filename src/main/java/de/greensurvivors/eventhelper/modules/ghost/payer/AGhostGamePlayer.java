@@ -19,4 +19,8 @@ public abstract class AGhostGamePlayer extends AGhostGameParticipant {
     public abstract @Nullable String getTask_id();
 
     public abstract void finishCurrentQuest();
+
+    public @NotNull PlayerData getPlayerData() {
+        return playerData;
+    }
 }
