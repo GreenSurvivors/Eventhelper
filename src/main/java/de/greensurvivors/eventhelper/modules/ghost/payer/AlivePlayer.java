@@ -3,6 +3,7 @@ package de.greensurvivors.eventhelper.modules.ghost.payer;
 import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.modules.ghost.GhostGame;
 import de.greensurvivors.eventhelper.modules.ghost.MouseTrap;
+import de.greensurvivors.eventhelper.modules.ghost.QuestModifier;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -10,14 +11,23 @@ import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class AlivePlayer extends AGhostGamePlayer { // todo
-    private final @NotNull Set<String> doneTaskIds = new HashSet<>();
-    private @Nullable String currentTaskId;
+    private final @NotNull Set<QuestModifier> doneTaskIds = new HashSet<>();
+    private @Nullable QuestModifier currentTaskModifier;
     private @Nullable MouseTrap trappedIn;
 
     public AlivePlayer(final @NotNull EventHelper plugin,
                        final @NotNull GhostGame game,
                        final @NotNull UUID uuid) {
         super(plugin, game, uuid, new PlayerData(plugin, plugin.getServer().getPlayer(uuid)));
+
+        final Collection<QuestModifier> allTaskIds = getGame().getConfig().getTasks().values();
+
+        if (allTaskIds.isEmpty()) {
+            plugin.getComponentLogger().warn("Player with UUID \"{}\" has finished all available ghost game tasks, while still joining the game!", getUuid());
+            currentTaskModifier = null;
+        } else {
+            setNewTaskModifier(allTaskIds.stream().skip((int) (allTaskIds.size() * ThreadLocalRandom.current().nextDouble())).findFirst().orElse(null));
+        }
     }
 
     /**
@@ -27,16 +37,21 @@ public class AlivePlayer extends AGhostGamePlayer { // todo
     public AlivePlayer(final @NotNull AlivePlayer alivePlayer) {
         super(alivePlayer.plugin, alivePlayer.getGame(), alivePlayer.getUuid(), new PlayerData(alivePlayer.plugin, alivePlayer.getBukkitPlayer()));
         this.doneTaskIds.addAll(alivePlayer.doneTaskIds);
-        this.currentTaskId = alivePlayer.currentTaskId;
+
+        if (alivePlayer.currentTaskModifier == null || getGame().getConfig().getTasks().containsKey(alivePlayer.currentTaskModifier.getQuestIdentifier())) {
+            this.currentTaskModifier = alivePlayer.currentTaskModifier;
+        } else {
+            finishCurrentQuest();
+        }
     }
 
-    public void setNewTaskId(final @NotNull String newTaskId) {
-        this.currentTaskId = newTaskId;
+    public void setNewTaskModifier(final @Nullable QuestModifier questModifier) {
+        this.currentTaskModifier = questModifier;
     }
 
     @Override
-    public @Nullable String getTask_id() {
-        return currentTaskId;
+    public @Nullable QuestModifier getQuestModifier() {
+        return currentTaskModifier;
     }
 
     public boolean trapInMouseTrap(final @NotNull MouseTrap trap) {
@@ -49,13 +64,13 @@ public class AlivePlayer extends AGhostGamePlayer { // todo
     }
 
     @Override
-    public void finishCurrentQuest() {
-        doneTaskIds.add(currentTaskId);
+    public @Nullable QuestModifier finishCurrentQuest() {
+        doneTaskIds.add(currentTaskModifier);
 
-        final Set<String> allTaskIds = getGame().getConfig().getTasks().keySet();
-        final List<String> availebleTaskIds = new ArrayList<>(allTaskIds.size());
+        final Collection<QuestModifier> allTaskModifiers = getGame().getConfig().getTasks().values();
+        final List<QuestModifier> availebleTaskIds = new ArrayList<>(allTaskModifiers.size());
 
-        for (String taskId : allTaskIds) {
+        for (QuestModifier taskId : allTaskModifiers) {
             if (!doneTaskIds.contains(taskId)) {
                 availebleTaskIds.add(taskId);
             }
@@ -63,21 +78,23 @@ public class AlivePlayer extends AGhostGamePlayer { // todo
 
         if (availebleTaskIds.isEmpty()) {
             plugin.getComponentLogger().warn("Player with UUID \"{}\" has finished all available ghost game tasks!", getUuid());
-            currentTaskId = null;
+            currentTaskModifier = null;
         } else {
-            int index = ThreadLocalRandom.current().nextInt(allTaskIds.size());
-            setNewTaskId(availebleTaskIds.get(index));
+            int index = ThreadLocalRandom.current().nextInt(allTaskModifiers.size());
+            setNewTaskModifier(availebleTaskIds.get(index));
         }
+
+        return currentTaskModifier;
     }
 
     // used for dying
-    public @NotNull List<@NotNull String> generateGhostTasks() {
-        final List<String> result = new ArrayList<>();
+    public @NotNull List<@NotNull QuestModifier> generateGhostTasks() {
+        final List<QuestModifier> result = new ArrayList<>();
 
-        final Set<String> allTaskIds = getGame().getConfig().getTasks().keySet();
-        final List<String> availebleTaskIds = new ArrayList<>(allTaskIds.size());
+        final Collection<QuestModifier> allTaskIds = getGame().getConfig().getTasks().values();
+        final List<QuestModifier> availebleTaskIds = new ArrayList<>(allTaskIds.size());
 
-        for (String taskId : allTaskIds) {
+        for (QuestModifier taskId : allTaskIds) {
             if (!doneTaskIds.contains(taskId)) {
                 availebleTaskIds.add(taskId);
             }

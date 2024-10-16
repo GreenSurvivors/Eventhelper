@@ -2,6 +2,7 @@ package de.greensurvivors.eventhelper.modules.ghost.payer;
 
 import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.modules.ghost.GhostGame;
+import de.greensurvivors.eventhelper.modules.ghost.QuestModifier;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -9,19 +10,19 @@ import java.util.List;
 import java.util.UUID;
 
 public class DeadPlayer extends AGhostGamePlayer { // todo
-    private final @NotNull List<@NotNull String> stillPossibleTasks;
+    private final @NotNull List<@NotNull QuestModifier> stillPossibleTasks;
 
     public DeadPlayer(final @NotNull EventHelper plugin,
                       final @NotNull GhostGame game,
                       final @NotNull UUID uuid,
                       final @NotNull PlayerData playerData,
-                      final @NotNull List<@NotNull String> perishedTasks) {
+                      final @NotNull List<@NotNull QuestModifier> perishedTasks) {
         super(plugin, game, uuid, playerData);
         this.stillPossibleTasks = perishedTasks;
     }
 
     @Override
-    public @Nullable String getTask_id() {
+    public @Nullable QuestModifier getQuestModifier() {
         if (stillPossibleTasks.isEmpty()) {
             return null;
         } else {
@@ -29,16 +30,18 @@ public class DeadPlayer extends AGhostGamePlayer { // todo
         }
     }
 
-    /**
-     * Importent: Check via {@link #getTask_id()} if the player has still a task left.
-     * Trying to finish a task, when the task list is empty will result in an exception
-     */
     @Override
-    public void finishCurrentQuest() throws IndexOutOfBoundsException {
-        stillPossibleTasks.remove(0);
+    public @Nullable QuestModifier finishCurrentQuest() {
+        if (stillPossibleTasks.isEmpty()) {
+            return null;
+        } else {
+            stillPossibleTasks.remove(0);
+
+            return getQuestModifier();
+        }
     }
 
-    public @NotNull List<@NotNull String> getGhostTasks() {
+    public @NotNull List<@NotNull QuestModifier> getGhostTasks() {
         return stillPossibleTasks;
     }
 }

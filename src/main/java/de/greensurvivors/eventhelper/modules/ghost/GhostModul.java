@@ -20,8 +20,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 
-public class GhostModul extends AModul<GeneralGhostConfig> {
-    private final @NotNull Map<@NotNull String, GhostGame> games = new HashMap<>(); // todo remember to init with lower case names
+public class GhostModul extends AModul<GeneralGhostConfig> { // todo signs to click to join / spectate a game
+    private final @NotNull Map<@NotNull String, GhostGame> games = new HashMap<>();
 
     public GhostModul(final @NotNull EventHelper plugin) {
         super(plugin, new GeneralGhostConfig(plugin));
@@ -79,7 +79,7 @@ public class GhostModul extends AModul<GeneralGhostConfig> {
     }
 
     public @Nullable GhostGame createNewGame(final @NotNull String gameName) {
-        if (!games.containsKey(gameName)) {
+        if (!games.containsKey(gameName.toLowerCase(Locale.ENGLISH))) {
             GhostGame newGame = new GhostGame(plugin, this, gameName);
 
             if (config.isEnabled()) {

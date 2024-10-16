@@ -5,11 +5,14 @@ import de.greensurvivors.eventhelper.messages.LangPath;
 import de.greensurvivors.eventhelper.messages.SharedPlaceHolder;
 import de.greensurvivors.eventhelper.modules.ghost.ghostEntity.IGhost;
 import de.greensurvivors.eventhelper.modules.ghost.payer.*;
+import de.greensurvivors.simplequests.SimpleQuests;
 import de.greensurvivors.simplequests.events.QuestCompleatedEvent;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -45,7 +48,7 @@ public class GhostGame implements Listener { // todo spectating command
     private @NotNull GameState gameState;
     private long amountOfTicksRun;
     private @Nullable BukkitTask timeTask = null; // this has to be sync!
-    private int gainedPoints = 0;
+    private double gainedPoints = 0;
 
     public GhostGame(final @NotNull EventHelper plugin, final @NotNull GhostModul modul, final @NotNull String name_id) {
         this.plugin = plugin;
@@ -87,10 +90,64 @@ public class GhostGame implements Listener { // todo spectating command
     }*/
 
     @EventHandler(ignoreCancelled = true)
-    private void onQuestComplete(final @NotNull QuestCompleatedEvent event) { // todo
+    private void onQuestComplete(final @NotNull QuestCompleatedEvent event) {
+        AGhostGamePlayer ghostGamePlayer = players.get(event.getPlayer().getUniqueId());
+
+        if (ghostGamePlayer != null) {
+            final QuestModifier oldQuestModifier = ghostGamePlayer.getQuestModifier();
+            if (oldQuestModifier != null && oldQuestModifier.getQuestIdentifier().equalsIgnoreCase(event.getQuest().getQuestIdentifier())) {
+                // disable old quest
+                SimpleQuests.getInstance().getDatabaseManager().setTimesQuestFinished(event.getPlayer(), oldQuestModifier.getRequiredQuestIdentifier(), 0);
+
+                Double gainedPoints = getConfig().getPointsOfTask(event.getQuest().getQuestIdentifier());
+
+                if (gainedPoints != null) {
+                    gainPoints(ghostGamePlayer, gainedPoints);
+                }
+
+                final @Nullable QuestModifier newQuestModifier = ghostGamePlayer.finishCurrentQuest();
+
+                if (newQuestModifier != null) { // enable new quest
+                    SimpleQuests.getInstance().getDatabaseManager().setTimesQuestFinished(event.getPlayer(), newQuestModifier.getRequiredQuestIdentifier(), 1);
+                }
+            }
+        }
     }
 
-    public void startGame() { // todo start count down
+    public void startStartingCountdown() {
+        gameState = GameState.COUNTDOWN;
+        tickCountdown(10);
+    }
+
+    protected void tickCountdown(int secondsRemain) {
+        if (secondsRemain > 0) {
+            for (Iterator<Map.Entry<UUID, AGhostGamePlayer>> iterator = players.entrySet().iterator(); iterator.hasNext(); ) {
+                Map.Entry<UUID, AGhostGamePlayer> entry = iterator.next();
+                Player player = Bukkit.getPlayer(entry.getKey());
+
+                if (player != null) {
+                    plugin.getMessageManager().sendLang(player, GhostLangPath.GAME_COUNTDOWN,
+                        Placeholder.unparsed(SharedPlaceHolder.NUMBER.getKey(), String.valueOf(secondsRemain)));
+                    player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, SoundCategory.MASTER, 1.0f, 1.0f);
+                } else {
+                    if (entry.getValue() instanceof AlivePlayer alivePlayer) {
+                        MouseTrap trap = alivePlayer.getMouseTrapTrappedIn();
+
+                        if (trap != null) {
+                            trap.removePlayer(alivePlayer);
+                        }
+                    }
+
+                    iterator.remove();
+                }
+            }
+            Bukkit.getScheduler().runTaskLater(plugin, () -> tickCountdown(secondsRemain - 1), 20);
+        } else {
+            startGame();
+        }
+    }
+
+    protected void startGame() {
         gameState = GameState.STARTING;
         Random random = ThreadLocalRandom.current();
 
@@ -296,7 +353,7 @@ public class GhostGame implements Listener { // todo spectating command
                         plugin.getMessageManager().sendLang(player, GhostLangPath.ERROR_NO_LATE_JOIN);
                     }
                 }
-                case STARTING, RESETTING ->
+                case COUNTDOWN, STARTING, RESETTING ->
                     plugin.getMessageManager().sendLang(player, GhostLangPath.ERROR_JOIN_GAME_STATE);
             }
         } else {
@@ -305,7 +362,8 @@ public class GhostGame implements Listener { // todo spectating command
     }
 
     protected void makeAlivePlayer(final @NotNull Player player) {
-        players.put(player.getUniqueId(), new AlivePlayer(plugin, this, player.getUniqueId()));
+        final AlivePlayer alivePlayer = new AlivePlayer(plugin, this, player.getUniqueId());
+        players.put(player.getUniqueId(), alivePlayer);
 
         player.teleportAsync(config.getLobbyLocation());
 
@@ -317,6 +375,14 @@ public class GhostGame implements Listener { // todo spectating command
         }
         for (SpectatingPlayer spectatingPlayer : spectators.values()) {
             player.hidePlayer(plugin, spectatingPlayer.getBukkitPlayer());
+        }
+
+        for (QuestModifier questModifier : getConfig().getTasks().values()) {
+            if (questModifier.getQuestIdentifier().equals(alivePlayer.getQuestModifier().getQuestIdentifier())) {
+                SimpleQuests.getInstance().getDatabaseManager().setTimesQuestFinished(player, questModifier.getRequiredQuestIdentifier(), 1);
+            } else {
+                SimpleQuests.getInstance().getDatabaseManager().setTimesQuestFinished(player, questModifier.getRequiredQuestIdentifier(), 0);
+            }
         }
 
         plugin.getMessageManager().sendLang(player, GhostLangPath.PLAYER_GAME_JOIN,
@@ -464,6 +530,12 @@ public class GhostGame implements Listener { // todo spectating command
                 }
             }
 
+            final QuestModifier oldQuestModifier = ghostGamePlayer.getQuestModifier();
+            if (oldQuestModifier != null) {
+                // disable old quest
+                SimpleQuests.getInstance().getDatabaseManager().setTimesQuestFinished(ghostGamePlayer.getBukkitPlayer(), oldQuestModifier.getRequiredQuestIdentifier(), 0);
+            }
+
             offlinePlayers.put(player.getUniqueId(), players.remove(player.getUniqueId()));
 
             if (gameState != GameState.RESETTING) {
@@ -594,51 +666,57 @@ public class GhostGame implements Listener { // todo spectating command
         return this.players.containsKey(player.getUniqueId());
     }
 
-    public void gainPoints(final @NotNull Player pointGainingPlayer, final int newGainedPoints) {
-        if (players.containsKey(pointGainingPlayer.getUniqueId())) { // todo make better use of player - include in message something like <player got x points>?
-            this.gainedPoints += newGainedPoints;
+    public void gainPoints(final @NotNull AGhostGamePlayer pointGainingPlayer, final double newGainedPoints) { // todo message to player
+        this.gainedPoints += newGainedPoints;
 
-            if (gainedPoints >= getConfig().getPointGoal()) {
-                endGame(EndReason.WIN);
-            } else {
-                float percent = (float) getConfig().getPointGoal() / gainedPoints;
-                float stepSize = 1.0f / config.getPointGoal();
+        if (gainedPoints >= getConfig().getPointGoal()) {
+            endGame(EndReason.WIN);
+        } else {
+            float percent = (float) (getConfig().getPointGoal() / gainedPoints);
+            float stepSize = 1.0f / config.getPointGoal();
 
-                for (Iterator<Map.Entry<UUID, AGhostGamePlayer>> iterator = players.entrySet().iterator(); iterator.hasNext(); ) {
-                    Map.Entry<UUID, AGhostGamePlayer> entry = iterator.next();
+            for (Iterator<Map.Entry<UUID, AGhostGamePlayer>> iterator = players.entrySet().iterator(); iterator.hasNext(); ) {
+                Map.Entry<UUID, AGhostGamePlayer> entry = iterator.next();
 
-                    Player playerInGame = Bukkit.getPlayer(entry.getKey());
+                Player playerInGame = Bukkit.getPlayer(entry.getKey());
 
-                    if (playerInGame == null) {
-                        if (entry.getValue() instanceof AlivePlayer alivePlayer) {
-                            MouseTrap trap = alivePlayer.getMouseTrapTrappedIn();
+                if (playerInGame == null) {
+                    if (entry.getValue() instanceof AlivePlayer alivePlayer) {
+                        MouseTrap trap = alivePlayer.getMouseTrapTrappedIn();
 
-                            if (trap != null) {
-                                trap.removePlayer(alivePlayer);
-                            }
+                        if (trap != null) {
+                            trap.removePlayer(alivePlayer);
                         }
-
-                        iterator.remove();
-                    } else {
-                        playerInGame.setExp(percent);
                     }
-                }
 
-                if (players.isEmpty()) {
-                    endGame(EndReason.ALL_DEAD);
-
-                    return;
+                    iterator.remove();
+                } else {
+                    playerInGame.setExp(percent);
                 }
+            }
 
-                if (percent - 0.25f < stepSize) {
-                    broadcastAll(GhostLangPath.GAME_POINTS_MILESTONE_25);
-                } else if (percent - 0.5f < stepSize) {
-                    broadcastAll(GhostLangPath.GAME_POINTS_MILESTONE_50);
-                } else if (percent - 0.75f < stepSize) {
-                    broadcastAll(GhostLangPath.GAME_POINTS_MILESTONE_75);
-                } else if (percent - 0.9f < stepSize) {
-                    broadcastAll(GhostLangPath.GAME_POINTS_MILESTONE_75);
-                }
+            if (players.isEmpty()) {
+                endGame(EndReason.ALL_DEAD);
+
+                return;
+            }
+
+            if (percent - 0.25f < stepSize) {
+                broadcastAll(GhostLangPath.GAME_POINTS_MILESTONE_25,
+                    Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), pointGainingPlayer.getBukkitPlayer().displayName()),
+                    Placeholder.unparsed(SharedPlaceHolder.NUMBER.getKey(), String.valueOf(newGainedPoints)));
+            } else if (percent - 0.5f < stepSize) {
+                broadcastAll(GhostLangPath.GAME_POINTS_MILESTONE_50,
+                    Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), pointGainingPlayer.getBukkitPlayer().displayName()),
+                    Placeholder.unparsed(SharedPlaceHolder.NUMBER.getKey(), String.valueOf(newGainedPoints)));
+            } else if (percent - 0.75f < stepSize) {
+                broadcastAll(GhostLangPath.GAME_POINTS_MILESTONE_75,
+                    Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), pointGainingPlayer.getBukkitPlayer().displayName()),
+                    Placeholder.unparsed(SharedPlaceHolder.NUMBER.getKey(), String.valueOf(newGainedPoints)));
+            } else if (percent - 0.9f < stepSize) {
+                broadcastAll(GhostLangPath.GAME_POINTS_MILESTONE_90,
+                    Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), pointGainingPlayer.getBukkitPlayer().displayName()),
+                    Placeholder.unparsed(SharedPlaceHolder.NUMBER.getKey(), String.valueOf(newGainedPoints)));
             }
         }
     }
@@ -657,6 +735,7 @@ public class GhostGame implements Listener { // todo spectating command
 
     public enum GameState {
         IDLE,
+        COUNTDOWN,
         STARTING,
         RUNNING,
         RESETTING

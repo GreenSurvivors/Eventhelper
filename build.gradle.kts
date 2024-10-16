@@ -39,7 +39,7 @@ dependencies {
     paperweight.paperDevBundle("$mainMCVersion.4-R0.1-SNAPSHOT")
     compileOnly("com.sk89q.worldguard", "worldguard-bukkit", "7.0.9" /*"7.1.0-SNAPSHOT" // newest worldguard version*/)
     api("com.github.ben-manes.caffeine", "caffeine", "3.1.8") // caches
-    compileOnly("de.greensurvivors", "SimpleQuests", "1.2.0") // installed locally as we depend on a dev version
+    compileOnly("de.greensurvivors", "SimpleQuests", "2.0.0") // installed locally as we depend on a dev version
 }
 
 tasks {
