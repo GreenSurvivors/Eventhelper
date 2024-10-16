@@ -48,7 +48,8 @@ public record GhostLangPath(@NotNull String path, @NotNull String defaultValue) 
         GAME_POINTS_MILESTONE_25 = new GhostLangPath("game.points.milestone.25"),
         GAME_POINTS_MILESTONE_50 = new GhostLangPath("game.points.milestone.50"),
         GAME_POINTS_MILESTONE_75 = new GhostLangPath("game.points.milestone.75"),
-        GAME_POINTS_MILESTONE_90 = new GhostLangPath("game.points.milestone.90");
+        GAME_POINTS_MILESTONE_90 = new GhostLangPath("game.points.milestone.90"),
+        GAME_COUNTDOWN = new GhostLangPath("game.countdown");
 
     static @NotNull String moduleName = "ghost";
 

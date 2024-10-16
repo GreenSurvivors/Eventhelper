@@ -62,9 +62,9 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     private final @NotNull ConfigOption<@NotNull @Range(from = -1, to = Integer.MAX_VALUE) Integer> maxAmountPlayers = new ConfigOption<>("game.maxAmountPlayers", -1);
     private final @NotNull ConfigOption<@NotNull Double> playerSpreadDistance = new ConfigOption<>("game.teleport.playerSpread.distance", 0.5); // todo use
     private final @NotNull ConfigOption<@NotNull @Range(from = 1, to = Integer.MAX_VALUE) Integer> pointGoal = new ConfigOption<>("game.points.goal", 100);
+    private final @NotNull ConfigOption<@NotNull Map<@NotNull String, @NotNull QuestModifier>> quests = new ConfigOption<>("game.tasks", Map.of());
     private final @NotNull ConfigOption<@NotNull Duration> durationInTrapUntilDeath = new ConfigOption<>("game.mouseTrap.secondsUntilDeath", Duration.ofSeconds(90));
     private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = Integer.MAX_VALUE) Integer> perishedTaskAmount = new ConfigOption<>("game.tasks.perished.amount", 3);
-    private final @NotNull ConfigOption<@NotNull Map<String, Integer>> tasks = new ConfigOption<>("game.tasks.points", new HashMap<>()); // todo
 
     public GhostGameConfig(final @NotNull EventHelper plugin, final @NotNull String name_id, final @NotNull GhostModul modul) {
         super(plugin, Path.of("games", name_id + ".yaml"));
@@ -202,6 +202,17 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                         minAmountPlayers.setValue(config.getInt(minAmountPlayers.getPath(), minAmountPlayers.getFallback()));
                         maxAmountPlayers.setValue(config.getInt(maxAmountPlayers.getPath(), maxAmountPlayers.getFallback()));
                         playerSpreadDistance.setValue(config.getDouble(playerSpreadDistance.getPath(), playerSpreadDistance.getFallback()));
+
+                        Map<String, QuestModifier> questModifierMap = new HashMap<>();
+                        for (Object rawQuestModifier : config.getList(quests.getPath(), Collections.emptyList())) {
+                            if (rawQuestModifier instanceof QuestModifier questModifier) {
+                                questModifierMap.put(questModifier.getQuestIdentifier(), questModifier);
+                            } else {
+                                plugin.getComponentLogger().warn("Object in config of module {}, found with key {}  {} is not a valid QuestModifier", modul.getName(), quests.getPath(), rawQuestModifier);
+                            }
+                        }
+                        quests.setValue(questModifierMap);
+
                         pointGoal.setValue(config.getInt(pointGoal.getPath(), pointGoal.getFallback()));
                         durationInTrapUntilDeath.setValue(Duration.ofSeconds(config.getLong(durationInTrapUntilDeath.getPath(), durationInTrapUntilDeath.getFallback().toSeconds())));
                         perishedTaskAmount.setValue(config.getInt(perishedTaskAmount.getPath(), perishedTaskAmount.getFallback()));
@@ -279,6 +290,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                         config.set(minAmountPlayers.getPath(), minAmountPlayers.getValueOrFallback());
                         config.set(maxAmountPlayers.getPath(), maxAmountPlayers.getValueOrFallback());
                         config.set(playerSpreadDistance.getPath(), playerSpreadDistance.getValueOrFallback());
+                        config.set(quests.getPath(), List.copyOf(quests.getValueOrFallback().values()));
                         config.set(pointGoal.getPath(), pointGoal.getValueOrFallback());
                         config.set(durationInTrapUntilDeath.getPath(), durationInTrapUntilDeath.getValueOrFallback().toSeconds());
                         config.set(perishedTaskAmount.getPath(), perishedTaskAmount.getValueOrFallback());
@@ -619,6 +631,15 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
         });
     }
 
+    public @Nullable Double getPointsOfTask(final @NotNull String questIdentifier) { // todo setter
+        final @Nullable QuestModifier questModifier = quests.getValueOrFallback().get(questIdentifier);
+        if (questModifier != null) {
+            return questModifier.getPointsRewarded();
+        } else {
+            return null;
+        }
+    }
+
     public int getPointGoal() {
         return pointGoal.getValueOrFallback();
     }
@@ -643,7 +664,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
         perishedTaskAmount.setValue(newAmountOfTasks);
     }
 
-    public @NotNull Map<@NotNull String, @NotNull Integer> getTasks() {
-        return tasks.getValueOrFallback();
+    public @NotNull Map<@NotNull String, @NotNull QuestModifier> getTasks() {
+        return quests.getValueOrFallback();
     }
 }

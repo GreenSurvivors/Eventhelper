@@ -89,7 +89,7 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
                     if (game != null) {
                         switch (args.get(1).toLowerCase(Locale.ENGLISH)) {
                             case START_GAME -> {
-                                game.startGame();
+                                game.startStartingCountdown();
 
                                 plugin.getMessageManager().sendPrefixedLang(sender,
                                     GhostLangPath.MESSAGE_PREFIX, GhostLangPath.COMMAND_START_SUCCESS,

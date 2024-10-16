@@ -2,6 +2,7 @@ package de.greensurvivors.eventhelper.modules.ghost.payer;
 
 import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.modules.ghost.GhostGame;
+import de.greensurvivors.eventhelper.modules.ghost.QuestModifier;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -16,9 +17,9 @@ public abstract class AGhostGamePlayer extends AGhostGameParticipant {
         super(plugin, game, uuid, playerData);
     }
 
-    public abstract @Nullable String getTask_id();
+    public abstract @Nullable QuestModifier getQuestModifier();
 
-    public abstract void finishCurrentQuest();
+    public abstract @Nullable QuestModifier finishCurrentQuest();
 
     public @NotNull PlayerData getPlayerData() {
         return playerDataBeforeGame;
