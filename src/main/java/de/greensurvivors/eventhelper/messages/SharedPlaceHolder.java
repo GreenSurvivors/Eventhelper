@@ -13,6 +13,7 @@ public enum SharedPlaceHolder implements PlaceHolder {
     MIN("min"),
     MAX("max"),
     NUMBER("number"),
+    TIME("time"),
     PLAYER("player"),
     PLAYER2("other-player"),
     ARGUMENT("argument"),

@@ -77,8 +77,9 @@ public class AlivePlayer extends AGhostGamePlayer { // todo
         }
 
         if (availebleTaskIds.isEmpty()) {
-            plugin.getComponentLogger().warn("Player with UUID \"{}\" has finished all available ghost game tasks!", getUuid());
-            currentTaskModifier = null;
+            // in case a player has done all possible tasks just pull a random one
+            plugin.getComponentLogger().debug("Player with UUID \"{}\" has finished all available ghost game tasks!", getUuid());
+            setNewTaskModifier(allTaskModifiers.stream().skip((int) (allTaskModifiers.size() * ThreadLocalRandom.current().nextDouble())).findFirst().orElse(null));
         } else {
             int index = ThreadLocalRandom.current().nextInt(allTaskModifiers.size());
             setNewTaskModifier(availebleTaskIds.get(index));
@@ -91,10 +92,10 @@ public class AlivePlayer extends AGhostGamePlayer { // todo
     public @NotNull List<@NotNull QuestModifier> generateGhostTasks() {
         final List<QuestModifier> result = new ArrayList<>();
 
-        final Collection<QuestModifier> allTaskIds = getGame().getConfig().getTasks().values();
-        final List<QuestModifier> availebleTaskIds = new ArrayList<>(allTaskIds.size());
+        final Collection<QuestModifier> allTaskModifiers = getGame().getConfig().getTasks().values();
+        final List<QuestModifier> availebleTaskIds = new ArrayList<>(allTaskModifiers.size());
 
-        for (QuestModifier taskId : allTaskIds) {
+        for (QuestModifier taskId : allTaskModifiers) {
             if (!doneTaskIds.contains(taskId)) {
                 availebleTaskIds.add(taskId);
             }
@@ -103,11 +104,11 @@ public class AlivePlayer extends AGhostGamePlayer { // todo
         final int perishedTaskAmount = getGame().getConfig().getPerishedTaskAmount();
         for (int i = 0; i <= perishedTaskAmount; i++) {
             if (availebleTaskIds.isEmpty()) {
-                plugin.getComponentLogger().warn("Player with UUID \"{}\" could not generate enough ghost game tasks ({} / {})!", getUuid(), result.size(), perishedTaskAmount);
+                plugin.getComponentLogger().debug("Player with UUID \"{}\" could not generate enough ghost game tasks ({} / {})!", getUuid(), result.size(), perishedTaskAmount);
 
-                break;
+                allTaskModifiers.stream().skip((int) (allTaskModifiers.size() * ThreadLocalRandom.current().nextDouble())).findFirst().ifPresent(result::add);
             } else {
-                int index = ThreadLocalRandom.current().nextInt(allTaskIds.size());
+                int index = ThreadLocalRandom.current().nextInt(allTaskModifiers.size());
                 result.add(availebleTaskIds.remove(index));
             }
         }

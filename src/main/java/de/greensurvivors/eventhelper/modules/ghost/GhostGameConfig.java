@@ -45,7 +45,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     // general
     private final @NotNull String name_id;
     private final @NotNull ConfigOption<@NotNull Component> displayName;
-    private final @NotNull ConfigOption<@NotNull List<@NotNull MouseTrap>> mouseTraps = new ConfigOption<>("game.mouseTraps", List.of()); // we need fast random access. But the MouseTraps should be unique!
+    private final @NotNull ConfigOption<@NotNull Set<@NotNull MouseTrap>> mouseTraps = new ConfigOption<>("game.mouseTraps", Set.of()); // we need fast random access. But the MouseTraps should be unique!
     private final @NotNull ConfigOption<@NotNull List<@NotNull String>> gameInitCommands = new ConfigOption<>("game.commands.gameInit", List.of());
     private final @NotNull ConfigOption<@NotNull Location> lobbyLocation = new ConfigOption<>("game.lobbyLocation", Bukkit.getWorlds().get(0).getSpawnLocation());
     private final @NotNull ConfigOption<@NotNull List<@NotNull String>> gameStartCommands = new ConfigOption<>("game.commands.gameStart", List.of());
@@ -185,7 +185,9 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                             displayName.setValue(MiniMessage.miniMessage().deserialize(rawDisplayName));
                         }
 
-                        mouseTraps.setValue((List<MouseTrap>) config.getList(mouseTraps.getPath(), mouseTraps.getFallback()));
+                        @Nullable List<@NotNull MouseTrap> loadedMouseTraps = (List<MouseTrap>) config.getList(mouseTraps.getPath());
+                        mouseTraps.setValue(loadedMouseTraps == null ? mouseTraps.getFallback() : new HashSet<>(loadedMouseTraps));
+
                         gameInitCommands.setValue(config.getStringList(gameInitCommands.getPath()));
                         lobbyLocation.setValue(config.getLocation(lobbyLocation.getPath(), lobbyLocation.getFallback()));
                         gameStartCommands.setValue(config.getStringList(gameStartCommands.getPath()));
@@ -277,7 +279,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                         config.set(ghostAmount.getPath(), ghostAmount.getValueOrFallback());
 
                         config.set(displayName.getPath(), MiniMessage.miniMessage().serialize(displayName.getValueOrFallback()));
-                        config.set(mouseTraps.getPath(), mouseTraps.getValueOrFallback());
+                        config.set(mouseTraps.getPath(), List.copyOf(mouseTraps.getValueOrFallback()));
                         config.set(lobbyLocation.getPath(), lobbyLocation.getValueOrFallback());
                         config.set(playerStartLocation.getPath(), playerStartLocation.getValueOrFallback());
                         config.set(spectatorStartLocation.getPath(), spectatorStartLocation.getValueOrFallback());
@@ -453,7 +455,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
         return displayName.getValueOrFallback();
     }
 
-    public @NotNull List<@NotNull MouseTrap> getMouseTraps() { // todo make editable via command
+    public @NotNull Set<@NotNull MouseTrap> getMouseTraps() { // todo make editable via command
         return mouseTraps.getValueOrFallback();
     }
 
@@ -497,7 +499,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
         return spectatorStartLocation.getValueOrFallback();
     }
 
-    public void setSpectatorStartLocation(final @NotNull Location newStartingLocation) {
+    public void setSpectatorStartLocation(final @NotNull Location newStartingLocation) { // todo
         spectatorStartLocation.setValue(newStartingLocation);
     }
 

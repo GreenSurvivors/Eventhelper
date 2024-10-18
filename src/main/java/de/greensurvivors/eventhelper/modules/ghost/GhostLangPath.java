@@ -34,13 +34,15 @@ public record GhostLangPath(@NotNull String path, @NotNull String defaultValue) 
         PLAYER_GAME_JOIN_BROADCAST = new GhostLangPath("game.player.join.broadcast"), // todo per game override
         PLAYER_GAME_QUIT = new GhostLangPath("game.player.quit.self"), // todo per game override
         PLAYER_GAME_QUIT_BROADCAST = new GhostLangPath("game.player.quit.broadcast"), // todo per game override
+        PLAYER_CAPTURED = new GhostLangPath("game.player.trap.trapped"),
+        PLAYER_TRAP_TIME_REMAINING = new GhostLangPath("game.player.trap.time.remaining"),
         GAME_WIN_BROADCAST = new GhostLangPath("game.win.broadcast"), // todo per game override
         GAME_LOOSE_TIME_BROADCAST = new GhostLangPath("game.loose.time.broadcast"), // todo per game override
         GAME_LOOSE_DEATH_BROADCAST = new GhostLangPath("game.loose.death.broadcast"), // todo per game override
         ERROR_GAME_FULL = new GhostLangPath("error.game-full"),
         ERROR_NO_LATE_JOIN = new GhostLangPath("error.no-late-join"),
         ERROR_NO_REJOIN = new GhostLangPath("error.no-rejion"),
-        ERROR_ALREADY_PLAYING = new GhostLangPath("error.already-playing"),
+        ERROR_ALREADY_PARTICIPATING = new GhostLangPath("error.already-participating"),
         ERROR_NOT_PLAYING_SELF = new GhostLangPath("error.not-playing.self"),
         ERROR_JOIN_GAME_STATE = new GhostLangPath("error.join.game-state"),
         ERROR_MODUL_NOT_ENABLED = new GhostLangPath("error.module-not-enabled"),
@@ -49,7 +51,15 @@ public record GhostLangPath(@NotNull String path, @NotNull String defaultValue) 
         GAME_POINTS_MILESTONE_50 = new GhostLangPath("game.points.milestone.50"),
         GAME_POINTS_MILESTONE_75 = new GhostLangPath("game.points.milestone.75"),
         GAME_POINTS_MILESTONE_90 = new GhostLangPath("game.points.milestone.90"),
-        GAME_COUNTDOWN = new GhostLangPath("game.countdown");
+        GAME_COUNTDOWN = new GhostLangPath("game.countdown"),
+
+    SIGN_JOIN = new GhostLangPath("game.sign.join", "[ghost join]"),
+        SIGN_SPECTATE = new GhostLangPath("game.sign.spectate", "[ghost spectate]"),
+        SIGN_QUIT = new GhostLangPath("game.sign.spectate", "[ghost quit]"),
+        ERROR_SIGN_CREATE_INVALID_GAME = new GhostLangPath("error.sign.create.invalid-game"),
+        SIGN_CREATED_JOIN = new GhostLangPath("game.sign.create.join"),
+        SIGN_CREATED_SPECTATE = new GhostLangPath("game.sign.create.spectate"),
+        SIGN_CREATED_QUIT = new GhostLangPath("game.sign.create.quit");
 
     static @NotNull String moduleName = "ghost";
 
