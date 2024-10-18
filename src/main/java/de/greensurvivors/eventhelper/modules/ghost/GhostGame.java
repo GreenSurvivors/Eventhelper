@@ -2,6 +2,7 @@ package de.greensurvivors.eventhelper.modules.ghost;
 
 import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.messages.LangPath;
+import de.greensurvivors.eventhelper.messages.MessageManager;
 import de.greensurvivors.eventhelper.messages.SharedPlaceHolder;
 import de.greensurvivors.eventhelper.modules.ghost.ghostEntity.IGhost;
 import de.greensurvivors.eventhelper.modules.ghost.payer.*;
@@ -9,7 +10,7 @@ import de.greensurvivors.simplequests.SimpleQuests;
 import de.greensurvivors.simplequests.events.QuestCompleatedEvent;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
-import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
@@ -17,6 +18,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.CreatureSpawnEvent;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.potion.PotionEffect;
@@ -28,11 +30,16 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.Serial;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.regex.Pattern;
 
+// todo automatic set amount of ghasts per amount of players
 public class GhostGame implements Listener { // todo spectating command
+    private final static @NotNull Pattern gameNamePattern = Pattern.compile("\\{gameName}");
+
     private final @NotNull EventHelper plugin;
     private final @NotNull GhostModul ghostModul;
     private final @NotNull GhostGameConfig config;
@@ -41,7 +48,6 @@ public class GhostGame implements Listener { // todo spectating command
     private final @NotNull Map<@NotNull UUID, @NotNull AGhostGamePlayer> offlinePlayers = new HashMap<>();
     private final @NotNull Map<@NotNull UUID, @NotNull AGhostGamePlayer> players = new HashMap<>();
     private final @NotNull Map<@NotNull UUID, @NotNull SpectatingPlayer> spectators = new HashMap<>();
-    private final @NotNull Set<@NotNull MouseTrap> mouseTraps = new HashSet<>();
     private final @NotNull Set<@NotNull IGhost> ghosts = new HashSet<>();
     private final @NotNull Scoreboard scoreboard;
     private final @NotNull Team perishedTeam;
@@ -58,7 +64,7 @@ public class GhostGame implements Listener { // todo spectating command
         this.gameState = GameState.IDLE;
         this.config = new GhostGameConfig(plugin, name_id, modul);
 
-        scoreboard = Bukkit.getScoreboardManager().getNewScoreboard();
+        scoreboard = plugin.getServer().getScoreboardManager().getNewScoreboard();
 
         perishedTeam = scoreboard.registerNewTeam("perished");
         perishedTeam.setOption(Team.Option.COLLISION_RULE, Team.OptionStatus.NEVER);
@@ -114,16 +120,36 @@ public class GhostGame implements Listener { // todo spectating command
         }
     }
 
+    @EventHandler(ignoreCancelled = true)
+    private void onPlayerDeath(final @NotNull PlayerDeathEvent event) {
+        final AGhostGamePlayer ghostGamePlayer = players.get(event.getPlayer().getUniqueId());
+        if (ghostGamePlayer instanceof AlivePlayer) {
+            makePerishedPlayer(event.getPlayer().getUniqueId());
+            event.getPlayer().teleportAsync(getConfig().getPlayerStartLocation());
+            event.setCancelled(true);
+        } else if (ghostGamePlayer instanceof DeadPlayer) {
+            event.getPlayer().teleportAsync(getConfig().getPlayerStartLocation());
+            event.setCancelled(true);
+        } else if (spectators.containsKey(event.getPlayer().getUniqueId())) { // how?
+            event.getPlayer().teleportAsync(getConfig().getPlayerStartLocation());
+            event.setCancelled(true);
+        }
+    }
+
     public void startStartingCountdown() {
         gameState = GameState.COUNTDOWN;
         tickCountdown(10);
+
+        for (String cmd : getConfig().getGameInitCommands()) {
+            plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), gameNamePattern.matcher(cmd).replaceAll(getName_id()));
+        }
     }
 
     protected void tickCountdown(int secondsRemain) {
         if (secondsRemain > 0) {
             for (Iterator<Map.Entry<UUID, AGhostGamePlayer>> iterator = players.entrySet().iterator(); iterator.hasNext(); ) {
                 Map.Entry<UUID, AGhostGamePlayer> entry = iterator.next();
-                Player player = Bukkit.getPlayer(entry.getKey());
+                Player player = plugin.getServer().getPlayer(entry.getKey());
 
                 if (player != null) {
                     plugin.getMessageManager().sendLang(player, GhostLangPath.GAME_COUNTDOWN,
@@ -141,7 +167,7 @@ public class GhostGame implements Listener { // todo spectating command
                     iterator.remove();
                 }
             }
-            Bukkit.getScheduler().runTaskLater(plugin, () -> tickCountdown(secondsRemain - 1), 20);
+            plugin.getServer().getScheduler().runTaskLater(plugin, () -> tickCountdown(secondsRemain - 1), 20);
         } else {
             startGame();
         }
@@ -169,7 +195,7 @@ public class GhostGame implements Listener { // todo spectating command
 
         for (Iterator<Map.Entry<UUID, AGhostGamePlayer>> iterator = players.entrySet().iterator(); iterator.hasNext(); ) {
             Map.Entry<UUID, AGhostGamePlayer> entry = iterator.next();
-            Player player = Bukkit.getPlayer(entry.getKey());
+            Player player = plugin.getServer().getPlayer(entry.getKey());
 
             if (player == null) {
                 if (entry.getValue() instanceof AlivePlayer alivePlayer) {
@@ -194,7 +220,11 @@ public class GhostGame implements Listener { // todo spectating command
             return;
         }
 
-        timeTask = Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 0, 1);
+        for (String cmd : getConfig().getGameStartCommands()) {
+            plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), gameNamePattern.matcher(cmd).replaceAll(getName_id()));
+        }
+
+        timeTask = plugin.getServer().getScheduler().runTaskTimer(plugin, this::tick, 0, 1);
         gameState = GameState.RUNNING;
     }
 
@@ -212,7 +242,7 @@ public class GhostGame implements Listener { // todo spectating command
                     // set playerTime for alive players
                     for (Iterator<Map.Entry<UUID, AGhostGamePlayer>> iterator = players.entrySet().iterator(); iterator.hasNext(); ) {
                         Map.Entry<UUID, AGhostGamePlayer> entry = iterator.next();
-                        Player player = Bukkit.getPlayer(entry.getKey());
+                        Player player = plugin.getServer().getPlayer(entry.getKey());
 
                         if (player == null) {
                             if (entry.getValue() instanceof AlivePlayer alivePlayer) {
@@ -229,11 +259,42 @@ public class GhostGame implements Listener { // todo spectating command
                             player.setPlayerTime(playerTimeNow, false);
                         }
                     }
+
+                    for (MouseTrap mouseTrap : getConfig().getMouseTraps()) {
+                        for (Map.Entry<AlivePlayer, Long> entry : mouseTrap.getTrappedPlayers().entrySet()) {
+                            Duration durationToStayAlive = getConfig().getDurationTrappedUntilDeath().minusMillis(entry.getValue());
+                            if (durationToStayAlive.toMillis() < 0) {
+                                makePerishedPlayer(entry.getKey().getUuid());
+
+                                if (areAllPlayersDead()) {
+                                    endGame(EndReason.ALL_DEAD);
+                                }
+                            } else {
+                                switch ((int) durationToStayAlive.toSeconds()) {
+                                    // don't do full countdown from 10 to 1, if many players got trapped around the same time the game will spam otherwise
+                                    case 1, 2, 3, 4, 5, 10, 30, 60, 120 ->
+                                        broadcastAll(GhostLangPath.PLAYER_TRAP_TIME_REMAINING,
+                                            Placeholder.component(SharedPlaceHolder.TIME.getKey(), MessageManager.formatTime(durationToStayAlive)));
+                                    default -> {
+                                        // check if the amount of seconds left is in function f(0) = 300, f(x+1) = 2 * f(x)
+                                        // so 5m, 10m, 20m, 40m... But please, for the love of cod, don't make use of this case.
+                                        // Players shouldn't stay 5 minutes or longer trapped. That's boring!
+                                        // I will come and slap a fish in your face if you do!
+                                        long temp = durationToStayAlive.toSeconds() / 300;
+                                        if (temp > 0 && (temp & (temp - 1)) == 0) {
+                                            broadcastAll(GhostLangPath.PLAYER_TRAP_TIME_REMAINING,
+                                                Placeholder.component(SharedPlaceHolder.TIME.getKey(), MessageManager.formatTime(durationToStayAlive)));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 } else {
                     // just set to start time for players
                     for (Iterator<Map.Entry<UUID, AGhostGamePlayer>> iterator = players.entrySet().iterator(); iterator.hasNext(); ) {
                         Map.Entry<UUID, AGhostGamePlayer> entry = iterator.next();
-                        Player player = Bukkit.getPlayer(entry.getKey());
+                        Player player = plugin.getServer().getPlayer(entry.getKey());
 
                         if (player == null) {
                             if (entry.getValue() instanceof AlivePlayer alivePlayer) {
@@ -276,19 +337,23 @@ public class GhostGame implements Listener { // todo spectating command
             } // nothing to do
         }
 
+        for (String cmd : getConfig().getGameEndCommands()) {
+            plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), gameNamePattern.matcher(cmd).replaceAll(getName_id()));
+        }
+
         resetGame();
     }
 
     public void resetGame() {
         gameState = GameState.RESETTING;
 
-        for (MouseTrap mouseTrap : mouseTraps) {
+        for (MouseTrap mouseTrap : getConfig().getMouseTraps()) {
             mouseTrap.releaseAllPlayers();
         }
 
         for (Iterator<Map.Entry<UUID, AGhostGamePlayer>> iterator = players.entrySet().iterator(); iterator.hasNext(); ) {
             Map.Entry<UUID, AGhostGamePlayer> entry = iterator.next();
-            @Nullable Player player = Bukkit.getPlayer(entry.getKey());
+            @Nullable Player player = plugin.getServer().getPlayer(entry.getKey());
             if (player != null) {
                 player.teleportAsync(config.getEndLocation());
             }
@@ -317,8 +382,16 @@ public class GhostGame implements Listener { // todo spectating command
         return config.getMaxAmountPlayers() == -1 || players.size() < config.getMaxAmountPlayers();
     }
 
-    public void playerJoin(final @NotNull Player player) { // permission
-        if (ghostModul.getGameOfPlayer(player) != null) {
+    public void playerSpectate(final @NotNull Player player) {
+        if (ghostModul.getGameParticipatingIn(player) != null) {
+            makePlayerSpectator(player);
+        } else {
+            plugin.getMessageManager().sendLang(player, GhostLangPath.ERROR_ALREADY_PARTICIPATING);
+        }
+    }
+
+    public void playerJoin(final @NotNull Player player) { // todo permission
+        if (ghostModul.getGameParticipatingIn(player) != null) {
             switch (gameState) {
                 case IDLE -> {
                     if (!isGameFull()) {
@@ -357,7 +430,7 @@ public class GhostGame implements Listener { // todo spectating command
                     plugin.getMessageManager().sendLang(player, GhostLangPath.ERROR_JOIN_GAME_STATE);
             }
         } else {
-            plugin.getMessageManager().sendLang(player, GhostLangPath.ERROR_ALREADY_PLAYING);
+            plugin.getMessageManager().sendLang(player, GhostLangPath.ERROR_ALREADY_PARTICIPATING);
         }
     }
 
@@ -384,6 +457,8 @@ public class GhostGame implements Listener { // todo spectating command
                 SimpleQuests.getInstance().getDatabaseManager().setTimesQuestFinished(player, questModifier.getRequiredQuestIdentifier(), 0);
             }
         }
+
+        player.setGameMode(GameMode.SURVIVAL);
 
         plugin.getMessageManager().sendLang(player, GhostLangPath.PLAYER_GAME_JOIN,
             Placeholder.component(SharedPlaceHolder.TEXT.getKey(), getConfig().getDisplayName()));
@@ -460,8 +535,14 @@ public class GhostGame implements Listener { // todo spectating command
             }
         }
 
+        player.setGameMode(GameMode.ADVENTURE);
+        player.setInvulnerable(true);
+        player.setAllowFlight(true);
+
         player.setScoreboard(scoreboard);
         perishedTeam.addPlayer(player);
+
+        player.teleportAsync(getConfig().getSpectatorStartLocation());
     }
 
     protected void makePerishedPlayer(final @NotNull UUID uuid) throws NoAlivePlayerException {
@@ -473,6 +554,7 @@ public class GhostGame implements Listener { // todo spectating command
 
             perishedTeam.addPlayer(player);
             player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, -1, 0, false, false, false));
+            player.setGameMode(GameMode.SURVIVAL);
 
         } else {
             throw new NoAlivePlayerException("Tried to perish player with UUID " + uuid + ", but they where not alive!");
@@ -483,6 +565,7 @@ public class GhostGame implements Listener { // todo spectating command
         final @Nullable Player player = deadPlayer.getBukkitPlayer();
         players.put(deadPlayer.getUuid(), new DeadPlayer(plugin, this, deadPlayer.getUuid(), new PlayerData(plugin, player), deadPlayer.getGhostTasks()));
         player.teleportAsync(config.getLobbyLocation());
+        player.setGameMode(GameMode.SURVIVAL);
 
         perishedTeam.addPlayer(player);
         player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, -1, 0, false, false, false));
@@ -581,7 +664,7 @@ public class GhostGame implements Listener { // todo spectating command
         for (Iterator<Map.Entry<UUID, AGhostGamePlayer>> iterator = players.entrySet().iterator(); iterator.hasNext(); ) {
             Map.Entry<UUID, AGhostGamePlayer> entry = iterator.next();
             if (!entry.getKey().equals(exception)) {
-                Player player = Bukkit.getPlayer(entry.getKey());
+                Player player = plugin.getServer().getPlayer(entry.getKey());
 
                 if (player != null) {
                     plugin.getMessageManager().sendLang(player, langPath, resolvers);
@@ -612,7 +695,7 @@ public class GhostGame implements Listener { // todo spectating command
         for (Iterator<Map.Entry<UUID, AGhostGamePlayer>> iterator = players.entrySet().iterator(); iterator.hasNext(); ) {
             Map.Entry<UUID, AGhostGamePlayer> entry = iterator.next();
             if (!entry.getKey().equals(exception)) {
-                Player player = Bukkit.getPlayer(entry.getKey());
+                Player player = plugin.getServer().getPlayer(entry.getKey());
 
                 if (player != null) {
                     plugin.getMessageManager().sendLang(player, langPath);
@@ -662,8 +745,13 @@ public class GhostGame implements Listener { // todo spectating command
         return players.values().stream().noneMatch(p -> p instanceof AlivePlayer);
     }
 
-    public boolean isPlaying(final @NotNull Player player) {
-        return this.players.containsKey(player.getUniqueId());
+    public @Nullable AGhostGamePlayer getGhostGamePlayer(final @NotNull Player player) {
+        return this.players.get(player.getUniqueId());
+    }
+
+    public @Nullable AGhostGameParticipant getGhostGhostGameParticipant(final @NotNull Player player) {
+        AGhostGamePlayer ghostGamePlayer = this.players.get(player.getUniqueId());
+        return ghostGamePlayer == null ? spectators.get(player.getUniqueId()) : ghostGamePlayer;
     }
 
     public void gainPoints(final @NotNull AGhostGamePlayer pointGainingPlayer, final double newGainedPoints) { // todo message to player
@@ -678,7 +766,7 @@ public class GhostGame implements Listener { // todo spectating command
             for (Iterator<Map.Entry<UUID, AGhostGamePlayer>> iterator = players.entrySet().iterator(); iterator.hasNext(); ) {
                 Map.Entry<UUID, AGhostGamePlayer> entry = iterator.next();
 
-                Player playerInGame = Bukkit.getPlayer(entry.getKey());
+                Player playerInGame = plugin.getServer().getPlayer(entry.getKey());
 
                 if (playerInGame == null) {
                     if (entry.getValue() instanceof AlivePlayer alivePlayer) {
@@ -721,8 +809,8 @@ public class GhostGame implements Listener { // todo spectating command
         }
     }
 
-    public @NotNull Set<MouseTrap> getMouseTraps() {
-        return mouseTraps;
+    public @NotNull Set<@NotNull MouseTrap> getMouseTraps() {
+        return getConfig().getMouseTraps();
     }
 
     public enum EndReason {

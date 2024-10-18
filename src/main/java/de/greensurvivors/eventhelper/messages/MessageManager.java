@@ -7,6 +7,7 @@ import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import net.kyori.adventure.util.UTF8ResourceBundleControl;
 import org.apache.commons.io.FileUtils;
 import org.bukkit.Bukkit;
@@ -21,6 +22,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.CodeSource;
+import java.time.Duration;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.regex.Pattern;
@@ -41,11 +43,46 @@ public class MessageManager {
             getRawString(path)
         )
     );
+    private final @NotNull LoadingCache<@NotNull LangPath, @NotNull String> strippedLangCache = Caffeine.newBuilder().build(
+        path -> MiniMessage.miniMessage().stripTags(
+            getRawString(path)
+        )
+    );
 
     private @NotNull Locale locale = Locale.ENGLISH;
 
     public MessageManager(@NotNull EventHelper plugin) {
         this.plugin = plugin;
+    }
+
+    public static @NotNull Component formatTime(final @NotNull Duration duration) {
+        String timeStr = "";
+
+        final long days = duration.toDaysPart();
+        if (days != 0) {
+            timeStr += days + "d";
+        }
+
+        final int hours = duration.toHoursPart();
+        if (hours != 0) {
+            timeStr += hours + "h";
+        }
+
+        final int minutes = duration.toMinutesPart();
+        if (minutes != 0) {
+            timeStr += minutes + "m";
+        }
+
+        final int seconds = duration.toSecondsPart();
+        if (seconds != 0) {
+            timeStr += seconds + "s";
+        }
+
+        final int ticks = duration.toMillisPart() / 50;
+        if (ticks != 0) {
+            timeStr += ticks + "t";
+        }
+        return Component.text(timeStr);
     }
 
     /**
@@ -82,6 +119,9 @@ public class MessageManager {
             langCache.invalidateAll();
             langCache.cleanUp();
             langCache.asMap().clear();
+            strippedLangCache.invalidateAll();
+            strippedLangCache.cleanUp();
+            strippedLangCache.asMap().clear();
             resourceBundles.invalidateAll();
             resourceBundles.cleanUp();
             resourceBundles.asMap().clear();
@@ -118,8 +158,11 @@ public class MessageManager {
             }
         }
 
-        // clear component cache
-        langCache.asMap().remove(modulName);
+        // clear cache
+        resourceBundles.asMap().remove(modulName);
+        // todo remove all langPath cache associated with this module
+        //langCache.invalidateAll();
+        //rawLangCache.invalidateAll();
 
         return resourceBundle;
     }
@@ -363,5 +406,11 @@ public class MessageManager {
     public void broadcastLang(final @NotNull LangPath path,
                               final @NotNull TagResolver... resolver) {
         Bukkit.broadcast(MiniMessage.miniMessage().deserialize(getRawString(path), resolver));
+    }
+
+    public boolean isStrippedEqualsIgnoreCase(final @NotNull LangPath langPath, final @NotNull Component component) {
+        String strToTest = PlainTextComponentSerializer.plainText().serialize(component).trim();
+
+        return strippedLangCache.get(langPath).equalsIgnoreCase(strToTest);
     }
 }
