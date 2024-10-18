@@ -1,4 +1,4 @@
-package de.greensurvivors.eventhelper.listeners;
+package de.greensurvivors.eventhelper.modules.tnt;
 
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldguard.WorldGuard;
@@ -8,6 +8,8 @@ import com.sk89q.worldguard.protection.flags.StateFlag;
 import com.sk89q.worldguard.protection.flags.registry.FlagConflictException;
 import com.sk89q.worldguard.protection.flags.registry.FlagRegistry;
 import com.sk89q.worldguard.protection.regions.RegionQuery;
+import de.greensurvivors.eventhelper.EventHelper;
+import de.greensurvivors.eventhelper.modules.AModul;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Sound;
@@ -18,22 +20,21 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.TNTPrimed;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntitySpawnEvent;
-import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Level;
 
-public class TNTKnockbackListener implements Listener {
-    private final Plugin eventHelper;
-    private final Plugin worldGuard;
+public class TNTKnockbackModul extends AModul<TNTKnockbackConfig> implements Listener {
     private final HashMap<UUID, TntAndTasks> interactionMap = new HashMap<>();
     private StateFlag tntFlag;
 
@@ -42,11 +43,11 @@ public class TNTKnockbackListener implements Listener {
      * Since flag creation has to be done before worldguard is enabled,
      * we can't check if it was successfully loaded here.
      */
-    public TNTKnockbackListener(Plugin eventHelper) {
-        this.eventHelper = eventHelper;
-        this.worldGuard = Bukkit.getPluginManager().getPlugin("WorldGuard");
+    public TNTKnockbackModul(final @NotNull EventHelper plugin) {
+        super(plugin, new TNTKnockbackConfig(plugin));
+        this.getConfig().setModul(this);
 
-        if (worldGuard != null) {
+        if (plugin.getDependencyManager().isWorldGuardInstanceSafe()) {
             FlagRegistry registry = WorldGuard.getInstance().getFlagRegistry();
 
             try {
@@ -63,30 +64,10 @@ public class TNTKnockbackListener implements Listener {
                     tntFlag = null;
                     // types don't match - this is bad news! some other plugin conflicts with you
                     // hopefully this never actually happens
-                    this.eventHelper.getLogger().log(Level.WARNING, "couldn't enable Flag \"tnt-knockback\". Might conflict with other plugin.");
+                    this.plugin.getLogger().log(Level.WARNING, "couldn't enable Flag \"tnt-knockback\". Might conflict with other plugin.");
                 }
             }
         }
-    }
-
-    private boolean isWorldguardEnabled() {
-        return worldGuard != null && worldGuard.isEnabled();
-    }
-
-    /**
-     * clears all interact entities and internal data
-     */
-    public void cleanAll() {
-        for (Map.Entry<UUID, TntAndTasks> entry : interactionMap.entrySet()) {
-            entry.getValue().task.cancel();
-
-            Entity entity = Bukkit.getEntity(entry.getKey());
-            if (entity != null) {
-                entity.remove();
-            }
-        }
-
-        interactionMap.clear();
     }
 
     /**
@@ -97,19 +78,19 @@ public class TNTKnockbackListener implements Listener {
      *                    All assumptions where made for a primed tnt;
      *                    however, everything may work with other entities as well
      */
-    private void spawnInteraction(final Entity probablyTnt) {
+    private void spawnInteraction(final @NotNull Entity probablyTnt) {
         probablyTnt.getWorld().spawn(probablyTnt.getLocation(), Interaction.class, CreatureSpawnEvent.SpawnReason.COMMAND,
-                interaction -> {
-                    interaction.setResponsive(true);
+            interaction -> {
+                interaction.setResponsive(true);
 
-                    // 0.03f is just a magic value to be slightly bigger than the original hitbox
-                    interaction.setInteractionHeight((float) probablyTnt.getBoundingBox().getHeight() + 0.03f);
-                    interaction.setInteractionWidth((float) probablyTnt.getBoundingBox().getWidthX() + 0.03f);
+                // 0.03f is just a magic value to be slightly bigger than the original hitbox
+                interaction.setInteractionHeight((float) probablyTnt.getBoundingBox().getHeight() + 0.03f);
+                interaction.setInteractionWidth((float) probablyTnt.getBoundingBox().getWidthX() + 0.03f);
 
-                    interactionMap.put(interaction.getUniqueId(),
-                            new TntAndTasks(probablyTnt.getUniqueId(),
-                                    Bukkit.getScheduler().runTaskTimer(eventHelper, () -> doTimerTask(interaction.getUniqueId()), 1, 1)));
-                });
+                interactionMap.put(interaction.getUniqueId(),
+                    new TntAndTasks(probablyTnt.getUniqueId(),
+                        Bukkit.getScheduler().runTaskTimer(plugin, () -> doTimerTask(interaction.getUniqueId()), 1, 1)));
+            });
     }
 
     /**
@@ -121,7 +102,7 @@ public class TNTKnockbackListener implements Listener {
      *                        call this function with the UUID of its
      *                        interaction entity as identifier
      */
-    private void doTimerTask(UUID interactionUUID) {
+    private void doTimerTask(final @NotNull UUID interactionUUID) {
         Interaction interaction = (Interaction) Bukkit.getEntity(interactionUUID);
         TntAndTasks tntAndTasks = interactionMap.get(interactionUUID);
 
@@ -169,7 +150,7 @@ public class TNTKnockbackListener implements Listener {
      */
     @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
     private void onTNTIgnite(EntitySpawnEvent event) {
-        if (isWorldguardEnabled() && tntFlag != null && event.getEntity() instanceof TNTPrimed tntPrimed) {
+        if (plugin.getDependencyManager().isWorldGuardEnabled() && tntFlag != null && event.getEntity() instanceof TNTPrimed tntPrimed) {
             Location entityLoc = tntPrimed.getLocation();
 
             RegionQuery query = WorldGuard.getInstance().getPlatform().getRegionContainer().createQuery();
@@ -193,9 +174,9 @@ public class TNTKnockbackListener implements Listener {
      * @param event Called when an entity is damaged by an entity (Interaction by a Player)
      */
     @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
-    private void onTNTHit(EntityDamageByEntityEvent event) {
+    private void onTNTHit(final @NotNull EntityDamageByEntityEvent event) {
         //check region for flag
-        if (isWorldguardEnabled() && tntFlag != null) {
+        if (plugin.getDependencyManager().isWorldGuardEnabled() && tntFlag != null) {
             if (event.getEntity() instanceof Interaction interactionEntity && event.getDamager() instanceof Player player) {
                 Location interactionLoc = interactionEntity.getLocation();
 
@@ -258,6 +239,37 @@ public class TNTKnockbackListener implements Listener {
                 }
             }
         }
+    }
+
+    @Override
+    public @NotNull String getName() {
+        return "TNTKnockback";
+    }
+
+    @Override
+    public void onEnable() {
+        if (plugin.getDependencyManager().isWorldGuardEnabled()) {
+            Bukkit.getPluginManager().registerEvents(this, plugin);
+        }
+    }
+
+    /**
+     * clears all interact entities and internal data
+     */
+    @Override
+    public void onDisable() {
+        HandlerList.unregisterAll(this);
+
+        for (Map.Entry<UUID, TntAndTasks> entry : interactionMap.entrySet()) {
+            entry.getValue().task.cancel();
+
+            Entity entity = Bukkit.getEntity(entry.getKey());
+            if (entity != null) {
+                entity.remove();
+            }
+        }
+
+        interactionMap.clear();
     }
 
     /**
