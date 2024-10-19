@@ -10,16 +10,18 @@ import de.greensurvivors.simplequests.SimpleQuests;
 import de.greensurvivors.simplequests.events.QuestCompleatedEvent;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
-import org.bukkit.GameMode;
-import org.bukkit.Location;
-import org.bukkit.Sound;
-import org.bukkit.SoundCategory;
+import org.bukkit.*;
+import org.bukkit.block.Block;
+import org.bukkit.block.data.Powerable;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -115,6 +117,12 @@ public class GhostGame implements Listener { // todo spectating command
 
                 if (newQuestModifier != null) { // enable new quest
                     SimpleQuests.getInstance().getDatabaseManager().setTimesQuestFinished(event.getPlayer(), newQuestModifier.getRequiredQuestIdentifier(), 1);
+                } else if (ghostGamePlayer instanceof DeadPlayer) {
+                    makePlayerSpectator(ghostGamePlayer.getBukkitPlayer(), ghostGamePlayer.getPlayerData());
+
+                    broadcastExcept(GhostLangPath.PLAYER_PERISHED_TASK_DONE_BROADCAST, ghostGamePlayer.getUuid(),
+                        Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), ghostGamePlayer.getBukkitPlayer().displayName()));
+                    plugin.getMessageManager().sendLang(ghostGamePlayer.getBukkitPlayer(), GhostLangPath.PLAYER_PERISHED_TASK_DONE_SELF);
                 }
             }
         }
@@ -133,6 +141,67 @@ public class GhostGame implements Listener { // todo spectating command
         } else if (spectators.containsKey(event.getPlayer().getUniqueId())) { // how?
             event.getPlayer().teleportAsync(getConfig().getPlayerStartLocation());
             event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    private void onTrapButtonPress(final @NotNull PlayerInteractEvent event) {
+        Block clickedBlock = event.getClickedBlock();
+        if (clickedBlock != null) {
+            if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
+                if (Tag.BUTTONS.isTagged(clickedBlock.getType())) {
+                    for (MouseTrap mouseTrap : getMouseTraps()) {
+                        if (mouseTrap.isReleaseBlockLocation(clickedBlock.getLocation())) {
+
+                            if (clickedBlock.getBlockData() instanceof Powerable powerable) { // stone buttons do faster power off again
+                                powerable.setPowered(true);
+
+                                if (Tag.STONE_BUTTONS.isTagged(clickedBlock.getType())) {
+                                    plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                                        powerable.setPowered(false);
+                                        clickedBlock.getLocation().getWorld().playSound(clickedBlock.getLocation(), Sound.BLOCK_STONE_BUTTON_CLICK_OFF, SoundCategory.BLOCKS, 1.0f, 1.0f);
+                                    }, 20);
+                                    clickedBlock.getLocation().getWorld().playSound(clickedBlock.getLocation(), Sound.BLOCK_STONE_BUTTON_CLICK_ON, SoundCategory.BLOCKS, 1.0f, 1.0f);
+                                } else {
+
+                                    /* If I had a nickel for every time I had to emulate BlockSetType sounds,
+                                    I'd have two nickels.
+                                    Which isn't a lot, but it's weird that it happened twice.
+                                    */
+                                    switch (clickedBlock.getType()) {
+                                        case CHERRY_BUTTON ->
+                                            clickedBlock.getLocation().getWorld().playSound(clickedBlock.getLocation(), Sound.BLOCK_CHERRY_WOOD_BUTTON_CLICK_ON, SoundCategory.BLOCKS, 1.0f, 1.0f);
+                                        case CRIMSON_BUTTON, WARPED_BUTTON ->
+                                            clickedBlock.getLocation().getWorld().playSound(clickedBlock.getLocation(), Sound.BLOCK_NETHER_WOOD_BUTTON_CLICK_ON, SoundCategory.BLOCKS, 1.0f, 1.0f);
+                                        case BAMBOO_BUTTON ->
+                                            clickedBlock.getLocation().getWorld().playSound(clickedBlock.getLocation(), Sound.BLOCK_BAMBOO_WOOD_BUTTON_CLICK_ON, SoundCategory.BLOCKS, 1.0f, 1.0f);
+                                        default ->
+                                            clickedBlock.getLocation().getWorld().playSound(clickedBlock.getLocation(), Sound.BLOCK_WOODEN_BUTTON_CLICK_ON, SoundCategory.BLOCKS, 1.0f, 1.0f);
+                                    }
+
+                                    plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                                        powerable.setPowered(false);
+
+                                        switch (clickedBlock.getType()) {
+                                            case CHERRY_BUTTON ->
+                                                clickedBlock.getLocation().getWorld().playSound(clickedBlock.getLocation(), Sound.BLOCK_CHERRY_WOOD_BUTTON_CLICK_OFF, SoundCategory.BLOCKS, 1.0f, 1.0f);
+                                            case CRIMSON_BUTTON, WARPED_BUTTON ->
+                                                clickedBlock.getLocation().getWorld().playSound(clickedBlock.getLocation(), Sound.BLOCK_NETHER_WOOD_BUTTON_CLICK_OFF, SoundCategory.BLOCKS, 1.0f, 1.0f);
+                                            case BAMBOO_BUTTON ->
+                                                clickedBlock.getLocation().getWorld().playSound(clickedBlock.getLocation(), Sound.BLOCK_BAMBOO_WOOD_BUTTON_CLICK_OFF, SoundCategory.BLOCKS, 1.0f, 1.0f);
+                                            default ->
+                                                clickedBlock.getLocation().getWorld().playSound(clickedBlock.getLocation(), Sound.BLOCK_WOODEN_BUTTON_CLICK_OFF, SoundCategory.BLOCKS, 1.0f, 1.0f);
+                                        }
+                                    }, 30);
+                                }
+                            }
+
+                            mouseTrap.releaseAllPlayers();
+                            event.setCancelled(true);
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -161,6 +230,7 @@ public class GhostGame implements Listener { // todo spectating command
 
                         if (trap != null) {
                             trap.removePlayer(alivePlayer);
+                            alivePlayer.releaseFromTrap();
                         }
                     }
 
@@ -203,6 +273,7 @@ public class GhostGame implements Listener { // todo spectating command
 
                     if (trap != null) {
                         trap.removePlayer(alivePlayer);
+                        alivePlayer.releaseFromTrap();
                     }
                 }
 
@@ -250,6 +321,7 @@ public class GhostGame implements Listener { // todo spectating command
 
                                 if (trap != null) {
                                     trap.removePlayer(alivePlayer);
+                                    alivePlayer.releaseFromTrap();
                                 }
                             }
 
@@ -302,6 +374,7 @@ public class GhostGame implements Listener { // todo spectating command
 
                                 if (trap != null) {
                                     trap.removePlayer(alivePlayer);
+                                    alivePlayer.releaseFromTrap();
                                 }
                             }
 
@@ -323,6 +396,16 @@ public class GhostGame implements Listener { // todo spectating command
         } else {
             endGame(EndReason.TIME);
         }
+    }
+
+    public void disableGame() {
+        endGame(GhostGame.EndReason.EXTERN);
+
+        for (SpectatingPlayer spectatingPlayer : spectators.values()) {
+            playerQuit(spectatingPlayer.getBukkitPlayer(), true);
+        }
+
+        HandlerList.unregisterAll(this);
     }
 
     public void endGame(final @NotNull EndReason reason) { // todo do we need anything else here?
@@ -598,6 +681,7 @@ public class GhostGame implements Listener { // todo spectating command
 
                 if (trap != null) {
                     trap.removePlayer(alivePlayer);
+                    alivePlayer.releaseFromTrap();
                 }
             } else if (ghostGamePlayer instanceof DeadPlayer) {
 
@@ -674,6 +758,7 @@ public class GhostGame implements Listener { // todo spectating command
 
                         if (trap != null) {
                             trap.removePlayer(alivePlayer);
+                            alivePlayer.releaseFromTrap();
                         }
                     }
 
@@ -705,6 +790,7 @@ public class GhostGame implements Listener { // todo spectating command
 
                         if (trap != null) {
                             trap.removePlayer(alivePlayer);
+                            alivePlayer.releaseFromTrap();
                         }
                     }
 
@@ -774,6 +860,7 @@ public class GhostGame implements Listener { // todo spectating command
 
                         if (trap != null) {
                             trap.removePlayer(alivePlayer);
+                            alivePlayer.releaseFromTrap();
                         }
                     }
 
