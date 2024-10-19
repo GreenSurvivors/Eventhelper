@@ -59,6 +59,10 @@ public class AlivePlayer extends AGhostGamePlayer { // todo
         return trap.trapPlayer(this);
     }
 
+    public void releaseFromTrap() {
+        this.trappedIn = null;
+    }
+
     public @Nullable MouseTrap getMouseTrapTrappedIn() {
         return trappedIn;
     }

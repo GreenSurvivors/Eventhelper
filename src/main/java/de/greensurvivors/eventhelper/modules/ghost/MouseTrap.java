@@ -126,6 +126,7 @@ public class MouseTrap implements ConfigurationSerializable, Listener { // todo 
         }
     }
 
+    /// this does NOT release the player but simply stop tracking them
     public void removePlayer(final @NotNull AlivePlayer alivePlayer) {
         trappedPlayers.remove(alivePlayer);
     }
@@ -146,13 +147,23 @@ public class MouseTrap implements ConfigurationSerializable, Listener { // todo 
                 alivePlayer.getBukkitPlayer().teleport(spawnLocationOut, PlayerTeleportEvent.TeleportCause.PLUGIN);
             }
 
+            alivePlayer.releaseFromTrap();
+
             iterator.remove();
         }
+
 
         trappedPlayers.clear();
     }
 
     public @NotNull Map<@NotNull AlivePlayer, @NotNull Long> getTrappedPlayers() {
         return trappedPlayers;
+    }
+
+    public boolean isReleaseBlockLocation(final @NotNull Location location) {
+        return worldName.equals(location.getWorld().getName()) &&
+            (Math.sqrt(releaseButtonPosition.x() - location.x()) +
+                Math.sqrt(releaseButtonPosition.y() - location.y()) +
+                Math.sqrt(releaseButtonPosition.z() - location.z())) <= 0.25;
     }
 }
