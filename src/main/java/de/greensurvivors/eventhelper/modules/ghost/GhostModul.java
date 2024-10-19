@@ -127,6 +127,20 @@ public class GhostModul extends AModul<GeneralGhostConfig> implements Listener {
         }
     }
 
+    public boolean deleteGame(final @NotNull String gameName) { // todo
+        final @Nullable GhostGame game = games.remove(gameName.toLowerCase(Locale.ENGLISH));
+
+        if (game != null) {
+            if (game.getGameState() != GhostGame.GameState.IDLE) {
+                game.disableGame();
+            }
+
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     public @Nullable GhostGame getGameByName(final @NotNull String gameName) {
         return games.get(gameName.toLowerCase(Locale.ENGLISH)); // todo locale??
     }
