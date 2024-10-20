@@ -5,6 +5,7 @@ import de.greensurvivors.eventhelper.config.ConfigOption;
 import de.greensurvivors.eventhelper.modules.AModulConfig;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import org.apache.commons.collections4.list.SetUniqueList;
 import org.apache.maven.artifact.versioning.ComparableVersion;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -45,7 +46,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     // general
     private final @NotNull String name_id;
     private final @NotNull ConfigOption<@NotNull Component> displayName;
-    private final @NotNull ConfigOption<@NotNull Set<@NotNull MouseTrap>> mouseTraps = new ConfigOption<>("game.mouseTraps", Set.of()); // we need fast random access. But the MouseTraps should be unique!
+    private final @NotNull ConfigOption<@NotNull List<@NotNull MouseTrap>> mouseTraps = new ConfigOption<>("game.mouseTraps", List.of()); // we need fast random access. But the MouseTraps should be unique!
     private final @NotNull ConfigOption<@NotNull List<@NotNull String>> gameInitCommands = new ConfigOption<>("game.commands.gameInit", List.of());
     private final @NotNull ConfigOption<@NotNull Location> lobbyLocation = new ConfigOption<>("game.lobbyLocation", Bukkit.getWorlds().get(0).getSpawnLocation());
     private final @NotNull ConfigOption<@NotNull List<@NotNull String>> gameStartCommands = new ConfigOption<>("game.commands.gameStart", List.of());
@@ -53,18 +54,25 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     private final @NotNull ConfigOption<@NotNull Location> spectatorStartLocation = new ConfigOption<>("game.spectatorStartLocation", Bukkit.getWorlds().get(0).getSpawnLocation());
     private final @NotNull ConfigOption<@NotNull List<@NotNull String>> gameEndCommands = new ConfigOption<>("game.commands.gameEnd", List.of());
     private final @NotNull ConfigOption<@NotNull Location> endLocation = new ConfigOption<>("game.endLocation", Bukkit.getWorlds().get(0).getSpawnLocation());
-    private final @NotNull ConfigOption<@NotNull Duration> gameDuration = new ConfigOption<>("game.duration", Duration.of(10, ChronoUnit.MINUTES)); // saved in seconds
-    private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = 24000) Long> startPlayerTime = new ConfigOption<>("game.playerTime.start", 14000L); // in ticks
-    private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = 24000) Long> endPlayerTime = new ConfigOption<>("game.playerTime.end", 23000L); // in ticks
+    private final @NotNull ConfigOption<@NotNull Duration> gameDuration = new ConfigOption<>("game.durationSeconds", Duration.of(10, ChronoUnit.MINUTES));
+    private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = 24000) Long> startPlayerTime = new ConfigOption<>("game.playerTime.startTicks", 14000L);
+    private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = 24000) Long> endPlayerTime = new ConfigOption<>("game.playerTime.endTicks", 23000L);
     private final @NotNull ConfigOption<@NotNull Boolean> allowLateJoin = new ConfigOption<>("game.allowLateJoin", false);
     private final @NotNull ConfigOption<@NotNull Boolean> allowRejoin = new ConfigOption<>("game.allowRejoin", false);
     private final @NotNull ConfigOption<@NotNull @Range(from = -1, to = Integer.MAX_VALUE) Integer> minAmountPlayers = new ConfigOption<>("game.minAmountPlayers", -1);
     private final @NotNull ConfigOption<@NotNull @Range(from = -1, to = Integer.MAX_VALUE) Integer> maxAmountPlayers = new ConfigOption<>("game.maxAmountPlayers", -1);
-    private final @NotNull ConfigOption<@NotNull Double> playerSpreadDistance = new ConfigOption<>("game.teleport.playerSpread.distance", 0.5); // todo use
+    private final @NotNull ConfigOption<@NotNull Double> playerSpreadDistance = new ConfigOption<>("game.teleport.playerSpread.distance", 0.5);
     private final @NotNull ConfigOption<@NotNull @Range(from = 1, to = Integer.MAX_VALUE) Integer> pointGoal = new ConfigOption<>("game.points.goal", 100);
     private final @NotNull ConfigOption<@NotNull Map<@NotNull String, @NotNull QuestModifier>> quests = new ConfigOption<>("game.tasks", Map.of());
     private final @NotNull ConfigOption<@NotNull Duration> durationInTrapUntilDeath = new ConfigOption<>("game.mouseTrap.secondsUntilDeath", Duration.ofSeconds(90));
     private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = Integer.MAX_VALUE) Integer> perishedTaskAmount = new ConfigOption<>("game.tasks.perished.amount", 3);
+    private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = Integer.MAX_VALUE) Integer> startingFoodAmount = new ConfigOption<>("game.food.amount.starting", 4);
+    private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = Integer.MAX_VALUE) Integer> startingSaturationAmount = new ConfigOption<>("game.startingSaturationAmount", 0);
+    private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = Integer.MAX_VALUE) Double> startingHealthAmount = new ConfigOption<>("game.startingHealthAmount", 5D);
+    private final @NotNull ConfigOption<@NotNull String> feedRegion = new ConfigOption<>("game.food.region", "__global__");
+    private final @NotNull ConfigOption<@NotNull Duration> feedDelay = new ConfigOption<>("game.food.delayTicks", Duration.ofSeconds(20));
+    private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = Integer.MAX_VALUE) Integer> feedAmount = new ConfigOption<>("game.foodAmount.feeding.tick", 1);
+    private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = Integer.MAX_VALUE) Integer> maxFeedAmount = new ConfigOption<>("game.foodAmount.feeding.max", 6);
 
     public GhostGameConfig(final @NotNull EventHelper plugin, final @NotNull String name_id, final @NotNull GhostModul modul) {
         super(plugin, Path.of("games", name_id + ".yaml"));
@@ -186,7 +194,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                         }
 
                         @Nullable List<@NotNull MouseTrap> loadedMouseTraps = (List<MouseTrap>) config.getList(mouseTraps.getPath());
-                        mouseTraps.setValue(loadedMouseTraps == null ? mouseTraps.getFallback() : new HashSet<>(loadedMouseTraps));
+                        mouseTraps.setValue(loadedMouseTraps == null ? mouseTraps.getFallback() : SetUniqueList.setUniqueList(new ArrayList<>(loadedMouseTraps)));
 
                         gameInitCommands.setValue(config.getStringList(gameInitCommands.getPath()));
                         lobbyLocation.setValue(config.getLocation(lobbyLocation.getPath(), lobbyLocation.getFallback()));
@@ -218,6 +226,15 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                         pointGoal.setValue(config.getInt(pointGoal.getPath(), pointGoal.getFallback()));
                         durationInTrapUntilDeath.setValue(Duration.ofSeconds(config.getLong(durationInTrapUntilDeath.getPath(), durationInTrapUntilDeath.getFallback().toSeconds())));
                         perishedTaskAmount.setValue(config.getInt(perishedTaskAmount.getPath(), perishedTaskAmount.getFallback()));
+
+                        startingFoodAmount.setValue(config.getInt(startingFoodAmount.getPath(), startingFoodAmount.getFallback()));
+                        startingSaturationAmount.setValue(config.getInt(startingSaturationAmount.getPath(), startingSaturationAmount.getFallback()));
+                        startingHealthAmount.setValue(config.getDouble(startingHealthAmount.getPath(), startingHealthAmount.getFallback()));
+                        feedRegion.setValue(config.getString(feedRegion.getPath(), feedRegion.getFallback()));
+                        long feedDelayTicks = config.getLong(feedDelay.getPath(), feedDelay.getFallback().toSeconds() * 20L);
+                        feedDelay.setValue(Duration.ofSeconds(feedDelayTicks / 20));
+                        feedAmount.setValue(config.getInt(feedAmount.getPath(), feedAmount.getFallback()));
+                        maxFeedAmount.setValue(config.getInt(maxFeedAmount.getPath(), maxFeedAmount.getFallback()));
 
                         Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(isEnabled.getValueOrFallback())); // back to main thread
                     } catch (IOException e) {
@@ -296,6 +313,14 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                         config.set(pointGoal.getPath(), pointGoal.getValueOrFallback());
                         config.set(durationInTrapUntilDeath.getPath(), durationInTrapUntilDeath.getValueOrFallback().toSeconds());
                         config.set(perishedTaskAmount.getPath(), perishedTaskAmount.getValueOrFallback());
+
+                        config.set(startingFoodAmount.getPath(), startingFoodAmount.getValueOrFallback());
+                        config.set(startingSaturationAmount.getPath(), startingSaturationAmount.getValueOrFallback());
+                        config.set(startingHealthAmount.getPath(), startingHealthAmount.getValueOrFallback());
+                        config.set(feedRegion.getPath(), feedRegion.getValueOrFallback());
+                        config.set(feedDelay.getPath(), feedDelay.getValueOrFallback().toSeconds() * 20);
+                        config.set(feedAmount.getPath(), feedAmount.getValueOrFallback());
+                        config.set(maxFeedAmount.getPath(), maxFeedAmount.getValueOrFallback());
 
                         config.options().parseComments(true);
                         config.save(configPath.toFile());
@@ -455,7 +480,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
         return displayName.getValueOrFallback();
     }
 
-    public @NotNull Set<@NotNull MouseTrap> getMouseTraps() { // todo make editable via command
+    public @NotNull List<@NotNull MouseTrap> getMouseTraps() { // todo make editable via command
         return mouseTraps.getValueOrFallback();
     }
 
@@ -664,6 +689,62 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
 
     public void setPerishedTaskAmount(final @Range(from = 0, to = Integer.MAX_VALUE) int newAmountOfTasks) {
         perishedTaskAmount.setValue(newAmountOfTasks);
+    }
+
+    public @Range(from = 0, to = Integer.MAX_VALUE) int getStartingFoodAmount() {
+        return startingFoodAmount.getValueOrFallback();
+    }
+
+    public void setStartingFoodAmount(final @Range(from = 0, to = Integer.MAX_VALUE) int newStartingFoodAmount) { // todo
+        startingFoodAmount.setValue(newStartingFoodAmount);
+    }
+
+    public @Range(from = 0, to = Integer.MAX_VALUE) int getStartingSaturationAmount() {
+        return startingSaturationAmount.getValueOrFallback();
+    }
+
+    public void setStartingSaturationAmount(final @Range(from = 0, to = Integer.MAX_VALUE) int newStartingSaturationAmount) { // todo
+        startingSaturationAmount.setValue(newStartingSaturationAmount);
+    }
+
+    public @Range(from = 0, to = Integer.MAX_VALUE) double getStartingHealthAmount() {
+        return startingHealthAmount.getValueOrFallback();
+    }
+
+    public void setStartingHealthAmount(final @Range(from = 0, to = Integer.MAX_VALUE) double newStartingHealthAmount) { // todo
+        startingHealthAmount.setValue(newStartingHealthAmount);
+    }
+
+    public @NotNull String getFeedRegionName() {
+        return feedRegion.getValueOrFallback();
+    }
+
+    public void setFeedRegionName(final @NotNull String newFeedRegionName) { // todo
+        feedRegion.setValue(newFeedRegionName);
+    }
+
+    public @NotNull Duration getFeedDuration() {
+        return feedDelay.getValueOrFallback();
+    }
+
+    public void setFeedDuration(final @NotNull Duration newFeedDelay) { // todo
+        feedDelay.setValue(newFeedDelay);
+    }
+
+    public @Range(from = 0, to = Integer.MAX_VALUE) int getFeedAmount() {
+        return feedAmount.getValueOrFallback();
+    }
+
+    public void setFeedAmount(final @Range(from = 0, to = Integer.MAX_VALUE) int newFeedAmount) { // todo
+        feedAmount.setValue(newFeedAmount);
+    }
+
+    public @Range(from = 0, to = Integer.MAX_VALUE) int getFeedMaxAmount() {
+        return maxFeedAmount.getValueOrFallback();
+    }
+
+    public void setFeedMaxAmount(final @Range(from = 0, to = Integer.MAX_VALUE) int newMaxFeedAmount) { // todo
+        maxFeedAmount.setValue(newMaxFeedAmount);
     }
 
     public @NotNull Map<@NotNull String, @NotNull QuestModifier> getTasks() {

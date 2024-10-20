@@ -18,8 +18,12 @@ public class Loader implements PluginLoader {
 
         DefaultArtifact caffeineArtifact = new DefaultArtifact("com.github.ben-manes.caffeine:caffeine:3.1.8");
         resolver.addDependency(new Dependency(caffeineArtifact, null));
+        DefaultArtifact collectionsArtifact = new DefaultArtifact("com.github.ben-manes.caffeine:caffeine:3.1.8");
+        resolver.addDependency(new Dependency(collectionsArtifact, null));
 
-        classpathBuilder.getContext().getLogger().info("loaded library {}, version: {}", caffeineArtifact.getArtifactId(), caffeineArtifact.getVersion());
+        classpathBuilder.getContext().getLogger().info("loaded libraries {}, version: {} and {}, version: {}",
+            caffeineArtifact.getArtifactId(), caffeineArtifact.getVersion(),
+            collectionsArtifact.getArtifactId(), collectionsArtifact.getVersion());
 
         classpathBuilder.addLibrary(resolver);
     }

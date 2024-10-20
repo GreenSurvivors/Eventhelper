@@ -1,5 +1,10 @@
 package de.greensurvivors.eventhelper.modules.ghost;
 
+import com.sk89q.worldedit.bukkit.BukkitAdapter;
+import com.sk89q.worldguard.WorldGuard;
+import com.sk89q.worldguard.protection.managers.RegionManager;
+import com.sk89q.worldguard.protection.regions.ProtectedRegion;
+import com.sk89q.worldguard.protection.regions.RegionContainer;
 import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.messages.LangPath;
 import de.greensurvivors.eventhelper.messages.MessageManager;
@@ -11,6 +16,8 @@ import de.greensurvivors.simplequests.events.QuestCompleatedEvent;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import org.bukkit.*;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.Powerable;
 import org.bukkit.entity.Player;
@@ -118,7 +125,7 @@ public class GhostGame implements Listener { // todo spectating command
                 if (newQuestModifier != null) { // enable new quest
                     SimpleQuests.getInstance().getDatabaseManager().setTimesQuestFinished(event.getPlayer(), newQuestModifier.getRequiredQuestIdentifier(), 1);
                 } else if (ghostGamePlayer instanceof DeadPlayer) {
-                    makePlayerSpectator(ghostGamePlayer.getBukkitPlayer(), ghostGamePlayer.getPlayerData());
+                    makePlayerSpectator(ghostGamePlayer.getBukkitPlayer());
 
                     broadcastExcept(GhostLangPath.PLAYER_PERISHED_TASK_DONE_BROADCAST, ghostGamePlayer.getUuid(),
                         Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), ghostGamePlayer.getBukkitPlayer().displayName()));
@@ -131,12 +138,13 @@ public class GhostGame implements Listener { // todo spectating command
     @EventHandler(ignoreCancelled = true)
     private void onPlayerDeath(final @NotNull PlayerDeathEvent event) {
         final AGhostGamePlayer ghostGamePlayer = players.get(event.getPlayer().getUniqueId());
-        if (ghostGamePlayer instanceof AlivePlayer) {
-            makePerishedPlayer(event.getPlayer().getUniqueId());
-            event.getPlayer().teleportAsync(getConfig().getPlayerStartLocation());
+        if (ghostGamePlayer instanceof AlivePlayer alivePlayer) {
+            getConfig().getMouseTraps();
+            alivePlayer.trapInMouseTrap(getMouseTraps().get(ThreadLocalRandom.current().nextInt(getMouseTraps().size())));
             event.setCancelled(true);
-        } else if (ghostGamePlayer instanceof DeadPlayer) {
+        } else if (ghostGamePlayer instanceof DeadPlayer deadPlayer) {
             event.getPlayer().teleportAsync(getConfig().getPlayerStartLocation());
+            makePlayerSpectator(deadPlayer.getBukkitPlayer());
             event.setCancelled(true);
         } else if (spectators.containsKey(event.getPlayer().getUniqueId())) { // how?
             event.getPlayer().teleportAsync(getConfig().getPlayerStartLocation());
@@ -362,6 +370,38 @@ public class GhostGame implements Listener { // todo spectating command
                             }
                         }
                     }
+
+                    //noinspection UnstableApiUsage
+                    float tickRate = plugin.getServer().getServerTickManager().getTickRate();
+                    double millisPerTick = 1000D / tickRate;
+                    if ((amountOfTicksRun * millisPerTick) % getConfig().getFeedDuration().toMillis() == 0) {
+                        for (AGhostGamePlayer ghostGamePlayer : players.values()) {
+                            final Player bukkitPlayer = ghostGamePlayer.getBukkitPlayer();
+
+                            // skip feeding the player if worldguard is enabled but the player wasn't in the correct region
+                            // todo somehow make caching work without hard depending on worldguard
+                            if (plugin.getDependencyManager().isWorldGuardEnabled()) {
+                                com.sk89q.worldedit.world.World weWorld = BukkitAdapter.adapt(bukkitPlayer.getWorld());
+                                RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
+                                RegionManager rm = container.get(weWorld);
+
+                                if (rm != null) {
+                                    ProtectedRegion protectedRegion = rm.getRegion(getConfig().getFeedRegionName());
+
+                                    com.sk89q.worldedit.entity.Player wePlayer = BukkitAdapter.adapt(bukkitPlayer);
+                                    if (!protectedRegion.contains(wePlayer.getLocation().toVector().toBlockPoint())) {
+                                        continue;
+                                    }
+                                }
+                            }
+
+                            int foodLevel = bukkitPlayer.getFoodLevel();
+
+                            if (foodLevel < getConfig().getFeedMaxAmount()) {
+                                bukkitPlayer.setFoodLevel(foodLevel + getConfig().getFeedAmount());
+                            }
+                        }
+                    }
                 } else {
                     // just set to start time for players
                     for (Iterator<Map.Entry<UUID, AGhostGamePlayer>> iterator = players.entrySet().iterator(); iterator.hasNext(); ) {
@@ -543,6 +583,14 @@ public class GhostGame implements Listener { // todo spectating command
 
         player.setGameMode(GameMode.SURVIVAL);
 
+        AttributeInstance healthAttribute = player.getAttribute(Attribute.GENERIC_MAX_HEALTH);
+        if (config.getStartingHealthAmount() >= healthAttribute.getValue()) {
+            healthAttribute.setBaseValue(config.getStartingHealthAmount());
+        }
+        player.setHealth(config.getStartingHealthAmount());
+        player.setSaturation(config.getStartingSaturationAmount());
+        player.setFoodLevel(config.getStartingFoodAmount());
+
         plugin.getMessageManager().sendLang(player, GhostLangPath.PLAYER_GAME_JOIN,
             Placeholder.component(SharedPlaceHolder.TEXT.getKey(), getConfig().getDisplayName()));
         broadcastExcept(GhostLangPath.PLAYER_GAME_JOIN_BROADCAST, player.getUniqueId(),
@@ -596,6 +644,11 @@ public class GhostGame implements Listener { // todo spectating command
         }
     }
 
+    /**
+     * technical internal method, don't use.
+     * Instead, use {@link #makePlayerSpectator(Player)} even if you have easy access to the player data!
+     * using this method means you are missing out of a potential check on game end!
+     **/
     protected void makePlayerSpectator(final @NotNull Player player, final @NotNull PlayerData playerData) {
         players.remove(player.getUniqueId());
         spectators.put(player.getUniqueId(), new SpectatingPlayer(plugin, this, player.getUniqueId(), playerData));
@@ -896,7 +949,7 @@ public class GhostGame implements Listener { // todo spectating command
         }
     }
 
-    public @NotNull Set<@NotNull MouseTrap> getMouseTraps() {
+    public @NotNull List<@NotNull MouseTrap> getMouseTraps() {
         return getConfig().getMouseTraps();
     }
 
