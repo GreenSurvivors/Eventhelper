@@ -1,4 +1,4 @@
-package de.greensurvivors.eventhelper.modules.ghost.ghostEntity;
+package de.greensurvivors.eventhelper.modules.ghost.entity;
 
 import de.greensurvivors.eventhelper.modules.ghost.GhostGame;
 import net.minecraft.server.level.ServerLevel;

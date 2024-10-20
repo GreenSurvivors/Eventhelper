@@ -1,4 +1,4 @@
-package de.greensurvivors.eventhelper.modules.ghost.ghostEntity;
+package de.greensurvivors.eventhelper.modules.ghost.entity;
 
 import de.greensurvivors.eventhelper.modules.ghost.GhostGame;
 import net.minecraft.core.Registry;
@@ -13,7 +13,6 @@ import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.ai.attributes.*;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
 import net.minecraft.world.entity.ai.goal.Goal;
-import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
 import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.vehicle.Boat;
@@ -34,7 +33,7 @@ public class UnderWorldGhostNMSEntity extends Monster {
     public static final EntityType<UnderWorldGhostNMSEntity> UNDERWORLD_GHOST_TYPE = registerEntityType(
         (EntityType.Builder.
             of(null, MobCategory.MISC).
-            sized(0.6F, 1.99F). // skeleton sized
+            sized(0.6F, 1F). // 1 block height to fit through all gaps
                 noSave(). // don't save this entity to disk.
                 clientTrackingRange(10)));
 
@@ -118,7 +117,7 @@ public class UnderWorldGhostNMSEntity extends Monster {
 
     @Override
     public @NotNull Packet<ClientGamePacketListener> getAddEntityPacket() { // overwrite with skeleton type
-        return new ClientboundAddEntityPacket(getId(), getUUID(), getX(), getY(), getZ(), getXRot(), getYRot(), EntityType.SKELETON, 0, getDeltaMovement(), getYHeadRot());
+        return new ClientboundAddEntityPacket(getId(), getUUID(), getX(), getY(), getZ(), getXRot(), getYRot(), EntityType.ALLAY, 0, getDeltaMovement(), getYHeadRot());
     }
 
     @Override
@@ -152,7 +151,7 @@ public class UnderWorldGhostNMSEntity extends Monster {
     protected void registerGoals() { // don't randomly drown
         super.registerGoals();
         this.goalSelector.addGoal(0, new FloatGoal(this));
-        this.goalSelector.addGoal(4, new MeleeAttackGoal(this, 1.0D, true));
+        // this.goalSelector.addGoal(4, new MeleeAttackGoal(this, 1.0D, true));
         this.goalSelector.addGoal(5, new WaterAvoidingRandomStrollGoal(this, 0.4D));
     }
 
@@ -205,5 +204,10 @@ public class UnderWorldGhostNMSEntity extends Monster {
     @Override
     public boolean shouldBeSaved() {
         return false;
+    }
+
+    @Override
+    public boolean isSilent() { // don't make any sound
+        return true;
     }
 }
