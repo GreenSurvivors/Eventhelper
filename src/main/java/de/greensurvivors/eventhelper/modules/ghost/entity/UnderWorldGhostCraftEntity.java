@@ -1,4 +1,4 @@
-package de.greensurvivors.eventhelper.modules.ghost.ghostEntity;
+package de.greensurvivors.eventhelper.modules.ghost.entity;
 
 import org.bukkit.craftbukkit.v1_20_R3.CraftServer;
 import org.bukkit.craftbukkit.v1_20_R3.entity.CraftMob;

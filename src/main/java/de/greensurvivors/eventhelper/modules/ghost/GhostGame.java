@@ -9,7 +9,7 @@ import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.messages.LangPath;
 import de.greensurvivors.eventhelper.messages.MessageManager;
 import de.greensurvivors.eventhelper.messages.SharedPlaceHolder;
-import de.greensurvivors.eventhelper.modules.ghost.ghostEntity.IGhost;
+import de.greensurvivors.eventhelper.modules.ghost.entity.IGhost;
 import de.greensurvivors.eventhelper.modules.ghost.payer.*;
 import de.greensurvivors.simplequests.SimpleQuests;
 import de.greensurvivors.simplequests.events.QuestCompleatedEvent;
