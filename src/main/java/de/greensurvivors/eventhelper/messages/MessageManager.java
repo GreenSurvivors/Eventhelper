@@ -159,7 +159,7 @@ public class MessageManager {
         }
 
         // clear cache
-        resourceBundles.asMap().remove(modulName);
+        //resourceBundles.asMap().remove(modulName);
         // todo remove all langPath cache associated with this module
         //langCache.invalidateAll();
         //rawLangCache.invalidateAll();
@@ -235,8 +235,6 @@ public class MessageManager {
      * saves all missing lang files from resources to the modules folder
      */
     private void initLangFiles(final @NotNull String modulName) {
-        //this.getClass().getResourceAsStream("");
-
         CodeSource src = this.getClass().getProtectionDomain().getCodeSource();
         if (src != null) {
             URL jarUrl = src.getLocation();
@@ -277,6 +275,7 @@ public class MessageManager {
                                 for (Map.Entry<Object, Object> translationPair : defaults.entrySet()) {
                                     if (current.get(translationPair.getKey()) == null) {
                                         if (!updated) {
+                                            bw.newLine();
                                             bw.write("# New Values where added. Is everything else up to date? Time of update: " + new Date());
                                             bw.newLine();
 

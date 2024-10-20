@@ -2,6 +2,8 @@ package de.greensurvivors.eventhelper.command;
 
 import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.messages.SharedLangPath;
+import de.greensurvivors.eventhelper.messages.SharedPlaceHolder;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.permissions.Permission;
@@ -56,6 +58,9 @@ public class MainCmd extends Command {
                     plugin.getMessageManager().sendLang(sender, SharedLangPath.NO_PERMISSION);
                     return true;
                 }
+            } else {
+                plugin.getMessageManager().sendLang(sender, SharedLangPath.ARG_NOT_A_SUBCMD,
+                    Placeholder.unparsed(SharedPlaceHolder.ARGUMENT.getKey(), args[0]));
             }
         }
 

@@ -295,6 +295,9 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                         config.set(ghostSpawnLocations.getPath(), ghostSpawnLocations.getValueOrFallback());
                         config.set(ghostAmount.getPath(), ghostAmount.getValueOrFallback());
 
+                        config.set(gameInitCommands.getPath(), gameInitCommands.getValueOrFallback());
+                        config.set(gameStartCommands.getPath(), gameStartCommands.getValueOrFallback());
+                        config.set(gameEndCommands.getPath(), gameEndCommands.getValueOrFallback());
                         config.set(displayName.getPath(), MiniMessage.miniMessage().serialize(displayName.getValueOrFallback()));
                         config.set(mouseTraps.getPath(), List.copyOf(mouseTraps.getValueOrFallback()));
                         config.set(lobbyLocation.getPath(), lobbyLocation.getValueOrFallback());
