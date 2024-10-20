@@ -1,4 +1,4 @@
-package de.greensurvivors.eventhelper.modules.ghost.ghostEntity;
+package de.greensurvivors.eventhelper.modules.ghost.entity;
 
 import com.mojang.serialization.Dynamic;
 import de.greensurvivors.eventhelper.modules.ghost.GhostGame;
@@ -45,9 +45,9 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
             noSave(). // don't save this entity to disk.
                 clientTrackingRange(10)));
     private static final EntityDataAccessor<Boolean> DATA_IS_CHARGING = SynchedEntityData.defineId(GhostNMSEntity.class, EntityDataSerializers.BOOLEAN);
-    private final @NotNull GhostGame ghostGame;
+    protected final @NotNull GhostGame ghostGame;
     private volatile @Nullable GhostCraftEntity bukkitEntity;
-    private UnderWorldGhostNMSEntity underWorldGhost;
+    protected UnderWorldGhostNMSEntity underWorldGhost;
 
     @SuppressWarnings("unchecked")
     // has to be called while the server is bootstrapping, or else the registry will be frozen!
@@ -214,7 +214,7 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
 
     @Override
     public SoundEvent getDeathSound() {
-        return SoundEvents.GHAST_DEATH;
+        return SoundEvents.WARDEN_DEATH;
     }
 
     @Override
@@ -224,7 +224,7 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
 
     @Override
     protected @NotNull SoundEvent getAmbientSound() {
-        return SoundEvents.GHAST_AMBIENT;
+        return SoundEvents.WARDEN_AMBIENT;
     }
 
     @Override
@@ -261,7 +261,10 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
     @Override
     public boolean causeFallDamage(float fallDistance, float damageMultiplier, @NotNull DamageSource damageSource) {
         if (fallDistance > 3.0F) {
-            this.playSound(SoundEvents.ELDER_GUARDIAN_AMBIENT_LAND, 1.0F, 1.0F);
+            this.playSound(this.getFallSounds().big(), 1.0F, 1.0F);
+            this.playBlockFallSound();
+        } else {
+            this.playSound(this.getFallSounds().small(), 1.0F, 1.0F);
         }
 
         return false; // immune to fall damage

@@ -1,4 +1,4 @@
-package de.greensurvivors.eventhelper.modules.ghost.ghostEntity;
+package de.greensurvivors.eventhelper.modules.ghost.entity;
 
 import com.google.common.collect.ImmutableList;
 import com.mojang.datafixers.util.Pair;
@@ -16,7 +16,7 @@ import java.util.Set;
 public class GhostAI {
     static final List<SensorType<? extends Sensor<? super GhostNMSEntity>>> SENSOR_TYPES =
         ImmutableList.of(
-            SensorType.NEAREST_LIVING_ENTITIES,
+            NearstAlivePlayerSensor.NEAREST_ALIVE_PLAYER_SENSOR,
             SensorType.NEAREST_PLAYERS
         );
     static final List<MemoryModuleType<?>> MEMORY_TYPES = ImmutableList.of(
