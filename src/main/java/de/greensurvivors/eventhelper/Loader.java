@@ -18,7 +18,7 @@ public class Loader implements PluginLoader {
 
         DefaultArtifact caffeineArtifact = new DefaultArtifact("com.github.ben-manes.caffeine:caffeine:3.1.8");
         resolver.addDependency(new Dependency(caffeineArtifact, null));
-        DefaultArtifact collectionsArtifact = new DefaultArtifact("com.github.ben-manes.caffeine:caffeine:3.1.8");
+        DefaultArtifact collectionsArtifact = new DefaultArtifact("org.apache.commons:commons-collections4:4.5.0-M2");
         resolver.addDependency(new Dependency(collectionsArtifact, null));
 
         classpathBuilder.getContext().getLogger().info("loaded libraries {}, version: {} and {}, version: {}",

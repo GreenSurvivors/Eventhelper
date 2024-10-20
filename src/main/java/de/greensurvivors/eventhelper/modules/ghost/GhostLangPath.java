@@ -57,7 +57,7 @@ public record GhostLangPath(@NotNull String path, @NotNull String defaultValue) 
 
     SIGN_JOIN = new GhostLangPath("game.sign.join", "[ghost join]"),
         SIGN_SPECTATE = new GhostLangPath("game.sign.spectate", "[ghost spectate]"),
-        SIGN_QUIT = new GhostLangPath("game.sign.spectate", "[ghost quit]"),
+        SIGN_QUIT = new GhostLangPath("game.sign.quit", "[ghost quit]"),
         ERROR_SIGN_CREATE_INVALID_GAME = new GhostLangPath("error.sign.create.invalid-game"),
         SIGN_CREATED_JOIN = new GhostLangPath("game.sign.create.join"),
         SIGN_CREATED_SPECTATE = new GhostLangPath("game.sign.create.spectate"),
