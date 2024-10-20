@@ -506,7 +506,7 @@ public class GhostGame implements Listener { // todo spectating command
     }
 
     public void playerSpectate(final @NotNull Player player) {
-        if (ghostModul.getGameParticipatingIn(player) != null) {
+        if (ghostModul.getGameParticipatingIn(player) == null) {
             makePlayerSpectator(player);
         } else {
             plugin.getMessageManager().sendLang(player, GhostLangPath.ERROR_ALREADY_PARTICIPATING);
@@ -514,7 +514,7 @@ public class GhostGame implements Listener { // todo spectating command
     }
 
     public void playerJoin(final @NotNull Player player) { // todo permission
-        if (ghostModul.getGameParticipatingIn(player) != null) {
+        if (ghostModul.getGameParticipatingIn(player) == null) {
             switch (gameState) {
                 case IDLE -> {
                     if (!isGameFull()) {
@@ -770,9 +770,14 @@ public class GhostGame implements Listener { // todo spectating command
                 }
             }
         } else {
-            SpectatingPlayer spectatingPlayer = spectators.get(player.getUniqueId());
+            SpectatingPlayer spectatingPlayer = spectators.remove(player.getUniqueId());
 
             if (spectatingPlayer != null) {
+                if (teleport) {
+                    player.teleport(config.getEndLocation());
+                    player.resetPlayerTime();
+                }
+
                 // reset Scoreboard
                 perishedTeam.removePlayer(player);
                 spectatingPlayer.restorePlayer();

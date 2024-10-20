@@ -24,7 +24,6 @@ public class GhostAI {
         MemoryModuleType.NEAREST_PLAYERS, //
         MemoryModuleType.NEAREST_VISIBLE_PLAYER, //
         MemoryModuleType.NEAREST_VISIBLE_ATTACKABLE_PLAYER,// ??
-        MemoryModuleType.LOOK_TARGET,
         MemoryModuleType.WALK_TARGET,
         MemoryModuleType.CANT_REACH_WALK_TARGET_SINCE,
         MemoryModuleType.ATTACK_TARGET, // needed?
@@ -35,7 +34,7 @@ public class GhostAI {
 
     protected static Brain<?> makeBrain(final @NotNull Brain<GhostNMSEntity> brain) {
         initCoreActivity(brain);
-        //initIdleActivity(brain);
+        //initIdleActivity(brain); // todo
         initFightActivity(brain);
         brain.setCoreActivities(Set.of(Activity.CORE));
         brain.setDefaultActivity(Activity.FIGHT);

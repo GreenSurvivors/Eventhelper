@@ -44,7 +44,7 @@ public class GhostModul extends AModul<GeneralGhostConfig> implements Listener {
     private final static @NotNull Permission PERMISSION_GHOST_WILDCARD = new Permission("eventhelper.ghost.*", PermissionDefault.OP,
         Map.of(
             PERMISSION_EDIT_SIGN.getName(), true
-        ));
+        )); // todo add as parent to cmds
 
     public GhostModul(final @NotNull EventHelper plugin) {
         super(plugin, new GeneralGhostConfig(plugin));
@@ -216,6 +216,7 @@ public class GhostModul extends AModul<GeneralGhostConfig> implements Listener {
 
                 if (game != null) {
                     game.playerQuit(eventPlayer, true);
+                    plugin.getMessageManager().sendLang(eventPlayer, GhostLangPath.PLAYER_GAME_QUIT);
                 } else {
                     plugin.getMessageManager().sendLang(eventPlayer, GhostLangPath.ERROR_NOT_PLAYING_SELF);
                 }
@@ -239,8 +240,9 @@ public class GhostModul extends AModul<GeneralGhostConfig> implements Listener {
                             if (game != null) {
                                 event.line(0, plugin.getMessageManager().getLang(GhostLangPath.SIGN_JOIN));
 
-                                if (event.getBlock().getBlockData() instanceof Sign sign) {
+                                if (event.getBlock().getState() instanceof Sign sign) {
                                     sign.setWaxed(true);
+                                    sign.update();
                                 }
 
                                 plugin.getMessageManager().sendLang(event.getPlayer(), GhostLangPath.SIGN_CREATED_JOIN,
@@ -269,8 +271,9 @@ public class GhostModul extends AModul<GeneralGhostConfig> implements Listener {
                             if (game != null) {
                                 event.line(0, plugin.getMessageManager().getLang(GhostLangPath.SIGN_SPECTATE));
 
-                                if (event.getBlock().getBlockData() instanceof Sign sign) {
+                                if (event.getBlock().getState() instanceof Sign sign) {
                                     sign.setWaxed(true);
+                                    sign.update();
                                 }
 
                                 plugin.getMessageManager().sendLang(event.getPlayer(), GhostLangPath.SIGN_CREATED_SPECTATE,
@@ -293,8 +296,9 @@ public class GhostModul extends AModul<GeneralGhostConfig> implements Listener {
                     if (event.getPlayer().hasPermission(PERMISSION_EDIT_SIGN)) {
                         event.line(0, plugin.getMessageManager().getLang(GhostLangPath.SIGN_QUIT));
 
-                        if (event.getBlock().getBlockData() instanceof Sign sign) {
+                        if (event.getBlock().getState() instanceof Sign sign) {
                             sign.setWaxed(true);
+                            sign.update();
                         }
 
                         plugin.getMessageManager().sendLang(event.getPlayer(), GhostLangPath.SIGN_CREATED_QUIT);
