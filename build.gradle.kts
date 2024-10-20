@@ -40,6 +40,7 @@ dependencies {
     compileOnly("com.sk89q.worldguard", "worldguard-bukkit", "7.0.9" /*"7.1.0-SNAPSHOT" // newest worldguard version*/)
     api("com.github.ben-manes.caffeine", "caffeine", "3.1.8") // caches
     compileOnly("de.greensurvivors", "SimpleQuests", "2.0.0") // installed locally as we depend on a dev version
+    api("org.apache.commons", "commons-collections4", "4.5.0-M2")
 }
 
 tasks {
