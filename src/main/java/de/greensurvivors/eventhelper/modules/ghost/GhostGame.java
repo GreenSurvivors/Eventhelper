@@ -501,8 +501,8 @@ public class GhostGame implements Listener { // todo spectating command
         gameState = GameState.IDLE;
     }
 
-    public boolean isGameFull() {
-        return config.getMaxAmountPlayers() == -1 || players.size() < config.getMaxAmountPlayers();
+    public boolean isRoomForAnotherPlayer() {
+        return config.getMaxAmountPlayers() == -1 || players.size() <= config.getMaxAmountPlayers();
     }
 
     public void playerSpectate(final @NotNull Player player) {
@@ -517,7 +517,7 @@ public class GhostGame implements Listener { // todo spectating command
         if (ghostModul.getGameParticipatingIn(player) == null) {
             switch (gameState) {
                 case IDLE -> {
-                    if (!isGameFull()) {
+                    if (isRoomForAnotherPlayer()) {
                         makeAlivePlayer(player);
                     } else {
                         plugin.getMessageManager().sendLang(player, GhostLangPath.ERROR_GAME_FULL);
@@ -525,7 +525,7 @@ public class GhostGame implements Listener { // todo spectating command
                 }
                 case RUNNING -> {
                     if (config.isLateJoinAllowed()) {
-                        if (!isGameFull()) {
+                        if (isRoomForAnotherPlayer()) {
                             AGhostGamePlayer offlinePlayer = offlinePlayers.get(player.getUniqueId());
 
                             if (offlinePlayer != null) {
