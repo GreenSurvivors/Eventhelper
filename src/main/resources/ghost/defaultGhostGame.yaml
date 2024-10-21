@@ -1,0 +1,56 @@
+dataVersion: 1.0.0
+ghost:
+  pathfind:
+    pathFindables:
+      minecraft:yellow_glazed_terracotta:
+        ==: de.greensurvivors.eventhelper.modules.ghost.PathModifier
+        velocity.idle: -1.0
+        follow.timeout: -1
+        follow.range: -1
+        velocity.follow: -1.0
+    offset: 30.0
+  follow:
+    range: 30
+    timeout: 1
+  velocity:
+    idle: 1.0
+    follow: 1.5
+  spawnLocations: [ ]
+  amount: 1
+game:
+  displayName: abc
+  mouseTraps: [ ]
+  lobbyLocation:
+    ==: org.bukkit.Location
+    world: world
+    x: 32.0
+    y: 64.0
+    z: 48.0
+    pitch: 0.0
+    yaw: 0.0
+  startLocation:
+    ==: org.bukkit.Location
+    world: world
+    x: 32.0
+    y: 64.0
+    z: 48.0
+    pitch: 0.0
+    yaw: 0.0
+  endLocation:
+    ==: org.bukkit.Location
+    world: world
+    x: 32.0
+    y: 64.0
+    z: 48.0
+    pitch: 0.0
+    yaw: 0.0
+  duration: 600
+  playerTime:
+    start: 14000
+    end: 23000
+  allowLateJoin: false
+  minAmountPlayers: -1
+  maxAmountPlayers: -1
+  teleport:
+    playerSpread:
+      distance: 0.5
