@@ -8,6 +8,7 @@ import de.greensurvivors.eventhelper.modules.AModul;
 import de.greensurvivors.eventhelper.modules.ghost.command.GhostCmd;
 import de.greensurvivors.eventhelper.modules.ghost.payer.AGhostGameParticipant;
 import de.greensurvivors.eventhelper.modules.ghost.payer.AGhostGamePlayer;
+import de.greensurvivors.eventhelper.modules.ghost.payer.SpectatingPlayer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
@@ -22,6 +23,10 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.SignChangeEvent;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityPickupItemEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.permissions.Permission;
 import org.bukkit.permissions.PermissionDefault;
@@ -307,6 +312,52 @@ public class GhostModul extends AModul<GeneralGhostConfig> implements Listener {
                         event.setCancelled(true);
                     }
                 }
+            }
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    private void spectatorDropItem(@NotNull PlayerDropItemEvent event) {
+        AGhostGameParticipant participant = getGhostGameParticipant(event.getPlayer());
+        if (participant instanceof SpectatingPlayer) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    private void spectatorPickUpItem(@NotNull EntityPickupItemEvent event) {
+        if (event.getEntity() instanceof Player player) {
+            AGhostGameParticipant participant = getGhostGameParticipant(player);
+            if (participant instanceof SpectatingPlayer) {
+                event.setCancelled(true);
+            }
+        }
+    }
+
+    @EventHandler
+    public void spectatorInteract(@NotNull PlayerInteractEvent event) {
+        AGhostGameParticipant participant = getGhostGameParticipant(event.getPlayer());
+        if (participant instanceof SpectatingPlayer) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    private void spectatorHurt(@NotNull EntityDamageEvent event) {
+        if (event.getEntity() instanceof Player player) {
+            AGhostGameParticipant participant = getGhostGameParticipant(player);
+            if (participant instanceof SpectatingPlayer) {
+                event.setCancelled(true);
+            }
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    private void spectatorAttack(@NotNull EntityDamageByEntityEvent event) {
+        if (event.getDamager() instanceof Player player) {
+            AGhostGameParticipant participant = getGhostGameParticipant(player);
+            if (participant instanceof SpectatingPlayer) {
+                event.setCancelled(true);
             }
         }
     }
