@@ -2,6 +2,8 @@ package de.greensurvivors.eventhelper.modules.ghost.entity;
 
 import com.google.common.collect.ImmutableList;
 import com.mojang.datafixers.util.Pair;
+import net.minecraft.util.valueproviders.UniformInt;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.behavior.*;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
@@ -16,26 +18,25 @@ import java.util.Set;
 public class GhostAI {
     static final List<SensorType<? extends Sensor<? super GhostNMSEntity>>> SENSOR_TYPES =
         ImmutableList.of(
-            NearstAlivePlayerSensor.NEAREST_ALIVE_PLAYER_SENSOR,
-            SensorType.NEAREST_PLAYERS
+            SensorType.NEAREST_LIVING_ENTITIES,
+            NearestAlivePlayerSensor.NEAREST_ALIVE_PLAYER_SENSOR
         );
     static final List<MemoryModuleType<?>> MEMORY_TYPES = ImmutableList.of(
+        MemoryModuleType.ATTACK_TARGET, // check for near players to set target to the nearest path findable
         MemoryModuleType.LOOK_TARGET,
-        MemoryModuleType.NEAREST_PLAYERS, //
-        MemoryModuleType.NEAREST_VISIBLE_PLAYER, //
-        MemoryModuleType.NEAREST_VISIBLE_ATTACKABLE_PLAYER,// ??
         MemoryModuleType.WALK_TARGET,
         MemoryModuleType.CANT_REACH_WALK_TARGET_SINCE,
-        MemoryModuleType.ATTACK_TARGET, // needed?
-        MemoryModuleType.NEAREST_ATTACKABLE, //
-        MemoryModuleType.WALK_TARGET,
-        MemoryModuleType.PATH
+        MemoryModuleType.PATH,
+        MemoryModuleType.NEAREST_VISIBLE_LIVING_ENTITIES,
+
+        MemoryModuleType.NEAREST_LIVING_ENTITIES,
+        MemoryModuleType.NEAREST_ATTACKABLE
     );
 
-    protected static Brain<?> makeBrain(final @NotNull Brain<GhostNMSEntity> brain) {
+    protected static Brain<?> makeBrain(final @NotNull GhostNMSEntity ghost, final @NotNull Brain<GhostNMSEntity> brain) {
         initCoreActivity(brain);
-        //initIdleActivity(brain); // todo
-        initFightActivity(brain);
+        initIdleActivity(ghost, brain);
+        initFightActivity(ghost, brain);
         brain.setCoreActivities(Set.of(Activity.CORE));
         brain.setDefaultActivity(Activity.FIGHT);
         brain.useDefaultActivity();
@@ -43,27 +44,56 @@ public class GhostAI {
     }
 
     private static void initCoreActivity(Brain<GhostNMSEntity> brain) {
-        brain.addActivity(Activity.CORE, 0, ImmutableList.of(new Swim(0.8F), new LookAtTargetSink(45, 90), new MoveToTargetSink()));
+        brain.addActivity(Activity.CORE, 0, ImmutableList.of(new GhostSwim(0.8F), new LookAtTargetSink(45, 90), new MoveToTargetSink()));
     }
 
-    private static void initFightActivity(Brain<GhostNMSEntity> brain) {
-        brain.addActivityWithConditions(
-            Activity.FIGHT,
+    private static void initIdleActivity(final @NotNull GhostNMSEntity ghost, final @NotNull Brain<GhostNMSEntity> brain) {
+        brain.addActivity(
+            Activity.IDLE,
+            10,
             ImmutableList.of(
-                Pair.of(0, StartAttacking.create(ghost -> ghost.getBrain().getMemory(MemoryModuleType.NEAREST_ATTACKABLE))),
-                Pair.of(1, StopAttackingIfTargetInvalid.create()),
-                /*Pair.of(2, new Shoot()),
-                Pair.of(3, new ShootWhenStuck()),
-                Pair.of(4, new LongJump()),
-                Pair.of(5, new Slide()),*/
-                Pair.of(2, new RunOne<>(ImmutableList.of(Pair.of(new DoNothing(20, 100), 1), Pair.of(RandomStroll.stroll(0.6F), 2))))
-            ),
-            Set.of()
+                StartAttacking.create(ignored -> brain.getMemory(MemoryModuleType.NEAREST_ATTACKABLE)),
+                SetEntityLookTargetSometimes.create(8.0F, UniformInt.of(30, 60)),
+                new RunOne<>(
+                    ImmutableList.of(
+                        Pair.of(MoveToIdlePos.moveToIdlePos(), 2), // todo replace with pathfind to middle
+
+                        Pair.of(SetWalkTargetFromLookTarget.create((float) ghost.getIdleVelocity(), 3), 2),
+                        Pair.of(new DoNothing(30, 60), 1)
+                    )
+                )
+            )
         );
     }
 
+    private static void initFightActivity(GhostNMSEntity ghost, Brain<GhostNMSEntity> brain) {
+        brain.addActivityAndRemoveMemoryWhenStopped(
+            Activity.FIGHT,
+            10,
+            ImmutableList.of(
+                StopAttackingIfTargetInvalid.create(
+                    entity -> !ghost.canTargetEntity(entity), GhostAI::onTargetInvalid, false),
+                MeleeAttack.create(8),
+                StopAttackingIfTargetInvalid.create()
+            ),
+            MemoryModuleType.ATTACK_TARGET
+        );
+    }
+
+    private static void onTargetInvalid(GhostNMSEntity entity, LivingEntity entity1) {
+    }
+
     public static void updateActivity(final @NotNull GhostNMSEntity ghost) {
+        Activity activity = ghost.getBrain().getActiveNonCoreActivity().orElse(null);
+        ghost.getBrain().setActiveActivityToFirstValid(ImmutableList.of(Activity.FIGHT, Activity.IDLE));
+        Activity activity2 = ghost.getBrain().getActiveNonCoreActivity().orElse(null);
+        if (activity2 == Activity.FIGHT && activity != Activity.FIGHT) {
+            ghost.playAngrySound();
+        }
+
+        ghost.setAggressive(ghost.getBrain().hasMemoryValue(MemoryModuleType.ATTACK_TARGET));
+
         ghost.getBrain().setActiveActivityToFirstValid(
-            ImmutableList.of(Activity.FIGHT, Activity.INVESTIGATE, Activity.SNIFF, Activity.IDLE));
+            ImmutableList.of(Activity.FIGHT, Activity.IDLE));
     }
 }

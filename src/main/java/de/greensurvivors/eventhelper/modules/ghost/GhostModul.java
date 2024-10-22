@@ -226,6 +226,11 @@ public class GhostModul extends AModul<GeneralGhostConfig> implements Listener {
                     plugin.getMessageManager().sendLang(eventPlayer, GhostLangPath.ERROR_NOT_PLAYING_SELF);
                 }
             }
+        } else {
+            AGhostGameParticipant participant = getGhostGameParticipant(event.getPlayer());
+            if (participant instanceof SpectatingPlayer) {
+                event.setCancelled(true);
+            }
         }
     }
 
@@ -331,14 +336,6 @@ public class GhostModul extends AModul<GeneralGhostConfig> implements Listener {
             if (participant instanceof SpectatingPlayer) {
                 event.setCancelled(true);
             }
-        }
-    }
-
-    @EventHandler
-    public void spectatorInteract(@NotNull PlayerInteractEvent event) {
-        AGhostGameParticipant participant = getGhostGameParticipant(event.getPlayer());
-        if (participant instanceof SpectatingPlayer) {
-            event.setCancelled(true);
         }
     }
 

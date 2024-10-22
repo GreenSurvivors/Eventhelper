@@ -619,6 +619,10 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
                         result.add(CREATE);
                     }
 
+                    if (StringUtils.startsWithIgnoreCase(QUIT, arg_0)) {
+                        result.add(QUIT);
+                    }
+
                     for (String gameNameId : gameIds) {
                         if (StringUtils.startsWithIgnoreCase(gameNameId, arg_0)) {
                             result.add(gameNameId);

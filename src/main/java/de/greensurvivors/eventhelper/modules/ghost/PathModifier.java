@@ -11,11 +11,9 @@ import java.util.Map;
 public class PathModifier implements ConfigurationSerializable {
     private final static String
         FOLLOW_RANGE_KEY = "follow.range",
-        FOLLOW_TIMEOUT_KEY = "follow.timeout",
         IDLE_VELOCITY_KEY = "velocity.idle",
         FOLLOW_VELOCITY_KEY = "velocity.follow";
     private final @NotNull ConfigOption<@Nullable Integer> followRange = new ConfigOption<>(FOLLOW_RANGE_KEY, -1); // in blocks
-    private final @NotNull ConfigOption<@Nullable Long> followTimeOut = new ConfigOption<>(FOLLOW_TIMEOUT_KEY, -1L); // in milliseconds
     private final @NotNull ConfigOption<@Nullable Double> idleVelocity = new ConfigOption<>(IDLE_VELOCITY_KEY, -1.0D);  // in blocks / s ?
     private final @NotNull ConfigOption<@Nullable Double> followVelocity = new ConfigOption<>(FOLLOW_VELOCITY_KEY, -1.0D); // in blocks / s ?
 
@@ -28,9 +26,6 @@ public class PathModifier implements ConfigurationSerializable {
 
         if (map.get(FOLLOW_RANGE_KEY) instanceof Number newFollowRange && newFollowRange.intValue() > 0) {
             result.followRange.setValue(newFollowRange.intValue());
-        }
-        if (map.get(FOLLOW_TIMEOUT_KEY) instanceof Number newFollowTimeout && newFollowTimeout.intValue() > 0) {
-            result.followTimeOut.setValue(newFollowTimeout.longValue());
         }
         if (map.get(IDLE_VELOCITY_KEY) instanceof Number idleVelocity && idleVelocity.intValue() > 0) {
             result.idleVelocity.setValue(idleVelocity.doubleValue());
@@ -47,7 +42,6 @@ public class PathModifier implements ConfigurationSerializable {
         final @NotNull Map<String, Object> result = new HashMap<>(5);
 
         result.put(followRange.getPath(), followRange.getValueOrFallback());
-        result.put(followTimeOut.getPath(), followTimeOut.getValueOrFallback());
         result.put(idleVelocity.getPath(), idleVelocity.getValueOrFallback());
         result.put(followVelocity.getPath(), followVelocity.getValueOrFallback());
 
@@ -56,10 +50,6 @@ public class PathModifier implements ConfigurationSerializable {
 
     public @Nullable Integer getOverwriteFollowRange() {
         return followRange.getValueOrFallback() > 0 ? followRange.getValueOrFallback() : null;
-    }
-
-    public @Nullable Long getOverwriteTimeout() {
-        return followTimeOut.getValueOrFallback() > 0L ? followTimeOut.getValueOrFallback() : null;
     }
 
     public @Nullable Double getOverwriteIdleVelocity() {

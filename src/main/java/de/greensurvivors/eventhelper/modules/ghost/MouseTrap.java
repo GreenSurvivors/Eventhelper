@@ -76,7 +76,7 @@ public class MouseTrap implements ConfigurationSerializable, Listener { // todo 
                         throw new NoSuchElementException("Serialized MouseTrap " + map + " does not contain a release button position value.");
                     }
                 } else {
-                    throw new NoSuchElementException("Serialized MouseTrap " + map + " does not contain a redstone pulse position value.");
+                    throw new NoSuchElementException("Serialized MouseTrap " + map + " does not contain a release spawn position value.");
                 }
             } else {
                 throw new NoSuchElementException("Serialized MouseTrap " + map + " does not contain a spawn position value.");

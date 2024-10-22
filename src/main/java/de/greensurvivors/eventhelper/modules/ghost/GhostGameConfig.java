@@ -3,6 +3,7 @@ package de.greensurvivors.eventhelper.modules.ghost;
 import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.config.ConfigOption;
 import de.greensurvivors.eventhelper.modules.AModulConfig;
+import io.papermc.paper.math.Position;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.apache.commons.collections4.list.SetUniqueList;
@@ -42,6 +43,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     private final @NotNull ConfigOption<@NotNull Double> idleVelocity = new ConfigOption<>("ghost.velocity.idle", 1.0D);  // in blocks / s ?
     private final @NotNull ConfigOption<@NotNull Double> followVelocity = new ConfigOption<>("ghost.velocity.follow", 1.5D); // in blocks / s ?
     private final @NotNull ConfigOption<@NotNull List<@NotNull Location>> ghostSpawnLocations = new ConfigOption<>("ghost.spawnLocations", List.of()); // we need fast random access. But the locations should be unique! // todo check for very close together locations!
+    private final @NotNull ConfigOption<@NotNull List<@NotNull Position>> ghostIdlePositions = new ConfigOption<>("ghost.idlePositions", List.of()); // we need fast random access. But the locations should be unique! // todo check for very close together locations!
     private final @NotNull ConfigOption<@NotNull @Range(from = 1, to = Integer.MAX_VALUE) Integer> ghostAmount = new ConfigOption<>("ghost.amount", 1);
     // general
     private final @NotNull String name_id;
@@ -66,7 +68,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     private final @NotNull ConfigOption<@NotNull Map<@NotNull String, @NotNull QuestModifier>> quests = new ConfigOption<>("game.tasks", Map.of());
     private final @NotNull ConfigOption<@NotNull Duration> durationInTrapUntilDeath = new ConfigOption<>("game.mouseTrap.secondsUntilDeath", Duration.ofSeconds(90));
     private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = Integer.MAX_VALUE) Integer> perishedTaskAmount = new ConfigOption<>("game.tasks.perished.amount", 3);
-    private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = Integer.MAX_VALUE) Integer> startingFoodAmount = new ConfigOption<>("game.food.amount.starting", 4);
+    private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = Integer.MAX_VALUE) Integer> startingFoodAmount = new ConfigOption<>("game.food.amount.starting", 8);
     private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = Integer.MAX_VALUE) Integer> startingSaturationAmount = new ConfigOption<>("game.startingSaturationAmount", 0);
     private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = Integer.MAX_VALUE) Double> startingHealthAmount = new ConfigOption<>("game.startingHealthAmount", 5D);
     private final @NotNull ConfigOption<@NotNull String> feedRegion = new ConfigOption<>("game.food.region", "__global__");
@@ -152,10 +154,10 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                         idleVelocity.setValue(config.getDouble(idleVelocity.getPath(), idleVelocity.getFallback()));
                         followVelocity.setValue(config.getDouble(followVelocity.getPath(), followVelocity.getFallback()));
 
-                        final @NotNull ArrayList<@NotNull Location> newSpawnLocations = new ArrayList<>();
-                        final @NotNull List<?> objectList = config.getList(ghostSpawnLocations.getPath(), List.of());
+                        final @NotNull List<?> spawnObjectList = config.getList(ghostSpawnLocations.getPath(), List.of());
+                        final @NotNull ArrayList<@NotNull Location> newSpawnLocations = new ArrayList<>(spawnObjectList.size());
 
-                        for (Object object : objectList) {
+                        for (Object object : spawnObjectList) {
                             if (object instanceof Location location) {
                                 if (!newSpawnLocations.contains(location)) {
                                     newSpawnLocations.add(location);
@@ -183,6 +185,30 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                             }
                         }
                         ghostSpawnLocations.setValue(newSpawnLocations);
+
+                        final @NotNull List<?> idleObjectList = config.getList(ghostIdlePositions.getPath(), List.of());
+                        final @NotNull ArrayList<@NotNull Position> newIdlePositions = new ArrayList<>(idleObjectList.size());
+                        for (Object object : idleObjectList) {
+                            if (object instanceof Map<?, ?> map) {
+                                Position position = deserializePosition((Map<String, Object>) map);
+
+                                newIdlePositions.add(position);
+                            } else if (object instanceof ConfigurationSection section) {
+                                Map<String, Object> map = new HashMap<>();
+
+                                Set<String> keys = section.getKeys(false);
+
+                                for (String key : keys) {
+                                    map.put(key, section.get(key));
+                                }
+
+                                Position position = deserializePosition(map);
+                                newIdlePositions.add(position);
+                            } else {
+                                plugin.getComponentLogger().warn("unknown idle position config: {}", object);
+                            }
+                        }
+                        ghostIdlePositions.setValue(newIdlePositions);
 
                         ghostAmount.setValue(config.getInt(ghostAmount.getPath(), ghostAmount.getFallback()));
 
@@ -293,6 +319,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                         config.set(idleVelocity.getPath(), idleVelocity.getValueOrFallback());
                         config.set(followVelocity.getPath(), followVelocity.getValueOrFallback());
                         config.set(ghostSpawnLocations.getPath(), ghostSpawnLocations.getValueOrFallback());
+                        config.set(ghostIdlePositions.getPath(), ghostIdlePositions.getValueOrFallback().stream().map(AModulConfig::serializePosition).toList());
                         config.set(ghostAmount.getPath(), ghostAmount.getValueOrFallback());
 
                         config.set(gameInitCommands.getPath(), gameInitCommands.getValueOrFallback());
@@ -375,20 +402,6 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
         return followRange.getValueOrFallback();
     }
 
-    public long getFollowTimeOutAt(final @NotNull Material material) { // todo setter
-        PathModifier modifier = pathFindableMats.getValueOrFallback().get(material);
-
-        if (modifier != null) {
-            Long overwrite = modifier.getOverwriteTimeout();
-
-            if (overwrite != null) {
-                return overwrite;
-            }
-        }
-
-        return followTimeOut.getValueOrFallback();
-    }
-
     public double getIdleVelocityAt(final @NotNull Material material) { // todo setter
         PathModifier modifier = pathFindableMats.getValueOrFallback().get(material);
 
@@ -463,6 +476,10 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                 }
             });
         }
+    }
+
+    public @NotNull List<@NotNull Position> getIdlePositions() { // todo make configuable
+        return ghostIdlePositions.getValueOrFallback();
     }
 
     public int getAmountOfGhosts() {
