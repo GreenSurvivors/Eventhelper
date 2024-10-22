@@ -11,14 +11,11 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.ai.attributes.*;
-import net.minecraft.world.entity.ai.goal.FloatGoal;
-import net.minecraft.world.entity.ai.goal.Goal;
-import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal;
 import net.minecraft.world.entity.monster.Monster;
-import net.minecraft.world.entity.vehicle.Boat;
 import net.minecraft.world.item.ItemStack;
 import org.bukkit.craftbukkit.v1_20_R3.attribute.CraftAttributeMap;
 import org.bukkit.craftbukkit.v1_20_R3.entity.CraftLivingEntity;
+import org.bukkit.event.entity.EntityRemoveEvent;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Vector3f;
 
@@ -44,17 +41,26 @@ public class UnderWorldGhostNMSEntity extends Monster {
     public UnderWorldGhostNMSEntity(final @NotNull GhostNMSEntity parentMob, final @NotNull GhostGame ghostGame) {
         super(UNDERWORLD_GHOST_TYPE, parentMob.level());
 
-        navigation.setCanFloat(true); // can swim. not like floating in the air
+        setCanPickUpLoot(false);
 
         this.ghostGame = ghostGame;
         this.parentMob = parentMob;
+
+        this.setPos(parentMob.position());
+        this.setYRot(parentMob.getXRot());
+        this.setYRot(parentMob.getYRot());
+
+        final GhostPathNavigation ghostPathNavigation = new GhostPathNavigation(this, parentMob, parentMob.level());
+        ghostPathNavigation.setCanFloat(true); // can swim. not like floating in the air
+        navigation = ghostPathNavigation;
     }
 
     @SuppressWarnings("unchecked")
     // has to be called while the server is bootstrapping, or else the registry will be frozen!
     private static <T extends Entity> EntityType<T> registerEntityType(EntityType.Builder<Entity> type) {
-        return (EntityType<T>) Registry.register(BuiltInRegistries.ENTITY_TYPE, "underworld_ghost",
+        final EntityType<T> registered = (EntityType<T>) Registry.register(BuiltInRegistries.ENTITY_TYPE, "underworld_ghost",
             type.build("underworld_ghost"));
+        return registered;
     }
 
     public static AttributeSupplier.Builder createAttributes() {
@@ -90,7 +96,7 @@ public class UnderWorldGhostNMSEntity extends Monster {
 
             try {
                 // Access the private field
-                Field privateAttributesField = livingEntityClass.getDeclaredField("attributes");
+                Field privateAttributesField = livingEntityClass.getDeclaredField("bN"/*"attributes"*/); // todo change one update to moj mapped server vers.
 
                 // Make the field accessible
                 privateAttributesField.setAccessible(true);
@@ -148,19 +154,23 @@ public class UnderWorldGhostNMSEntity extends Monster {
     }
 
     @Override
-    protected void registerGoals() { // don't randomly drown
-        super.registerGoals();
-        this.goalSelector.addGoal(0, new FloatGoal(this));
-        // this.goalSelector.addGoal(4, new MeleeAttackGoal(this, 1.0D, true));
-        this.goalSelector.addGoal(5, new WaterAvoidingRandomStrollGoal(this, 0.4D));
+    protected void registerGoals() {
     }
 
     @Override
-    protected void updateControlFlags() { // all control to rider
-        this.goalSelector.setControlFlag(Goal.Flag.MOVE, true);
-        this.goalSelector.setControlFlag(Goal.Flag.JUMP, !(this.getVehicle() instanceof Boat));
-        this.goalSelector.setControlFlag(Goal.Flag.LOOK, true);
-        this.goalSelector.setControlFlag(Goal.Flag.TARGET, true);
+    public void aiStep() {
+        super.aiStep();
+
+        if (this.isAlive()) {
+            parentMob.setPos(this.getPassengerRidingPosition(parentMob));
+            parentMob.setXRot(this.getXRot());
+            parentMob.setYRot(this.getYRot());
+        }
+    }
+
+    @Override
+    public @Nullable LivingEntity getControllingPassenger() {
+        return parentMob;
     }
 
     @Override
@@ -170,6 +180,7 @@ public class UnderWorldGhostNMSEntity extends Monster {
 
     @Override
     protected void defineSynchedData() {
+        super.defineSynchedData();
     }
 
     @Override
@@ -209,5 +220,46 @@ public class UnderWorldGhostNMSEntity extends Monster {
     @Override
     public boolean isSilent() { // don't make any sound
         return true;
+    }
+
+    public boolean hasIndirectPassenger(Entity passenger) {
+        if (passenger == parentMob) {
+            return true;
+        } else if (passenger instanceof GhostNMSEntity ghostNMS) {
+            UnderWorldGhostNMSEntity underWorldGhost = ghostNMS.underWorldGhost;
+
+            if (!underWorldGhost.isPassenger()) {
+                return false;
+            } else {
+                Entity entity1 = underWorldGhost.getVehicle();
+
+                return entity1 == parentMob || this.hasIndirectPassenger(entity1);
+            }
+        } else if (!passenger.isPassenger()) {
+            return false;
+        } else {
+            Entity entity1 = passenger.getVehicle();
+
+            return entity1 == this ? true : this.hasIndirectPassenger(entity1);
+        }
+    }
+
+    @Override
+    protected void addPassenger(Entity passenger) {
+        parentMob.addPassenger(passenger); // here because of protected access
+    }
+
+    @Override
+    protected boolean removePassenger(Entity entity, boolean suppressCancellation) {
+        return parentMob.removePassenger(entity, suppressCancellation);
+    }
+
+    @Override
+    public void remove(Entity.RemovalReason entity_removalreason, EntityRemoveEvent.Cause cause) {
+        super.remove(entity_removalreason, cause);
+
+        if (!parentMob.isRemoved()) {
+            parentMob.remove(entity_removalreason, cause);
+        }
     }
 }

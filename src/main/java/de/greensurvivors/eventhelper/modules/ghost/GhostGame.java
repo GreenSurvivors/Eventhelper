@@ -42,6 +42,7 @@ import java.io.Serial;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Pattern;
 
@@ -54,9 +55,9 @@ public class GhostGame implements Listener { // todo spectating command
     private final @NotNull GhostGameConfig config;
     private final @NotNull String name_id;
 
-    private final @NotNull Map<@NotNull UUID, @NotNull AGhostGamePlayer> offlinePlayers = new HashMap<>();
-    private final @NotNull Map<@NotNull UUID, @NotNull AGhostGamePlayer> players = new HashMap<>();
-    private final @NotNull Map<@NotNull UUID, @NotNull SpectatingPlayer> spectators = new HashMap<>();
+    private final @NotNull Map<@NotNull UUID, @NotNull AGhostGamePlayer> offlinePlayers = new ConcurrentHashMap<>();
+    private final @NotNull Map<@NotNull UUID, @NotNull AGhostGamePlayer> players = new ConcurrentHashMap<>();
+    private final @NotNull Map<@NotNull UUID, @NotNull SpectatingPlayer> spectators = new ConcurrentHashMap<>();
     private final @NotNull Set<@NotNull IGhost> ghosts = new HashSet<>();
     private final @NotNull Scoreboard scoreboard;
     private final @NotNull Team perishedTeam;
@@ -230,7 +231,7 @@ public class GhostGame implements Listener { // todo spectating command
 
                 if (player != null) {
                     plugin.getMessageManager().sendLang(player, GhostLangPath.GAME_COUNTDOWN,
-                        Placeholder.unparsed(SharedPlaceHolder.NUMBER.getKey(), String.valueOf(secondsRemain)));
+                        Placeholder.component(SharedPlaceHolder.TIME.getKey(), MessageManager.formatTime(Duration.ofSeconds(secondsRemain))));
                     player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, SoundCategory.MASTER, 1.0f, 1.0f);
                 } else {
                     if (entry.getValue() instanceof AlivePlayer alivePlayer) {
@@ -311,7 +312,8 @@ public class GhostGame implements Listener { // todo spectating command
         amountOfTicksRun++;
 
         long gameDurationInTicks = config.getGameDuration().toSeconds() * 20;
-        if (gameDurationInTicks < amountOfTicksRun) {
+
+        if (amountOfTicksRun <= gameDurationInTicks) {
             if (config.getStartPlayerTime() >= 0 && config.getEndPlayerTime() >= 0) {
                 long timeDiff = config.getEndPlayerTime() - config.getStartPlayerTime();
 
@@ -478,10 +480,9 @@ public class GhostGame implements Listener { // todo spectating command
             Map.Entry<UUID, AGhostGamePlayer> entry = iterator.next();
             @Nullable Player player = plugin.getServer().getPlayer(entry.getKey());
             if (player != null) {
-                player.teleportAsync(config.getEndLocation());
+                playerQuit(player, true);
             }
 
-            entry.getValue().restorePlayer();
             iterator.remove();
         }
         offlinePlayers.clear();
@@ -496,8 +497,6 @@ public class GhostGame implements Listener { // todo spectating command
             timeTask.cancel();
         }
         amountOfTicksRun = 0;
-
-        amountOfTicksRun = config.getStartPlayerTime();
         gameState = GameState.IDLE;
     }
 
@@ -724,6 +723,10 @@ public class GhostGame implements Listener { // todo spectating command
                 player.resetPlayerTime();
             }
 
+            for (SpectatingPlayer spectatingPlayer : spectators.values()) {
+                player.showPlayer(plugin, spectatingPlayer.getBukkitPlayer());
+            }
+
             // reset Scoreboard
             perishedTeam.removePlayer(player);
             // player will get potion effects removed and dead players will be visible again, after the player data was restored
@@ -737,7 +740,6 @@ public class GhostGame implements Listener { // todo spectating command
                     alivePlayer.releaseFromTrap();
                 }
             } else if (ghostGamePlayer instanceof DeadPlayer) {
-
                 for (Iterator<AGhostGamePlayer> iterator = players.values().iterator(); iterator.hasNext(); ) {
                     AGhostGamePlayer otherGhostGamePlayer = iterator.next();
                     Player otherPlayer = otherGhostGamePlayer.getBukkitPlayer();

@@ -2,6 +2,7 @@ package de.greensurvivors.eventhelper.modules.ghost.entity;
 
 import de.greensurvivors.eventhelper.modules.ghost.GhostGame;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.MobSpawnType;
 import org.bukkit.Location;
 import org.bukkit.craftbukkit.v1_20_R3.CraftServer;
 import org.bukkit.craftbukkit.v1_20_R3.CraftWorld;
@@ -29,17 +30,13 @@ public class GhostCraftEntity extends CraftMob implements IGhost, CraftEnemy {
             serverLevel.getMinecraftWorld(),
             ghostGame);
 
-        UnderWorldGhostNMSEntity underWorldGhostNMSEntity = new UnderWorldGhostNMSEntity(ghostNMSEntity, ghostGame);
-        ghostNMSEntity.setUnderworldGhost(underWorldGhostNMSEntity);
-
+        // first set position, then finalize to spawn underworld counterpart.
+        // This is because we set the position of the counterpart to the position of the gost, then update every ai tick
+        // would we spawn the entity at the same time as the ghost and then set the position it wouldn't have any effect
         ghostNMSEntity.absMoveTo(location.x(), location.y(), location.z(), location.getYaw(), location.getPitch());
         ghostNMSEntity.setYHeadRot(location.getYaw());
-        underWorldGhostNMSEntity.absMoveTo(location.x(), location.y(), location.z(), location.getYaw(), location.getPitch());
-        underWorldGhostNMSEntity.setYHeadRot(location.getYaw());
+        ghostNMSEntity.finalizeSpawn(serverLevel.getMinecraftWorld(), serverLevel.getMinecraftWorld().getCurrentDifficultyAt(ghostNMSEntity.blockPosition()), MobSpawnType.COMMAND, null, null);
 
-        ghostNMSEntity.startRiding(underWorldGhostNMSEntity, true);
-
-        ((CraftWorld) location.getWorld()).addEntity(underWorldGhostNMSEntity, reason, null, false);
         return ((CraftWorld) location.getWorld()).addEntity(ghostNMSEntity, reason, function, false);
     }
 
