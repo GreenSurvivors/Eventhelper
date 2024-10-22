@@ -34,6 +34,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     static {
         ConfigurationSerialization.registerClass(PathModifier.class);
         ConfigurationSerialization.registerClass(MouseTrap.class);
+        ConfigurationSerialization.registerClass(QuestModifier.class);
     }
     // ghost
     private final @NotNull ConfigOption<@NotNull Map<Material, PathModifier>> pathFindableMats = new ConfigOption<>("ghost.pathfind.pathFindables", new HashMap<>(Map.of(Material.YELLOW_GLAZED_TERRACOTTA, new PathModifier())));
@@ -65,7 +66,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     private final @NotNull ConfigOption<@NotNull @Range(from = -1, to = Integer.MAX_VALUE) Integer> maxAmountPlayers = new ConfigOption<>("game.maxAmountPlayers", -1);
     private final @NotNull ConfigOption<@NotNull Double> playerSpreadDistance = new ConfigOption<>("game.teleport.playerSpread.distance", 0.5);
     private final @NotNull ConfigOption<@NotNull @Range(from = 1, to = Integer.MAX_VALUE) Integer> pointGoal = new ConfigOption<>("game.points.goal", 100);
-    private final @NotNull ConfigOption<@NotNull Map<@NotNull String, @NotNull QuestModifier>> quests = new ConfigOption<>("game.tasks", Map.of());
+    private final @NotNull ConfigOption<@NotNull Map<@NotNull String, @NotNull QuestModifier>> quests = new ConfigOption<>("game.tasks.points", Map.of());
     private final @NotNull ConfigOption<@NotNull Duration> durationInTrapUntilDeath = new ConfigOption<>("game.mouseTrap.secondsUntilDeath", Duration.ofSeconds(90));
     private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = Integer.MAX_VALUE) Integer> perishedTaskAmount = new ConfigOption<>("game.tasks.perished.amount", 3);
     private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = Integer.MAX_VALUE) Integer> startingFoodAmount = new ConfigOption<>("game.food.amount.starting", 8);
@@ -73,8 +74,8 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = Integer.MAX_VALUE) Double> startingHealthAmount = new ConfigOption<>("game.startingHealthAmount", 5D);
     private final @NotNull ConfigOption<@NotNull String> feedRegion = new ConfigOption<>("game.food.region", "__global__");
     private final @NotNull ConfigOption<@NotNull Duration> feedDelay = new ConfigOption<>("game.food.delayTicks", Duration.ofSeconds(20));
-    private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = Integer.MAX_VALUE) Integer> feedAmount = new ConfigOption<>("game.foodAmount.feeding.tick", 1);
-    private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = Integer.MAX_VALUE) Integer> maxFeedAmount = new ConfigOption<>("game.foodAmount.feeding.max", 6);
+    private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = Integer.MAX_VALUE) Integer> feedAmount = new ConfigOption<>("game.food.feeding.tick", 1);
+    private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = Integer.MAX_VALUE) Integer> maxFeedAmount = new ConfigOption<>("game.food.feeding.max", 6);
 
     public GhostGameConfig(final @NotNull EventHelper plugin, final @NotNull String name_id, final @NotNull GhostModul modul) {
         super(plugin, Path.of("games", name_id + ".yaml"));

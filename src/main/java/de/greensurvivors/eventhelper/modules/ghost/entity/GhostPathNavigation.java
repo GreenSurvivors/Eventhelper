@@ -1,6 +1,5 @@
 package de.greensurvivors.eventhelper.modules.ghost.entity;
 
-import de.greensurvivors.eventhelper.EventHelper;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.ai.navigation.GroundPathNavigation;
@@ -14,13 +13,10 @@ public class GhostPathNavigation extends GroundPathNavigation {
 
     public GhostPathNavigation(UnderWorldGhostNMSEntity underWorldGhostNMS, @NotNull GhostNMSEntity ghostNMS, Level world) {
         super(underWorldGhostNMS, world);
-
         this.ghostNMS = ghostNMS;
     }
 
     public Path createPath(BlockPos target, @Nullable Entity entity, int distance) {
-        EventHelper.getPlugin().getComponentLogger().info("pathing to " + target);
-
         return super.createPath(target.atY((int) (target.getY() - ghostNMS.ghostGame.getConfig().getPathfindOffset())), entity, distance);
     }
 }

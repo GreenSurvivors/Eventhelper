@@ -53,6 +53,7 @@ public class UnderWorldGhostNMSEntity extends Monster {
         final GhostPathNavigation ghostPathNavigation = new GhostPathNavigation(this, parentMob, parentMob.level());
         ghostPathNavigation.setCanFloat(true); // can swim. not like floating in the air
         navigation = ghostPathNavigation;
+        this.setPersistenceRequired();
     }
 
     @SuppressWarnings("unchecked")

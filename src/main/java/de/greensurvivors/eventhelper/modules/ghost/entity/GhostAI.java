@@ -28,6 +28,7 @@ public class GhostAI {
         MemoryModuleType.CANT_REACH_WALK_TARGET_SINCE,
         MemoryModuleType.PATH,
         MemoryModuleType.NEAREST_VISIBLE_LIVING_ENTITIES,
+        MemoryModuleType.ATTACK_COOLING_DOWN,
 
         MemoryModuleType.NEAREST_LIVING_ENTITIES,
         MemoryModuleType.NEAREST_ATTACKABLE
@@ -52,7 +53,7 @@ public class GhostAI {
             Activity.IDLE,
             10,
             ImmutableList.of(
-                StartAttacking.create(ignored -> brain.getMemory(MemoryModuleType.NEAREST_ATTACKABLE)),
+                StartAttacking.create(ignored -> brain.getMemory(MemoryModuleType.ATTACK_TARGET)),
                 SetEntityLookTargetSometimes.create(8.0F, UniformInt.of(30, 60)),
                 new RunOne<>(
                     ImmutableList.of(
