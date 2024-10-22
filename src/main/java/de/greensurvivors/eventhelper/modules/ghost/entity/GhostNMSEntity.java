@@ -5,6 +5,7 @@ import de.greensurvivors.eventhelper.modules.ghost.GhostGame;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
@@ -17,16 +18,25 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.DamageTypeTags;
+import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.attributes.*;
+import net.minecraft.world.entity.ai.navigation.PathNavigation;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.ServerLevelAccessor;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+import org.bukkit.Material;
 import org.bukkit.craftbukkit.v1_20_R3.attribute.CraftAttributeMap;
+import org.bukkit.craftbukkit.v1_20_R3.block.CraftBlockType;
 import org.bukkit.craftbukkit.v1_20_R3.entity.CraftLivingEntity;
+import org.bukkit.event.entity.CreatureSpawnEvent;
+import org.bukkit.event.entity.EntityRemoveEvent;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Vector3f;
 
@@ -96,7 +106,7 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
 
             try {
                 // Access the private field
-                Field privateAttributesField = livingEntityClass.getDeclaredField("attributes");
+                Field privateAttributesField = livingEntityClass.getDeclaredField("bN"/*"attributes"*/); // todo change when update to moj mappings
 
                 // Make the field accessible
                 privateAttributesField.setAccessible(true);
@@ -128,7 +138,7 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
 
     @Override
     protected @NotNull Brain<?> makeBrain(@NotNull Dynamic<?> dynamic) {
-        return GhostAI.makeBrain(this.brainProvider().makeBrain(dynamic));
+        return GhostAI.makeBrain(this, this.brainProvider().makeBrain(dynamic));
     }
 
     @Override
@@ -159,8 +169,30 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
         return this.bukkitEntity;
     }
 
-    public void setUnderworldGhost(final @NotNull UnderWorldGhostNMSEntity underWorldghostNMSEntity) {
-        this.underWorldGhost = underWorldghostNMSEntity;
+    public @NotNull PathNavigation getNavigation() {
+        if (underWorldGhost == null) {
+            return super.getNavigation();
+        } else {
+            return underWorldGhost.getNavigation();
+        }
+    }
+
+    @Nullable
+    public SpawnGroupData finalizeSpawn(@NotNull ServerLevelAccessor world, @NotNull DifficultyInstance difficulty, @NotNull MobSpawnType spawnReason, @Nullable SpawnGroupData entityData, @Nullable CompoundTag entityNbt) {
+        UnderWorldGhostNMSEntity underWorldGhostNMSEntity = new UnderWorldGhostNMSEntity(this, ghostGame);
+        this.underWorldGhost = underWorldGhostNMSEntity;
+
+        level().addFreshEntity(underWorldGhost, CreatureSpawnEvent.SpawnReason.CUSTOM);
+
+        return entityData;
+    }
+
+    public void remove(Entity.RemovalReason entity_removalreason, EntityRemoveEvent.Cause cause) {
+        super.remove(entity_removalreason, cause);
+
+        if (!underWorldGhost.isRemoved()) {
+            underWorldGhost.remove(entity_removalreason, cause);
+        }
     }
 
     public boolean isCharging() {
@@ -186,8 +218,12 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
 
     @Override
     public void tick() {
-        // todo
         super.tick();
+
+        this.oRun = this.run;
+        this.run = 0.0F;
+        this.resetFallDistance();
+        this.setDeltaMovement(Vec3.ZERO);
     }
 
     @Override
@@ -205,6 +241,10 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
     @Override
     public void playAmbientSound() {
         this.level().playLocalSound(this, this.getAmbientSound(), this.getSoundSource(), 1.0F, 1.0F);
+    }
+
+    protected void playAngrySound() {
+        this.playSound(SoundEvents.WARDEN_ANGRY, 1.0F, this.getVoicePitch());
     }
 
     @Override
@@ -285,4 +325,117 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
         return 0.5F;
     }
 
+    // since we are "riding" an entity don't tick
+    @Override
+    public void tickEndPortal() {
+    }
+
+    @Override
+    protected void handleNetherPortal() {
+        if (this.level() instanceof ServerLevel) {
+            if (this.isInsidePortal) {
+                this.isInsidePortal = false;
+            } else {
+                if (this.portalTime > 0) {
+                    this.portalTime -= 4;
+                }
+
+                if (this.portalTime < 0) {
+                    this.portalTime = 0;
+                }
+            }
+
+            this.processPortalCooldown();
+            if (!io.papermc.paper.configuration.GlobalConfiguration.get().unsupportedSettings.allowUnsafeEndPortalTeleportation)
+                this.tickEndPortal(); // Paper - make end portalling safe
+        }
+    }
+
+    @Override
+    public Entity getRootVehicle() {
+        if (underWorldGhost == null) {
+            return null;
+        }
+
+        Entity entity;
+
+        for (entity = underWorldGhost; entity.isPassenger(); entity = entity.getVehicle()) {
+            ;
+        }
+
+        return entity;
+    }
+
+    @Override
+    protected void addPassenger(Entity passenger) {
+        super.addPassenger(passenger); // here for protected access
+    }
+
+    @Override
+    protected boolean removePassenger(Entity entity, boolean suppressCancellation) {
+        return super.removePassenger(entity, suppressCancellation); // here for protected access
+    }
+
+    @Override
+    public boolean isPassenger() {
+        if (underWorldGhost == null) {
+            return false;
+        }
+
+        return underWorldGhost.isPassenger();
+    }
+
+    public @Nullable Entity getVehicle() {
+        if (underWorldGhost == null) {
+            return null;
+        }
+
+        return underWorldGhost.getVehicle();
+    }
+
+    protected AABB getHitbox() {
+        if (underWorldGhost == null) {
+            return this.getBoundingBox();
+        }
+
+        AABB axisalignedbb = this.getBoundingBox();
+        return axisalignedbb.setMinY(Math.max(underWorldGhost.getPassengerRidingPosition(this).y, axisalignedbb.minY));
+    }
+
+    @Override
+    public boolean startRiding(Entity entity, boolean force) {
+        if (underWorldGhost == null) {
+            return false;
+        }
+
+        return underWorldGhost.startRiding(entity, force);
+    }
+
+    @Override
+    public void stopRiding(boolean suppressCancellation) {
+        if (underWorldGhost != null) {
+            underWorldGhost.stopRiding(suppressCancellation);
+        }
+    }
+
+    public boolean canTargetEntity(@NotNull LivingEntity entity) {
+        return this.level() == entity.level() &&
+            EntitySelector.NO_CREATIVE_OR_SPECTATOR.test(entity) &&
+            !this.isAlliedTo(entity) &&
+            entity.getType() != EntityType.ARMOR_STAND &&
+            entity.getType() != GHOST_TYPE &&
+            !entity.isInvulnerable() && !entity.isDeadOrDying() &&
+            this.level().getWorldBorder().isWithinBounds(entity.getBoundingBox());
+    }
+
+    public double getIdleVelocity() {
+        final Material material = CraftBlockType.minecraftToBukkit(underWorldGhost.getFeetBlockState().getBlock());
+        double idleVelocityAt = ghostGame.getConfig().getIdleVelocityAt(material);
+
+        if (idleVelocityAt <= 0) {
+            return 0.4D;
+        } else {
+            return idleVelocityAt;
+        }
+    }
 }
