@@ -28,7 +28,6 @@ public class MoveToIdlePos {
 
     @Nullable
     public static Vec3 getPos(GhostNMSEntity entity) {
-
         return RandomPos.generateRandomPos(() -> {
             final @NotNull List<@NotNull Position> idlePositions = entity.ghostGame.getConfig().getIdlePositions();
 

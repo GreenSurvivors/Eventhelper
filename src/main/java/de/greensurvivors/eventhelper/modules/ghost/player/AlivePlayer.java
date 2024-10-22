@@ -1,4 +1,4 @@
-package de.greensurvivors.eventhelper.modules.ghost.payer;
+package de.greensurvivors.eventhelper.modules.ghost.player;
 
 import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.modules.ghost.GhostGame;

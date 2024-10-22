@@ -4,7 +4,7 @@ import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.Utils;
 import de.greensurvivors.eventhelper.messages.MessageManager;
 import de.greensurvivors.eventhelper.messages.SharedPlaceHolder;
-import de.greensurvivors.eventhelper.modules.ghost.payer.AlivePlayer;
+import de.greensurvivors.eventhelper.modules.ghost.player.AlivePlayer;
 import io.papermc.paper.math.Position;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.Bukkit;
@@ -112,7 +112,7 @@ public class MouseTrap implements ConfigurationSerializable, Listener { // todo 
         final @Nullable World world = Bukkit.getWorld(worldName);
 
         if (world != null) {
-            alivePlayer.getBukkitPlayer().teleport(spawnPositionIn.toLocation(world), PlayerTeleportEvent.TeleportCause.PLUGIN);
+            alivePlayer.getBukkitPlayer().teleportAsync(spawnPositionIn.toLocation(world), PlayerTeleportEvent.TeleportCause.PLUGIN);
 
             trappedPlayers.put(alivePlayer, System.currentTimeMillis());
 

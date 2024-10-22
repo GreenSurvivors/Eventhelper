@@ -10,9 +10,11 @@ import de.greensurvivors.eventhelper.messages.LangPath;
 import de.greensurvivors.eventhelper.messages.MessageManager;
 import de.greensurvivors.eventhelper.messages.SharedPlaceHolder;
 import de.greensurvivors.eventhelper.modules.ghost.entity.IGhost;
-import de.greensurvivors.eventhelper.modules.ghost.payer.*;
+import de.greensurvivors.eventhelper.modules.ghost.player.*;
 import de.greensurvivors.simplequests.SimpleQuests;
 import de.greensurvivors.simplequests.events.QuestCompleatedEvent;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.JoinConfiguration;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import org.bukkit.*;
@@ -40,6 +42,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.Serial;
 import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -106,7 +109,7 @@ public class GhostGame implements Listener { // todo spectating command
     }*/
 
     @EventHandler(ignoreCancelled = true)
-    private void onQuestComplete(final @NotNull QuestCompleatedEvent event) {
+    private void onQuestComplete(final @NotNull QuestCompleatedEvent event) { // todo reset whole questline not just requirement and end
         AGhostGamePlayer ghostGamePlayer = players.get(event.getPlayer().getUniqueId());
 
         if (ghostGamePlayer != null) {
@@ -138,10 +141,21 @@ public class GhostGame implements Listener { // todo spectating command
 
     @EventHandler(ignoreCancelled = true)
     private void onPlayerDeath(final @NotNull PlayerDeathEvent event) {
-        final AGhostGamePlayer ghostGamePlayer = players.get(event.getPlayer().getUniqueId());
+        Player player = event.getPlayer();
+        final AGhostGamePlayer ghostGamePlayer = players.get(player.getUniqueId());
         if (ghostGamePlayer instanceof AlivePlayer alivePlayer) {
             getConfig().getMouseTraps();
             alivePlayer.trapInMouseTrap(getMouseTraps().get(ThreadLocalRandom.current().nextInt(getMouseTraps().size())));
+
+            if (areAllPlayersDead()) {
+                endGame(EndReason.ALL_DEAD);
+            } else {
+                // even after canceling the event, health level gets reset. So at least reset them to the expected amount.
+                player.setHealth(config.getStartingHealthAmount());
+                player.setSaturation(config.getStartingSaturationAmount());
+                player.setFoodLevel(config.getStartingFoodAmount());
+            }
+
             event.setCancelled(true);
         } else if (ghostGamePlayer instanceof DeadPlayer deadPlayer) {
             event.getPlayer().teleportAsync(getConfig().getPlayerStartLocation());
@@ -161,6 +175,11 @@ public class GhostGame implements Listener { // todo spectating command
                 if (Tag.BUTTONS.isTagged(clickedBlock.getType())) {
                     for (MouseTrap mouseTrap : getMouseTraps()) {
                         if (mouseTrap.isReleaseBlockLocation(clickedBlock.getLocation())) {
+                            final Map<@NotNull AlivePlayer, @NotNull Long> trappedPlayers = mouseTrap.getTrappedPlayers();
+
+                            if (trappedPlayers.isEmpty()) {
+                                continue;
+                            }
 
                             if (clickedBlock.getBlockData() instanceof Powerable powerable) { // stone buttons do faster power off again
                                 powerable.setPowered(true);
@@ -205,8 +224,14 @@ public class GhostGame implements Listener { // todo spectating command
                                 }
                             }
 
+                            broadcastAll(GhostLangPath.PLAYER_TRAP_RELEASE,
+                                Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), event.getPlayer().displayName()),
+                                Placeholder.component(SharedPlaceHolder.TEXT.getKey(), Component.join(JoinConfiguration.commas(true),
+                                    trappedPlayers.keySet().stream().map(player -> player.getBukkitPlayer().displayName()).toList())));
                             mouseTrap.releaseAllPlayers();
                             event.setCancelled(true);
+
+                            return; // only one trap per button to not overload on sounds.
                         }
                     }
                 }
@@ -342,40 +367,55 @@ public class GhostGame implements Listener { // todo spectating command
                         }
                     }
 
+                    //noinspection UnstableApiUsage
+                    float tickRate = plugin.getServer().getServerTickManager().getTickRate();
+                    double millisPerTick = 1000D / tickRate;
+
                     for (MouseTrap mouseTrap : getConfig().getMouseTraps()) {
                         for (Map.Entry<AlivePlayer, Long> entry : mouseTrap.getTrappedPlayers().entrySet()) {
-                            Duration durationToStayAlive = getConfig().getDurationTrappedUntilDeath().minusMillis(entry.getValue());
-                            if (durationToStayAlive.toMillis() < 0) {
+
+                            Duration durationToStayAlive = getConfig().getDurationTrappedUntilDeath().minusMillis(System.currentTimeMillis() - entry.getValue());
+                            final long millisToStayAlive = durationToStayAlive.toMillis();
+                            if (millisToStayAlive < 0) {
+                                mouseTrap.removePlayer(entry.getKey());
                                 makePerishedPlayer(entry.getKey().getUuid());
+                                entry.getKey().getBukkitPlayer().teleportAsync(getConfig().getPlayerStartLocation());
 
                                 if (areAllPlayersDead()) {
                                     endGame(EndReason.ALL_DEAD);
+                                } else {
+                                    broadcastAll(GhostLangPath.PLAYER_TRAP_PERISH);
                                 }
                             } else {
-                                switch ((int) durationToStayAlive.toSeconds()) {
-                                    // don't do full countdown from 10 to 1, if many players got trapped around the same time the game will spam otherwise
-                                    case 1, 2, 3, 4, 5, 10, 30, 60, 120 ->
+                                // checking in seconds will spam, because of 20 ticks / second => 20 messages
+                                // don't do full countdown from 10000 to 1000, if many players got trapped around the same time the game will spam otherwise
+                                if (((millisToStayAlive <= 1000 + millisPerTick) && (millisToStayAlive > 1000)) || // >=1s
+                                    ((millisToStayAlive <= 2000 + millisPerTick) && (millisToStayAlive > 2000)) || // >=2s
+                                    ((millisToStayAlive <= 3000 + millisPerTick) && (millisToStayAlive > 3000)) || // >=3s
+                                    ((millisToStayAlive <= 4000 + millisPerTick) && (millisToStayAlive > 4000)) || // >=4s
+                                    ((millisToStayAlive <= 5000 + millisPerTick) && (millisToStayAlive > 5000)) || // >=5s
+                                    ((millisToStayAlive <= 10000 + millisPerTick) && (millisToStayAlive > 10000)) || // >=10s
+                                    ((millisToStayAlive <= 30000 + millisPerTick) && (millisToStayAlive > 30000)) || // >=30s
+                                    ((millisToStayAlive <= 60000 + millisPerTick) && (millisToStayAlive > 60000)) || // >=1m
+                                    ((millisToStayAlive <= 120000 + millisPerTick) && (millisToStayAlive > 120000))) { // >=2m
+
+                                    broadcastAll(GhostLangPath.PLAYER_TRAP_TIME_REMAINING,
+                                        Placeholder.component(SharedPlaceHolder.TIME.getKey(), MessageManager.formatTime(durationToStayAlive.plusMillis((long) millisPerTick).truncatedTo(ChronoUnit.SECONDS))), // hide ticks
+                                        Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), entry.getKey().getBukkitPlayer().displayName()));
+                                } else {// check if the amount of millis left is in function f(0) = 300000, f(x+1) = 2 * f(x)
+                                    // so 5m, 10m, 20m, 40m... But please, for the love of cod, don't make use of this case.
+                                    // Players shouldn't stay 5 minutes or longer trapped. That's boring!
+                                    // I will come and slap a fish in your face if you do!
+                                    if (millisToStayAlive > 120000 && millisToStayAlive % 300000 <= millisPerTick) {
                                         broadcastAll(GhostLangPath.PLAYER_TRAP_TIME_REMAINING,
-                                            Placeholder.component(SharedPlaceHolder.TIME.getKey(), MessageManager.formatTime(durationToStayAlive)));
-                                    default -> {
-                                        // check if the amount of seconds left is in function f(0) = 300, f(x+1) = 2 * f(x)
-                                        // so 5m, 10m, 20m, 40m... But please, for the love of cod, don't make use of this case.
-                                        // Players shouldn't stay 5 minutes or longer trapped. That's boring!
-                                        // I will come and slap a fish in your face if you do!
-                                        long temp = durationToStayAlive.toSeconds() / 300;
-                                        if (temp > 0 && (temp & (temp - 1)) == 0) {
-                                            broadcastAll(GhostLangPath.PLAYER_TRAP_TIME_REMAINING,
-                                                Placeholder.component(SharedPlaceHolder.TIME.getKey(), MessageManager.formatTime(durationToStayAlive)));
-                                        }
+                                            Placeholder.component(SharedPlaceHolder.TIME.getKey(), MessageManager.formatTime(durationToStayAlive.plusMillis((long) millisPerTick).truncatedTo(ChronoUnit.SECONDS))), // hide ticks
+                                            Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), entry.getKey().getBukkitPlayer().displayName()));
                                     }
                                 }
                             }
                         }
                     }
 
-                    //noinspection UnstableApiUsage
-                    float tickRate = plugin.getServer().getServerTickManager().getTickRate();
-                    double millisPerTick = 1000D / tickRate;
                     if ((amountOfTicksRun * millisPerTick) % getConfig().getFeedDuration().toMillis() == 0) {
                         for (AGhostGamePlayer ghostGamePlayer : players.values()) {
                             final Player bukkitPlayer = ghostGamePlayer.getBukkitPlayer();
@@ -486,6 +526,16 @@ public class GhostGame implements Listener { // todo spectating command
             iterator.remove();
         }
         offlinePlayers.clear();
+
+        for (Iterator<Map.Entry<UUID, SpectatingPlayer>> iterator = spectators.entrySet().iterator(); iterator.hasNext(); ) {
+            Map.Entry<UUID, SpectatingPlayer> entry = iterator.next();
+            @Nullable Player player = plugin.getServer().getPlayer(entry.getKey());
+            if (player != null) {
+                playerQuit(player, true);
+            }
+
+            iterator.remove();
+        }
 
         // kill entities
         for (IGhost ghost : ghosts) {
@@ -888,11 +938,22 @@ public class GhostGame implements Listener { // todo spectating command
     }
 
     protected boolean areAllPlayersDead() {
-        return players.values().stream().noneMatch(p -> p instanceof AlivePlayer);
+        for (AGhostGamePlayer ghostGamePlayer : players.values()) {
+            if (ghostGamePlayer instanceof AlivePlayer alivePlayer &&
+                alivePlayer.getMouseTrapTrappedIn() == null) { // trapped players alone can't win!
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public @Nullable AGhostGamePlayer getGhostGamePlayer(final @NotNull Player player) {
         return this.players.get(player.getUniqueId());
+    }
+
+    public @Nullable AGhostGamePlayer getGhostGamePlayer(final @NotNull UUID playerUUID) {
+        return this.players.get(playerUUID);
     }
 
     public @Nullable AGhostGameParticipant getGhostGhostGameParticipant(final @NotNull Player player) {

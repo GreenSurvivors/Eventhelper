@@ -71,6 +71,12 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
 
         this.navigation.setCanFloat(true); // can swim. not like floating in the air
         this.ghostGame = ghostGame;
+        this.setPersistenceRequired();
+    }
+
+    @Override
+    protected boolean shouldDespawnInPeaceful() {
+        return false;
     }
 
     public static AttributeSupplier.Builder createAttributes() {
@@ -429,6 +435,10 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
     }
 
     public double getIdleVelocity() {
+        if (underWorldGhost == null) {
+            return 0.4D;
+        }
+
         final Material material = CraftBlockType.minecraftToBukkit(underWorldGhost.getFeetBlockState().getBlock());
         double idleVelocityAt = ghostGame.getConfig().getIdleVelocityAt(material);
 
