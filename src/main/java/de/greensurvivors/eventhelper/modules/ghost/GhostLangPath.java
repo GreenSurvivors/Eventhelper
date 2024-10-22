@@ -36,6 +36,8 @@ public record GhostLangPath(@NotNull String path, @NotNull String defaultValue) 
         PLAYER_GAME_QUIT_BROADCAST = new GhostLangPath("game.player.quit.broadcast"), // todo per game override
         PLAYER_CAPTURED = new GhostLangPath("game.player.trap.trapped"),
         PLAYER_TRAP_TIME_REMAINING = new GhostLangPath("game.player.trap.time.remaining"),
+        PLAYER_TRAP_PERISH = new GhostLangPath("game.player.trap.perish"),
+        PLAYER_TRAP_RELEASE = new GhostLangPath("game.player.trap.release"),
         PLAYER_PERISHED_TASK_DONE_BROADCAST = new GhostLangPath("game.player.perished.tasks-done.broadcast"),
         PLAYER_PERISHED_TASK_DONE_SELF = new GhostLangPath("game.player.perished.tasks-done.self"),
         GAME_WIN_BROADCAST = new GhostLangPath("game.win.broadcast"), // todo per game override

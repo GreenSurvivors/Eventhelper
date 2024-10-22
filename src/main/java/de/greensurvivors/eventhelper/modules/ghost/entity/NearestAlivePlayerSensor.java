@@ -1,7 +1,7 @@
 package de.greensurvivors.eventhelper.modules.ghost.entity;
 
 import com.destroystokyo.paper.util.maplist.ReferenceList;
-import de.greensurvivors.eventhelper.EventHelper;
+import de.greensurvivors.eventhelper.modules.ghost.player.AlivePlayer;
 import io.papermc.paper.util.player.NearbyPlayers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
@@ -13,6 +13,7 @@ import net.minecraft.world.entity.EntitySelector;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
+import net.minecraft.world.entity.ai.memory.WalkTarget;
 import net.minecraft.world.entity.ai.sensing.Sensor;
 import net.minecraft.world.entity.ai.sensing.SensorType;
 import net.minecraft.world.level.PathNavigationRegion;
@@ -50,7 +51,8 @@ public class NearestAlivePlayerSensor extends Sensor<GhostNMSEntity> {
     @Override
     public @NotNull Set<MemoryModuleType<?>> requires() {
         return Set.of(
-            MemoryModuleType.ATTACK_TARGET
+            MemoryModuleType.ATTACK_TARGET,
+            MemoryModuleType.WALK_TARGET // todo dirty fix
         );
     }
 
@@ -69,6 +71,10 @@ public class NearestAlivePlayerSensor extends Sensor<GhostNMSEntity> {
         if (followRangeAt <= 0) {
             followRangeAt = 16;
         }
+        double followVelocityAt = entity.ghostGame.getConfig().getFollowVelocityAt(material);
+        if (followVelocityAt <= 0) {
+            followVelocityAt = 0.39284D;
+        }
         final int offsetVal = 2 * followRangeAt;
         PathNavigationRegion pathNavigationRegion = new PathNavigationRegion(world, entity.blockPosition().offset(-offsetVal, -offsetVal, -offsetVal), entity.blockPosition().offset(offsetVal, offsetVal, offsetVal));
 
@@ -77,22 +83,28 @@ public class NearestAlivePlayerSensor extends Sensor<GhostNMSEntity> {
             Object[] rawData = nearby.getRawData();
             for (int index = 0, len = nearby.size(); index < len; ++index) {
                 ServerPlayer player = (ServerPlayer) rawData[index];
-                EventHelper.getPlugin().getComponentLogger().info(player + "");
 
                 if (!EntitySelector.NO_CREATIVE_OR_SPECTATOR.test(player)) {
-                    EventHelper.getPlugin().getComponentLogger().info("gamemode");
                     continue;
                 }
 
                 if (player.distanceToSqr(entityPos.x, entityPos.y, entityPos.z) >= (followRangeAt * followRangeAt)) {
-                    EventHelper.getPlugin().getComponentLogger().info("distance: " + player.distanceToSqr(entityPos.x, entityPos.y, entityPos.z) + " >=? " + (followRangeAt * followRangeAt));
                     continue;
                 }
+
+                // ignore game spectators and perished players
+                if (!(entity.ghostGame.getGhostGamePlayer(player.getUUID()) instanceof AlivePlayer alivePlayer)) {
+                    continue;
+                }
+
+                // ignore trapped players
+                if (alivePlayer.getMouseTrapTrappedIn() != null) {
+                    continue;
+                }
+
                 nearPlayerLocations.put(player.blockPosition(), player);
             }
         }
-
-        EventHelper.getPlugin().getComponentLogger().info(nearPlayerLocations.toString());
 
         // I believe distance 0 means we are at the beginning and range multiple is almost always 1, except for bees for some reason
         Path path = entity.getNavigation().pathFinder.findPath(pathNavigationRegion, entity, nearPlayerLocations.keySet(), followRangeAt, 0, 1.0f);
@@ -100,11 +112,9 @@ public class NearestAlivePlayerSensor extends Sensor<GhostNMSEntity> {
         Brain<GhostNMSEntity> brain = entity.getBrain();
         if (path != null) {
             brain.setMemory(MemoryModuleType.ATTACK_TARGET, Optional.of(nearPlayerLocations.get(path.getTarget())));
-            EventHelper.getPlugin().getComponentLogger().info("path");
+            brain.setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(nearPlayerLocations.get(path.getTarget()), (float) followVelocityAt, 1)); // todo dirty fix
         } else {
             brain.setMemory(MemoryModuleType.ATTACK_TARGET, Optional.empty());
-            EventHelper.getPlugin().getComponentLogger().info("no path");
-            // todo no player was found
         }
     }
 }

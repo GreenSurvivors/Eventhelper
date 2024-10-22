@@ -8,7 +8,7 @@ import java.util.Map;
 public class QuestModifier implements ConfigurationSerializable {
     private final static @NotNull String
         REQUIRED_QUEST_ID = "requiredQuestId",
-        QUEST_ID = "QuestId",
+        QUEST_ID = "questId",
         POINTS_REWARDED = "pointsReward";
     private final @NotNull String requiredQuestIdentifier;
     private final @NotNull String questIdentifier;
