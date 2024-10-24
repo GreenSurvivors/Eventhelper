@@ -1,14 +1,9 @@
 package de.greensurvivors.eventhelper.modules.ghost.vex;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.mojang.logging.LogUtils;
-import com.mojang.serialization.DataResult;
 import com.mojang.serialization.Dynamic;
 import de.greensurvivors.eventhelper.modules.ghost.GhostGame;
 import net.minecraft.core.BlockPos;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.NbtOps;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.protocol.game.DebugPackets;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
@@ -41,33 +36,25 @@ import net.minecraft.world.level.pathfinder.Node;
 import net.minecraft.world.level.pathfinder.PathFinder;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
 import java.util.Collections;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 
 public class VexNMSEntity extends Vex implements VibrationSystem { // todo system to stay in region
-    private static final Logger LOGGER = LogUtils.getLogger();
     private static final int VIBRATION_COOLDOWN_TICKS = 40;
-    private static final float KNOCKBACK_RESISTANCE = 1.0F;
     private static final int ANGERMANAGEMENT_TICK_DELAY = 20;
     private static final int DEFAULT_ANGER = 35;
-    private static final int PROJECTILE_ANGER = 10;
-    private static final int RECENT_PROJECTILE_TICK_THRESHOLD = 100;
     private static final int TOUCH_COOLDOWN_TICKS = 20;
-    private static final int PROJECTILE_ANGER_DISTANCE = 30;
     private final DynamicGameEventListener<VibrationSystem.Listener> dynamicGameEventListener = new DynamicGameEventListener<>(new VibrationSystem.Listener(this));
     private final VibrationSystem.User vibrationUser = new VibrationUser();
-    private VibrationSystem.Data vibrationData = new VibrationSystem.Data();
+    private final VibrationSystem.Data vibrationData = new VibrationSystem.Data();
     AngerManagement angerManagement = new AngerManagement(this::canTargetEntity, Collections.emptyList());
     private volatile @Nullable VexCraftEntity bukkitEntity;
     private final @NotNull GhostGame ghostGame;
 
-
-    public VexNMSEntity(Level world, @NotNull GhostGame ghostGame) {
+    public VexNMSEntity(final @NotNull Level world, final @NotNull GhostGame ghostGame) {
         super(EntityType.VEX, world);
 
         this.ghostGame = ghostGame;
@@ -98,12 +85,12 @@ public class VexNMSEntity extends Vex implements VibrationSystem { // todo syste
     }
 
     @Override
-    public boolean isInvulnerableTo(DamageSource damageSource) {
+    public boolean isInvulnerableTo(final @NotNull DamageSource damageSource) {
         return !damageSource.is(DamageTypeTags.BYPASSES_INVULNERABILITY) || super.isInvulnerableTo(damageSource);
     }
 
     @Override
-    protected boolean canRide(@NotNull Entity entity) {
+    protected boolean canRide(final @NotNull Entity entity) {
         return false;
     }
 
@@ -117,6 +104,7 @@ public class VexNMSEntity extends Vex implements VibrationSystem { // todo syste
         return 4.0F;
     }
 
+    @SuppressWarnings("resource") // ignore level being auto closeable
     @Override
     public void tick() {
         if (this.level() instanceof ServerLevel worldserver) {
@@ -126,16 +114,17 @@ public class VexNMSEntity extends Vex implements VibrationSystem { // todo syste
         super.tick();
     }
 
+    @SuppressWarnings("resource") // ignore level being auto closeable
     @Override
     protected void customServerAiStep() {
         ServerLevel worldserver = (ServerLevel) this.level();
 
-        worldserver.getProfiler().push("wardenVexBrain");
+        worldserver.getProfiler().push("ghostVexBrain");
         this.getBrain().tick(worldserver, this);
         this.level().getProfiler().pop();
         super.customServerAiStep();
 
-        if (this.tickCount % 20 == 0) {
+        if (this.tickCount % ANGERMANAGEMENT_TICK_DELAY == 0) {
             this.angerManagement.tick(worldserver, this::canTargetEntity);
         }
 
@@ -158,21 +147,23 @@ public class VexNMSEntity extends Vex implements VibrationSystem { // todo syste
         DebugPackets.sendEntityBrain(this);
     }
 
+    @SuppressWarnings("resource") // ignore level being auto closeable
     @Override
-    public void updateDynamicGameEventListener(@NotNull BiConsumer<DynamicGameEventListener<?>, ServerLevel> callback) {
+    public void updateDynamicGameEventListener(final @NotNull BiConsumer<DynamicGameEventListener<?>, ServerLevel> callback) {
         if (this.level() instanceof ServerLevel worldserver) {
             callback.accept(this.dynamicGameEventListener, worldserver);
         }
     }
 
+    @SuppressWarnings("resource") // ignore level being auto closeable
     @Contract("null->false")
-    public boolean canTargetEntity(@Nullable Entity entity) {
+    public boolean canTargetEntity(final @Nullable Entity entity) {
         if (entity instanceof LivingEntity entityliving) {
             return this.level() == entity.level() &&
                 EntitySelector.NO_CREATIVE_OR_SPECTATOR.test(entity) &&
                 !this.isAlliedTo(entity) &&
                 entityliving.getType() != EntityType.ARMOR_STAND &&
-                entityliving.getType() != EntityType.WARDEN &&
+                entityliving.getType() != EntityType.VEX &&
                 !entityliving.isInvulnerable() &&
                 !entityliving.isDeadOrDying() &&
                 this.level().getWorldBorder().isWithinBounds(entityliving.getBoundingBox());
@@ -181,49 +172,7 @@ public class VexNMSEntity extends Vex implements VibrationSystem { // todo syste
         return false;
     }
 
-    @Override
-    public void addAdditionalSaveData(@NotNull CompoundTag nbt) {
-        super.addAdditionalSaveData(nbt);
-        DataResult<Tag> dataresult = AngerManagement.codec(this::canTargetEntity).encodeStart(NbtOps.INSTANCE, this.angerManagement); // CraftBukkit - decompile error
-        Logger logger = LOGGER;
-
-        Objects.requireNonNull(logger);
-        dataresult.resultOrPartial(logger::error).ifPresent((nbtbase) -> {
-            nbt.put("anger", nbtbase);
-        });
-        dataresult = VibrationSystem.Data.CODEC.encodeStart(NbtOps.INSTANCE, this.vibrationData);
-        Objects.requireNonNull(logger);
-        dataresult.resultOrPartial(logger::error).ifPresent((nbtbase) -> {
-            nbt.put("listener", nbtbase);
-        });
-    }
-
-    @Override
-    public void readAdditionalSaveData(@NotNull CompoundTag nbt) {
-        super.readAdditionalSaveData(nbt);
-        DataResult dataresult;
-        Logger logger;
-
-        if (nbt.contains("anger")) {
-            dataresult = AngerManagement.codec(this::canTargetEntity).parse(new Dynamic(NbtOps.INSTANCE, nbt.get("anger")));
-            logger = LOGGER;
-            Objects.requireNonNull(logger);
-            ((DataResult<AngerManagement>) dataresult).resultOrPartial(logger::error).ifPresent((angermanagement) -> { // CraftBukkit - decompile error
-                this.angerManagement = angermanagement;
-            });
-        }
-
-        if (nbt.contains("listener", 10)) {
-            dataresult = VibrationSystem.Data.CODEC.parse(new Dynamic(NbtOps.INSTANCE, nbt.getCompound("listener")));
-            logger = LOGGER;
-            Objects.requireNonNull(logger);
-            ((DataResult<VibrationSystem.Data>) dataresult).resultOrPartial(logger::error).ifPresent((vibrationsystem_a) -> { // CraftBukkit - decompile error
-                this.vibrationData = vibrationsystem_a;
-            });
-        }
-    }
-
-    public AngerLevel getAngerLevel() {
+    public @NotNull AngerLevel getAngerLevel() {
         return AngerLevel.byAnger(this.getActiveAnger());
     }
 
@@ -231,20 +180,20 @@ public class VexNMSEntity extends Vex implements VibrationSystem { // todo syste
         return this.angerManagement.getActiveAnger(this.getTarget());
     }
 
-    public void clearAnger(Entity entity) {
+    public void clearAnger(final @NotNull Entity entity) {
         this.angerManagement.clearAnger(entity);
     }
 
-    public void increaseAngerAt(@Nullable Entity entity) {
-        this.increaseAngerAt(entity, DEFAULT_ANGER, true);
+    public void increaseAngerAt(final @Nullable Entity entity) {
+        this.increaseAngerAt(entity, DEFAULT_ANGER);
     }
 
-    protected void increaseAngerAt(@Nullable Entity entity, int amount, boolean listening) {
+    protected void increaseAngerAt(final @Nullable Entity entity, final int amount) {
         if (!this.isNoAi() && this.canTargetEntity(entity)) {
-            boolean flag1 = !(this.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null) instanceof Player); // CraftBukkit - decompile error
-            int j = this.angerManagement.increaseAnger(entity, amount);
+            boolean attackTargetNotPlayer = !(this.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null) instanceof Player); // CraftBukkit - decompile error
+            int increasedAnger = this.angerManagement.increaseAnger(entity, amount);
 
-            if (entity instanceof Player && flag1 && AngerLevel.byAnger(j).isAngry()) {
+            if (entity instanceof Player && attackTargetNotPlayer && AngerLevel.byAnger(increasedAnger).isAngry()) {
                 this.getBrain().eraseMemory(MemoryModuleType.ATTACK_TARGET);
             }
         }
@@ -254,25 +203,24 @@ public class VexNMSEntity extends Vex implements VibrationSystem { // todo syste
         return this.getAngerLevel().isAngry() ? this.angerManagement.getActiveEntity() : Optional.empty();
     }
 
-    @Nullable
     @Override
-    public LivingEntity getTarget() {
+    public @Nullable LivingEntity getTarget() {
         return this.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null); // CraftBukkit - decompile error
     }
 
     @Override
-    public boolean removeWhenFarAway(double distanceSquared) {
+    public boolean removeWhenFarAway(final double distanceSquared) {
         return false;
     }
 
     @Override
-    public boolean hurt(@NotNull DamageSource source, float amount) {
-        boolean flag = super.hurt(source, amount);
+    public boolean hurt(final @NotNull DamageSource source, final float amount) {
+        boolean superHurt = super.hurt(source, amount);
 
         if (!this.isNoAi()) {
             Entity entity = source.getEntity();
 
-            this.increaseAngerAt(entity, AngerLevel.ANGRY.getMinimumAnger() + 20, false);
+            this.increaseAngerAt(entity, AngerLevel.ANGRY.getMinimumAnger() + 20);
             if (this.brain.getMemory(MemoryModuleType.ATTACK_TARGET).isEmpty() && entity instanceof LivingEntity entityliving) {
 
                 if (!source.isIndirect() || this.closerThan(entityliving, 5.0D)) {
@@ -281,11 +229,10 @@ public class VexNMSEntity extends Vex implements VibrationSystem { // todo syste
             }
         }
 
-        return flag;
+        return superHurt;
     }
 
-    public void setAttackTarget(LivingEntity target) {
-        this.getBrain().eraseMemory(MemoryModuleType.ROAR_TARGET);
+    public void setAttackTarget(final @NotNull LivingEntity target) {
         this.getBrain().setMemory(MemoryModuleType.ATTACK_TARGET, target); // CraftBukkit - decompile error
         this.getBrain().eraseMemory(MemoryModuleType.CANT_REACH_WALK_TARGET_SINCE);
     }
@@ -296,9 +243,9 @@ public class VexNMSEntity extends Vex implements VibrationSystem { // todo syste
     }
 
     @Override
-    protected void doPush(@NotNull Entity entity) {
+    protected void doPush(final @NotNull Entity entity) {
         if (!this.isNoAi() && !this.getBrain().hasMemoryValue(MemoryModuleType.TOUCH_COOLDOWN)) {
-            this.getBrain().setMemoryWithExpiry(MemoryModuleType.TOUCH_COOLDOWN, Unit.INSTANCE, 20L);
+            this.getBrain().setMemoryWithExpiry(MemoryModuleType.TOUCH_COOLDOWN, Unit.INSTANCE, TOUCH_COOLDOWN_TICKS);
             this.increaseAngerAt(entity);
             VexAI.setDisturbanceLocation(this, entity.blockPosition());
         }
@@ -312,7 +259,7 @@ public class VexNMSEntity extends Vex implements VibrationSystem { // todo syste
     }
 
     @Override
-    protected @NotNull PathNavigation createNavigation(@NotNull Level world) {
+    protected @NotNull PathNavigation createNavigation(final @NotNull Level world) {
         return new GroundPathNavigation(this, world) {
             @Override
             protected @NotNull PathFinder createPathFinder(int range) {
@@ -339,7 +286,6 @@ public class VexNMSEntity extends Vex implements VibrationSystem { // todo syste
     }
 
     private class VibrationUser implements VibrationSystem.User {
-
         private static final int GAME_EVENT_LISTENER_RANGE = 24;
         private final PositionSource positionSource = new EntityPositionSource(VexNMSEntity.this, VexNMSEntity.this.getEyeHeight());
 
@@ -367,7 +313,10 @@ public class VexNMSEntity extends Vex implements VibrationSystem { // todo syste
         }
 
         @Override
-        public boolean canReceiveVibration(@NotNull ServerLevel world, @NotNull BlockPos pos, @NotNull GameEvent event, @NotNull GameEvent.Context emitter) {
+        public boolean canReceiveVibration(final @NotNull ServerLevel world,
+                                           final @NotNull BlockPos pos,
+                                           final @NotNull GameEvent event,
+                                           final @NotNull GameEvent.Context emitter) {
             if (!VexNMSEntity.this.isNoAi() && !VexNMSEntity.this.isDeadOrDying() && !VexNMSEntity.this.getBrain().hasMemoryValue(MemoryModuleType.VIBRATION_COOLDOWN) && world.getWorldBorder().isWithinBounds(pos)) {
                 Entity entity = emitter.sourceEntity();
 
@@ -382,7 +331,12 @@ public class VexNMSEntity extends Vex implements VibrationSystem { // todo syste
         }
 
         @Override
-        public void onReceiveVibration(@NotNull ServerLevel world, @NotNull BlockPos pos, @NotNull GameEvent event, @Nullable Entity sourceEntity, @Nullable Entity entity, float distance) {
+        public void onReceiveVibration(final @NotNull ServerLevel world,
+                                       final @NotNull BlockPos pos,
+                                       final @NotNull GameEvent event,
+                                       final @Nullable Entity sourceEntity,
+                                       final @Nullable Entity entity,
+                                       final float distance) {
             if (!VexNMSEntity.this.isDeadOrDying()) {
                 VexNMSEntity.this.brain.setMemoryWithExpiry(MemoryModuleType.VIBRATION_COOLDOWN, Unit.INSTANCE, VIBRATION_COOLDOWN_TICKS);
                 world.broadcastEntityEvent(VexNMSEntity.this, (byte) 61);
@@ -398,7 +352,7 @@ public class VexNMSEntity extends Vex implements VibrationSystem { // todo syste
 
                             VexNMSEntity.this.increaseAngerAt(entity);
                         } else {
-                            VexNMSEntity.this.increaseAngerAt(entity, 10, true);
+                            VexNMSEntity.this.increaseAngerAt(entity, 10);
                         }
                     }
 
