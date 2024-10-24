@@ -16,12 +16,12 @@ import java.util.List;
 import java.util.Set;
 
 public class GhostAI {
-    static final List<SensorType<? extends Sensor<? super GhostNMSEntity>>> SENSOR_TYPES =
+    protected static final List<SensorType<? extends Sensor<? super GhostNMSEntity>>> SENSOR_TYPES =
         ImmutableList.of(
             SensorType.NEAREST_LIVING_ENTITIES,
             NearestAlivePlayerSensor.NEAREST_ALIVE_PLAYER_SENSOR
         );
-    static final List<MemoryModuleType<?>> MEMORY_TYPES = ImmutableList.of(
+    protected static final List<MemoryModuleType<?>> MEMORY_TYPES = ImmutableList.of(
         MemoryModuleType.ATTACK_TARGET, // check for near players to set target to the nearest path findable
         MemoryModuleType.LOOK_TARGET,
         MemoryModuleType.WALK_TARGET,
@@ -44,8 +44,8 @@ public class GhostAI {
         return brain;
     }
 
-    private static void initCoreActivity(Brain<GhostNMSEntity> brain) {
-        brain.addActivity(Activity.CORE, 0, ImmutableList.of(new GhostSwim(0.8F), new LookAtTargetSink(45, 90), new MoveToTargetSink()));
+    private static void initCoreActivity(final @NotNull Brain<GhostNMSEntity> brain) {
+        brain.addActivity(Activity.CORE, 0, ImmutableList.of(new GhostSwimBehavior(0.8F), new LookAtTargetSink(45, 90), new MoveToTargetSink()));
     }
 
     private static void initIdleActivity(final @NotNull GhostNMSEntity ghost, final @NotNull Brain<GhostNMSEntity> brain) {
@@ -57,7 +57,7 @@ public class GhostAI {
                 SetEntityLookTargetSometimes.create(8.0F, UniformInt.of(30, 60)),
                 new RunOne<>(
                     ImmutableList.of(
-                        Pair.of(MoveToIdlePos.moveToIdlePos(), 2), // todo replace with pathfind to middle
+                        Pair.of(MoveToIdlePosBehavior.moveToIdlePos(), 2), // todo replace with pathfind to middle
 
                         Pair.of(SetWalkTargetFromLookTarget.create((float) ghost.getIdleVelocity(), 3), 2),
                         Pair.of(new DoNothing(30, 60), 1)
@@ -67,7 +67,7 @@ public class GhostAI {
         );
     }
 
-    private static void initFightActivity(GhostNMSEntity ghost, Brain<GhostNMSEntity> brain) {
+    private static void initFightActivity(final @NotNull GhostNMSEntity ghost, final @NotNull Brain<GhostNMSEntity> brain) {
         brain.addActivityAndRemoveMemoryWhenStopped(
             Activity.FIGHT,
             10,
