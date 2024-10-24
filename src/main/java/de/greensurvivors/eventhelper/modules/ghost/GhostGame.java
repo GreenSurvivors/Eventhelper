@@ -9,7 +9,7 @@ import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.messages.LangPath;
 import de.greensurvivors.eventhelper.messages.MessageManager;
 import de.greensurvivors.eventhelper.messages.SharedPlaceHolder;
-import de.greensurvivors.eventhelper.modules.ghost.entity.IGhost;
+import de.greensurvivors.eventhelper.modules.ghost.ghostentity.IGhost;
 import de.greensurvivors.eventhelper.modules.ghost.player.*;
 import de.greensurvivors.eventhelper.modules.ghost.vex.IVex;
 import de.greensurvivors.simplequests.SimpleQuests;
@@ -290,7 +290,7 @@ public class GhostGame implements Listener { // todo spectating command
         }
 
         final List<@NotNull Location> vexSpawnLocations = config.getVexSpawnLocations();
-        for (int i = 0; i < config.getAmountOfGhosts(); i++) {
+        for (int i = 0; i < config.getAmountOfVexes(); i++) {
             Location spawnLocation = vexSpawnLocations.get(random.nextInt(vexSpawnLocations.size()));
 
             IVex newGhost = IVex.spawnNew(spawnLocation, CreatureSpawnEvent.SpawnReason.CUSTOM, this, vex -> {
@@ -548,6 +548,10 @@ public class GhostGame implements Listener { // todo spectating command
             ghost.remove();
         }
         ghosts.clear();
+        for (IVex vex : vexes) {
+            vex.remove();
+        }
+        vexes.clear();
 
         if (timeTask != null) {
             timeTask.cancel();

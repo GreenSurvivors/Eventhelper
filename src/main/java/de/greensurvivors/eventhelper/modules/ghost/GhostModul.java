@@ -1,5 +1,10 @@
 package de.greensurvivors.eventhelper.modules.ghost;
 
+import com.sk89q.worldguard.WorldGuard;
+import com.sk89q.worldguard.protection.flags.Flag;
+import com.sk89q.worldguard.protection.flags.StateFlag;
+import com.sk89q.worldguard.protection.flags.registry.FlagConflictException;
+import com.sk89q.worldguard.protection.flags.registry.FlagRegistry;
 import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.command.MainCmd;
 import de.greensurvivors.eventhelper.messages.SharedLangPath;
@@ -45,6 +50,7 @@ import java.util.stream.Stream;
 
 public class GhostModul extends AModul<GeneralGhostConfig> implements Listener {
     private final @NotNull Map<@NotNull String, GhostGame> games = new HashMap<>();
+    protected @Nullable StateFlag ghostVexAllowedFlag;
     private final static @NotNull Permission PERMISSION_EDIT_SIGN = new Permission("eventhelper.ghost.edit-sign", PermissionDefault.OP);
     private final static @NotNull Permission PERMISSION_GHOST_WILDCARD = new Permission("eventhelper.ghost.*", PermissionDefault.OP,
         Map.of(
@@ -58,6 +64,27 @@ public class GhostModul extends AModul<GeneralGhostConfig> implements Listener {
         plugin.getMainCmd().registerSubCommand(new GhostCmd(plugin, MainCmd.getParentPermission(), this));
         plugin.getServer().getPluginManager().addPermission(PERMISSION_EDIT_SIGN);
         plugin.getServer().getPluginManager().addPermission(PERMISSION_GHOST_WILDCARD);
+
+        FlagRegistry registry = WorldGuard.getInstance().getFlagRegistry();
+
+        try {
+            // create a flag with the name "inventory-identifier", defaulting to "default"
+            StateFlag flag = new StateFlag("ghostVexAllowed", false);
+            registry.register(flag);
+            ghostVexAllowedFlag = flag; // only set our field if there was no error
+        } catch (FlagConflictException e) {
+            // some other plugin registered a flag by the same name already.
+            // you can use the existing flag, but this may cause conflicts - be sure to check type
+            Flag<?> existing = registry.get("ghostVexAllowed");
+            if (existing instanceof StateFlag) {
+                ghostVexAllowedFlag = (StateFlag) existing;
+            } else {
+                ghostVexAllowedFlag = null;
+                // types don't match - this is bad news! some other plugin conflicts with you
+                // hopefully this never actually happens
+                plugin.getComponentLogger().warn("Couldn't enable Flag \"ghostVexAllowed\". Might conflict with other plugin.");
+            }
+        }
     }
 
     @Override
