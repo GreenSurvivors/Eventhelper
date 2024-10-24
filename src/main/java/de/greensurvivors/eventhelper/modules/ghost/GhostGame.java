@@ -170,6 +170,14 @@ public class GhostGame implements Listener { // todo spectating command
                 if (Tag.BUTTONS.isTagged(clickedBlock.getType())) {
                     for (MouseTrap mouseTrap : getMouseTraps()) {
                         if (mouseTrap.isReleaseBlockLocation(clickedBlock.getLocation())) {
+                            // don't allow dead or spectating players to free anyone
+                            if (!(players.get(event.getPlayer().getUniqueId()) instanceof AlivePlayer)) {
+                                plugin.getMessageManager().sendLang(event.getPlayer(), GhostLangPath.PLAYER_TRAP_ONLY_ALIVE_CAN_RELEASE);
+
+                                event.setCancelled(true);
+                                return;
+                            }
+
                             final Map<@NotNull AlivePlayer, @NotNull Long> trappedPlayers = mouseTrap.getTrappedPlayers();
 
                             if (trappedPlayers.isEmpty()) {
@@ -219,7 +227,7 @@ public class GhostGame implements Listener { // todo spectating command
                                 }
                             }
 
-                            broadcastAll(GhostLangPath.PLAYER_TRAP_RELEASE,
+                            broadcastAll(GhostLangPath.PLAYER_TRAP_RELEASE_BROADCAST,
                                 Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), event.getPlayer().displayName()),
                                 Placeholder.component(SharedPlaceHolder.TEXT.getKey(), Component.join(JoinConfiguration.commas(true),
                                     trappedPlayers.keySet().stream().map(player -> player.getBukkitPlayer().displayName()).toList())));

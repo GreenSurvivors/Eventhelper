@@ -37,7 +37,8 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
     private static final @NotNull String
         GHOST_OFFSET = "ghostoffset",
         GHOST_SPAWN_LOCATION = "ghostspawnlocation",
-        AMONT_OF_GHOSTS = "ghostamount",
+        AMOUNT_OF_GHOSTS = "ghostamount",
+        VEX_SPAWN_LOCATION = "vexspawnlocation",
         LOBBY_LOCATION = "lobbylocation",
         START_LOCATION = "startlocation",
         END_LOCATION = "endlocation",
@@ -188,7 +189,7 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
                                                     return false;
                                                 }
                                             }
-                                            case AMONT_OF_GHOSTS -> {
+                                            case AMOUNT_OF_GHOSTS -> {
                                                 if (args.size() >= 4) {
                                                     try {
                                                         int newGhostAmount = Integer.decode(args.get(3));
@@ -496,6 +497,18 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
                                                         GhostLangPath.MESSAGE_PREFIX, SharedLangPath.CMD_ERROR_SENDER_NOT_A_PLAYER);
                                                 }
                                             }
+                                            case VEX_SPAWN_LOCATION -> {
+                                                if (sender instanceof Entity entity) {
+                                                    game.getConfig().addVexSpawnLocation(entity.getLocation());
+
+                                                    plugin.getMessageManager().sendPrefixedLang(sender,
+                                                        GhostLangPath.MESSAGE_PREFIX, GhostLangPath.COMMAND_ADD_VEX_SPAWNPOINT_SUCCESS,
+                                                        Placeholder.unparsed(SharedPlaceHolder.NUMBER.getKey(), String.valueOf(game.getConfig().getGhostSpawnLocations().size())));
+                                                } else {
+                                                    plugin.getMessageManager().sendPrefixedLang(sender,
+                                                        GhostLangPath.MESSAGE_PREFIX, SharedLangPath.CMD_ERROR_SENDER_NOT_A_PLAYER);
+                                                }
+                                            }
                                         }
                                     } else {
                                         plugin.getMessageManager().sendPrefixedLang(sender,
@@ -543,6 +556,12 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
 
                                                 plugin.getMessageManager().sendPrefixedLang(sender,
                                                     GhostLangPath.MESSAGE_PREFIX, GhostLangPath.COMMAND_REMOVEALL_GHOST_SPAWNPOINT_SUCCESS);
+                                            }
+                                            case VEX_SPAWN_LOCATION -> {
+                                                game.getConfig().removeAllVexSpawnLocations();
+
+                                                plugin.getMessageManager().sendPrefixedLang(sender,
+                                                    GhostLangPath.MESSAGE_PREFIX, GhostLangPath.COMMAND_REMOVEALL_VEX_SPAWNPOINT_SUCCESS);
                                             }
                                         }
                                     } else {
@@ -697,8 +716,8 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
                                 if (StringUtils.startsWithIgnoreCase(GHOST_OFFSET, arg_2)) {
                                     result.add(GHOST_OFFSET);
                                 }
-                                if (StringUtils.startsWithIgnoreCase(AMONT_OF_GHOSTS, arg_2)) {
-                                    result.add(AMONT_OF_GHOSTS);
+                                if (StringUtils.startsWithIgnoreCase(AMOUNT_OF_GHOSTS, arg_2)) {
+                                    result.add(AMOUNT_OF_GHOSTS);
                                 }
                                 if (StringUtils.startsWithIgnoreCase(LOBBY_LOCATION, arg_2)) {
                                     result.add(LOBBY_LOCATION);
@@ -737,6 +756,9 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
                                 if (StringUtils.startsWithIgnoreCase(GHOST_SPAWN_LOCATION, arg_2)) {
                                     result.add(GHOST_SPAWN_LOCATION);
                                 }
+                                if (StringUtils.startsWithIgnoreCase(VEX_SPAWN_LOCATION, arg_2)) {
+                                    result.add(VEX_SPAWN_LOCATION);
+                                }
 
                                 return result;
                             }
@@ -758,6 +780,9 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
 
                                 if (StringUtils.startsWithIgnoreCase(GHOST_SPAWN_LOCATION, arg_2)) {
                                     result.add(GHOST_SPAWN_LOCATION);
+                                }
+                                if (StringUtils.startsWithIgnoreCase(VEX_SPAWN_LOCATION, arg_2)) {
+                                    result.add(VEX_SPAWN_LOCATION);
                                 }
 
                                 return result;
