@@ -14,6 +14,7 @@ import de.greensurvivors.eventhelper.modules.AModul;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -52,7 +53,7 @@ public class InventoryRegionModul extends AModul<InventoryConfig> implements Lis
                 inventory_identifier = null;
                 // types don't match - this is bad news! some other plugin conflicts with you
                 // hopefully this never actually happens
-                plugin.getLogger().log(Level.WARNING, "couldn't enable Flag \"cinventory-identifier\". Might conflict with other plugin.");
+                plugin.getLogger().log(Level.WARNING, "couldn't enable Flag \"inventory-identifier\". Might conflict with other plugin.");
             }
         }
     }
@@ -81,7 +82,7 @@ public class InventoryRegionModul extends AModul<InventoryConfig> implements Lis
         }
     }
 
-    @EventHandler(ignoreCancelled = true)
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGH)
     private void onPlayerTeleport(final @NotNull PlayerTeleportEvent event) {
         if (inventory_identifier == null) {
             return;
@@ -90,15 +91,13 @@ public class InventoryRegionModul extends AModul<InventoryConfig> implements Lis
         updateInventory(event.getPlayer(), BukkitAdapter.adapt(event.getTo()));
     }
 
-    @EventHandler
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGH)
     private void onPlayerMove(final @NotNull PlayerMoveEvent event) {
-        if (!event.isCancelled()) {
-            if (inventory_identifier == null) {
-                return;
-            }
-
-            updateInventory(event.getPlayer(), BukkitAdapter.adapt(event.getTo()));
+        if (inventory_identifier == null) {
+            return;
         }
+
+        updateInventory(event.getPlayer(), BukkitAdapter.adapt(event.getTo()));
     }
 
     @Override

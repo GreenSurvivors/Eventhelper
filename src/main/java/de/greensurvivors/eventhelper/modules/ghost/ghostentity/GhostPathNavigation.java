@@ -1,4 +1,4 @@
-package de.greensurvivors.eventhelper.modules.ghost.entity;
+package de.greensurvivors.eventhelper.modules.ghost.ghostentity;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;

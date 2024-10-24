@@ -15,7 +15,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Collection;
 import java.util.UUID;
 
-public class PlayerData {
+public class PlayerData { // todo share this class with InventoryRegions
     private final @NotNull EventHelper plugin;
     private final @NotNull UUID uuid;
     private final @NotNull GameMode prevGameMode;
@@ -23,9 +23,6 @@ public class PlayerData {
     private final boolean wasSilent;
     private final @NotNull Scoreboard prevScoreBoard;
     private final ItemStack @NotNull [] prevInventory;
-    private final ItemStack @NotNull [] prevArmor;
-    private final ItemStack @NotNull [] prevExtraItems;
-    private final ItemStack @NotNull [] prevStorage;
     private final ItemStack @NotNull [] prevEnderChest;
     private final @NotNull Collection<PotionEffect> prevEffects;
     private final boolean wasGlowing;
@@ -54,9 +51,6 @@ public class PlayerData {
         this.prevScoreBoard = player.getScoreboard();
 
         this.prevInventory = player.getInventory().getContents();
-        this.prevArmor = player.getInventory().getArmorContents();
-        this.prevExtraItems = player.getInventory().getExtraContents();
-        this.prevStorage = player.getInventory().getExtraContents();
         player.getInventory().clear();
 
         this.prevEnderChest = player.getEnderChest().getContents();
@@ -108,9 +102,6 @@ public class PlayerData {
 
             player.getInventory().clear();
             player.getInventory().setContents(prevInventory);
-            player.getInventory().setArmorContents(prevArmor);
-            player.getInventory().setExtraContents(prevExtraItems);
-            player.getInventory().setExtraContents(prevStorage);
             player.getEnderChest().setContents(prevEnderChest);
 
             for (@NotNull PotionEffect prevEffect : player.getActivePotionEffects()) {

@@ -47,8 +47,8 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     private final @NotNull ConfigOption<@NotNull List<@NotNull Position>> ghostIdlePositions = new ConfigOption<>("ghost.idlePositions", List.of()); // we need fast random access. But the locations should be unique! // todo check for very close together locations!
     private final @NotNull ConfigOption<@NotNull @Range(from = 1, to = Integer.MAX_VALUE) Integer> ghostAmount = new ConfigOption<>("ghost.amount", 1);
     // vex
-
     private final @NotNull ConfigOption<@NotNull List<@NotNull Location>> vexSpawnLocations = new ConfigOption<>("vex.spawnLocations", List.of()); // we need fast random access. But the locations should be unique! // todo check for very close together locations!
+    private final @NotNull ConfigOption<@NotNull @Range(from = 1, to = Integer.MAX_VALUE) Integer> vexAmount = new ConfigOption<>("vex.amount", 1);
     // general
     private final @NotNull String name_id;
     private final @NotNull ConfigOption<@NotNull Component> displayName;
@@ -248,6 +248,8 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                         }
                         vexSpawnLocations.setValue(newVexSpawnLocations);
 
+                        vexAmount.setValue(config.getInt(vexAmount.getPath(), vexAmount.getFallback()));
+
                         final @Nullable String rawDisplayName = config.getString(displayName.getPath());
                         if (rawDisplayName == null) {
                             displayName.setValue(displayName.getFallback());
@@ -359,6 +361,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                         config.set(ghostAmount.getPath(), ghostAmount.getValueOrFallback());
 
                         config.set(vexSpawnLocations.getPath(), vexSpawnLocations.getValueOrFallback());
+                        config.set(vexAmount.getPath(), vexAmount.getValueOrFallback());
 
                         config.set(gameInitCommands.getPath(), gameInitCommands.getValueOrFallback());
                         config.set(gameStartCommands.getPath(), gameStartCommands.getValueOrFallback());
@@ -574,6 +577,20 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
 
     public void setAmountOfGhosts(@Range(from = 1, to = Integer.MAX_VALUE) int newAmount) {
         ghostAmount.setValue(newAmount);
+
+        save().thenAccept(result -> {
+            if (result) {
+                reload();
+            }
+        });
+    }
+
+    public int getAmountOfVexes() {
+        return vexAmount.getValueOrFallback();
+    }
+
+    public void setAmountOfVexes(@Range(from = 1, to = Integer.MAX_VALUE) int newAmount) {
+        vexAmount.setValue(newAmount);
 
         save().thenAccept(result -> {
             if (result) {
