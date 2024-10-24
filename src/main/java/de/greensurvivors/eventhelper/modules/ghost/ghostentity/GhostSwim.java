@@ -1,4 +1,4 @@
-package de.greensurvivors.eventhelper.modules.ghost.entity;
+package de.greensurvivors.eventhelper.modules.ghost.ghostentity;
 
 import com.google.common.collect.ImmutableMap;
 import net.minecraft.server.level.ServerLevel;

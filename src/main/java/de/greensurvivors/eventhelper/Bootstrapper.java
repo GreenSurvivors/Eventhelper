@@ -1,8 +1,8 @@
 package de.greensurvivors.eventhelper;
 
-import de.greensurvivors.eventhelper.modules.ghost.entity.GhostNMSEntity;
-import de.greensurvivors.eventhelper.modules.ghost.entity.NearestAlivePlayerSensor;
-import de.greensurvivors.eventhelper.modules.ghost.entity.UnderWorldGhostNMSEntity;
+import de.greensurvivors.eventhelper.modules.ghost.ghostentity.GhostNMSEntity;
+import de.greensurvivors.eventhelper.modules.ghost.ghostentity.NearestAlivePlayerSensor;
+import de.greensurvivors.eventhelper.modules.ghost.ghostentity.UnderWorldGhostNMSEntity;
 import de.greensurvivors.eventhelper.modules.ghost.vex.VexEntitySensor;
 import io.papermc.paper.plugin.bootstrap.BootstrapContext;
 import io.papermc.paper.plugin.bootstrap.PluginBootstrap;

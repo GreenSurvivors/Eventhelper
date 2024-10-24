@@ -27,16 +27,16 @@ public class ModulRegistery {
     }
 
     public void registerDefault() {
-        if (plugin.getDependencyManager().isSimpleQuestsEnabled()) {
-            registerNewModule(new GhostModul(plugin));
-        } else {
-            plugin.getComponentLogger().warn("Could not enable all Modules because optional dependency SimpleQuests is missing!");
-        }
-
         // don't check if worldguard is enabled yet, since we have to do our registration before it does load
         if (plugin.getDependencyManager().isWorldGuardInstanceSafe()) {
             registerNewModule(new TNTKnockbackModul(plugin));
             registerNewModule(new InventoryRegionModul(plugin));
+
+            if (plugin.getDependencyManager().isSimpleQuestsEnabled()) {
+                registerNewModule(new GhostModul(plugin));
+            } else {
+                plugin.getComponentLogger().warn("Could not enable all Modules because optional dependency SimpleQuests is missing!");
+            }
         } else {
             plugin.getComponentLogger().warn("Could not enable all Modules because optional dependency Worldguard is missing!");
         }

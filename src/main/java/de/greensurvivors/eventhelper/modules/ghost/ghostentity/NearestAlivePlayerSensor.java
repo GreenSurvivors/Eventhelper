@@ -1,4 +1,4 @@
-package de.greensurvivors.eventhelper.modules.ghost.entity;
+package de.greensurvivors.eventhelper.modules.ghost.ghostentity;
 
 import com.destroystokyo.paper.util.maplist.ReferenceList;
 import de.greensurvivors.eventhelper.modules.ghost.player.AlivePlayer;

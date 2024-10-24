@@ -1,4 +1,4 @@
-package de.greensurvivors.eventhelper.modules.ghost.entity;
+package de.greensurvivors.eventhelper.modules.ghost.ghostentity;
 
 import com.mojang.serialization.Dynamic;
 import de.greensurvivors.eventhelper.modules.ghost.GhostGame;
