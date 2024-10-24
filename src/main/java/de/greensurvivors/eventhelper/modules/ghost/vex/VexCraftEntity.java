@@ -15,7 +15,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.function.Consumer;
 
 public class VexCraftEntity extends CraftMob implements IVex, CraftEnemy {
-    public VexCraftEntity(CraftServer server, Mob entity) {
+    public VexCraftEntity(final @NotNull CraftServer server, final @NotNull Mob entity) {
         super(server, entity);
     }
 
@@ -36,12 +36,12 @@ public class VexCraftEntity extends CraftMob implements IVex, CraftEnemy {
     }
 
     @Override
-    public VexNMSEntity getHandle() {
+    public @NotNull VexNMSEntity getHandle() {
         return (VexNMSEntity) this.entity;
     }
 
     @Override
-    public String toString() {
-        return "CraftVex";
+    public @NotNull String toString() {
+        return "CraftGhostVex";
     }
 }

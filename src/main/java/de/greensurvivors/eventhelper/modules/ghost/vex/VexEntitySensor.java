@@ -12,6 +12,7 @@ import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.sensing.NearestLivingEntitySensor;
 import net.minecraft.world.entity.ai.sensing.Sensor;
 import net.minecraft.world.entity.ai.sensing.SensorType;
+import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -23,16 +24,16 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 public class VexEntitySensor extends NearestLivingEntitySensor<VexNMSEntity> {
-    public static final SensorType<VexEntitySensor> VEX_ENTITY_SENSOR_TYPE = register();
+    public static final @NotNull SensorType<VexEntitySensor> VEX_ENTITY_SENSOR_TYPE = register();
 
-    private static <U extends Sensor<?>> SensorType<U> register() {
+    private static <U extends Sensor<?>> @Override SensorType<U> register() {
         Constructor<SensorType> constructor;
         try {
             constructor = SensorType.class.getDeclaredConstructor(Supplier.class);
             constructor.setAccessible(true);
             SensorType<U> sensorType = constructor.newInstance((Supplier<VexEntitySensor>) VexEntitySensor::new);
 
-            return Registry.register(BuiltInRegistries.SENSOR_TYPE, new ResourceLocation("piglin_specific_sensor"), sensorType);
+            return Registry.register(BuiltInRegistries.SENSOR_TYPE, new ResourceLocation("vex_entity_sensor"), sensorType);
         } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException |
                  InstantiationException e) {
             throw new RuntimeException(e);
@@ -40,12 +41,12 @@ public class VexEntitySensor extends NearestLivingEntitySensor<VexNMSEntity> {
     }
 
     @Override
-    public Set<MemoryModuleType<?>> requires() {
+    public @NotNull Set<MemoryModuleType<?>> requires() {
         return ImmutableSet.copyOf(Iterables.concat(super.requires(), List.of(MemoryModuleType.NEAREST_ATTACKABLE)));
     }
 
     @Override
-    protected void doTick(ServerLevel world, VexNMSEntity entity) {
+    protected void doTick(final @NotNull ServerLevel world, final @NotNull VexNMSEntity entity) {
         super.doTick(world, entity);
         getClosest(entity, entityx -> entityx.getType() == EntityType.PLAYER)
             .or(() -> getClosest(entity, entityx -> entityx.getType() != EntityType.PLAYER))
@@ -55,12 +56,12 @@ public class VexEntitySensor extends NearestLivingEntitySensor<VexNMSEntity> {
             );
     }
 
-    private static Optional<LivingEntity> getClosest(VexNMSEntity warden, Predicate<LivingEntity> targetPredicate) {
-        return warden.getBrain()
+    private static @NotNull Optional<LivingEntity> getClosest(final @NotNull VexNMSEntity nmsVex, final @NotNull Predicate<LivingEntity> targetPredicate) {
+        return nmsVex.getBrain()
             .getMemory(MemoryModuleType.NEAREST_LIVING_ENTITIES)
             .stream()
             .flatMap(Collection::stream)
-            .filter(warden::canTargetEntity)
+            .filter(nmsVex::canTargetEntity)
             .filter(targetPredicate)
             .findFirst();
     }

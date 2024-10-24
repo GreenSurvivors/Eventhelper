@@ -10,9 +10,6 @@ import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
 import net.minecraft.network.protocol.game.DebugPackets;
-import net.minecraft.network.syncher.EntityDataAccessor;
-import net.minecraft.network.syncher.EntityDataSerializers;
-import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
@@ -54,19 +51,18 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
             sized(4.0F, 4.0F).
             noSave(). // don't save this entity to disk.
                 clientTrackingRange(10)));
-    private static final EntityDataAccessor<Boolean> DATA_IS_CHARGING = SynchedEntityData.defineId(GhostNMSEntity.class, EntityDataSerializers.BOOLEAN);
     protected final @NotNull GhostGame ghostGame;
     private volatile @Nullable GhostCraftEntity bukkitEntity;
     protected UnderWorldGhostNMSEntity underWorldGhost;
 
     @SuppressWarnings("unchecked")
     // has to be called while the server is bootstrapping, or else the registry will be frozen!
-    private static <T extends Entity> EntityType<T> registerEntityType(EntityType.Builder<Entity> type) {
+    private static <T extends Entity> @NotNull EntityType<T> registerEntityType(final @NotNull EntityType.Builder<Entity> type) {
         return (EntityType<T>) Registry.register(BuiltInRegistries.ENTITY_TYPE, "ghost",
             type.build("ghost"));
     }
 
-    public GhostNMSEntity(Level world, @NotNull GhostGame ghostGame) {
+    public GhostNMSEntity(final @NotNull Level world, final @NotNull GhostGame ghostGame) {
         super(GHOST_TYPE, world);
 
         this.navigation.setCanFloat(true); // can swim. not like floating in the air
@@ -79,7 +75,7 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
         return false;
     }
 
-    public static AttributeSupplier.Builder createAttributes() {
+    public static @NotNull AttributeSupplier.Builder createAttributes() {
         return Monster.createMonsterAttributes().
             add(Attributes.MAX_HEALTH, 500.0D).
             add(Attributes.MOVEMENT_SPEED, 0.30000001192092896D).
@@ -104,7 +100,7 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
     Also, since the field is private we have to use reflection to set it to a new value!
     If you have an idea how to solve this any mess better, please tell me!
     */
-    public @Nullable AttributeInstance getAttribute(@NotNull Attribute attribute) {
+    public @Nullable AttributeInstance getAttribute(final @NotNull Attribute attribute) {
         try {
             return super.getAttribute(attribute);
         } catch (NullPointerException ignored) {
@@ -164,6 +160,7 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
     }
 
     @Override
+    @SuppressWarnings("resource") // ignore level being auto closeable
     public @NotNull GhostCraftEntity getBukkitEntity() {
         if (this.bukkitEntity == null) {
             synchronized (this) {
@@ -172,6 +169,7 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
                 }
             }
         }
+        //noinspection DataFlowIssue
         return this.bukkitEntity;
     }
 
@@ -183,43 +181,27 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
         }
     }
 
-    @Nullable
-    public SpawnGroupData finalizeSpawn(@NotNull ServerLevelAccessor world, @NotNull DifficultyInstance difficulty, @NotNull MobSpawnType spawnReason, @Nullable SpawnGroupData entityData, @Nullable CompoundTag entityNbt) {
-        UnderWorldGhostNMSEntity underWorldGhostNMSEntity = new UnderWorldGhostNMSEntity(this, ghostGame);
-        this.underWorldGhost = underWorldGhostNMSEntity;
+    @Override
+    @SuppressWarnings("resource") // ignore level being auto closeable
+    public @Nullable SpawnGroupData finalizeSpawn(final @NotNull ServerLevelAccessor world,
+                                                  final @NotNull DifficultyInstance difficulty,
+                                                  final @NotNull MobSpawnType spawnReason,
+                                                  final @Nullable SpawnGroupData entityData,
+                                                  final @Nullable CompoundTag entityNbt) {
+        this.underWorldGhost = new UnderWorldGhostNMSEntity(this, ghostGame);
 
         level().addFreshEntity(underWorldGhost, CreatureSpawnEvent.SpawnReason.CUSTOM);
 
         return entityData;
     }
 
-    public void remove(Entity.RemovalReason entity_removalreason, EntityRemoveEvent.Cause cause) {
+    @Override
+    public void remove(final @NotNull Entity.RemovalReason entity_removalreason, final @NotNull EntityRemoveEvent.Cause cause) {
         super.remove(entity_removalreason, cause);
 
         if (!underWorldGhost.isRemoved()) {
             underWorldGhost.remove(entity_removalreason, cause);
         }
-    }
-
-    public boolean isCharging() {
-        return this.entityData.get(DATA_IS_CHARGING);
-    }
-
-    public void setCharging(boolean shooting) {
-        this.entityData.set(DATA_IS_CHARGING, shooting);
-    }
-
-    @Override
-    protected void defineSynchedData() {
-        super.defineSynchedData();
-        this.entityData.define(DATA_IS_CHARGING, false);
-    }
-
-    @Override
-    public void onSyncedDataUpdated(@NotNull EntityDataAccessor<?> data) {
-        // todo
-
-        super.onSyncedDataUpdated(data);
     }
 
     @Override
@@ -232,6 +214,7 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
         this.setDeltaMovement(Vec3.ZERO);
     }
 
+    @SuppressWarnings("resource") // ignore level being auto closeable
     @Override
     protected void customServerAiStep() {
         ServerLevel worldserver = (ServerLevel) this.level();
@@ -244,6 +227,7 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
         GhostAI.updateActivity(this);
     }
 
+    @SuppressWarnings("resource") // ignore level being auto closeable
     @Override
     public void playAmbientSound() {
         this.level().playLocalSound(this, this.getAmbientSound(), this.getSoundSource(), 1.0F, 1.0F);
@@ -259,12 +243,12 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
     }
 
     @Override
-    public SoundEvent getDeathSound() {
+    public @NotNull SoundEvent getDeathSound() {
         return SoundEvents.WARDEN_DEATH;
     }
 
     @Override
-    protected SoundEvent getHurtSound(@NotNull DamageSource source) {
+    protected @NotNull SoundEvent getHurtSound(@NotNull DamageSource source) {
         return SoundEvents.GHAST_HURT;
     }
 
@@ -280,7 +264,7 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
     }
 
     @Override
-    public boolean canAttackType(@NotNull EntityType<?> type) {
+    public boolean canAttackType(final @NotNull EntityType<?> type) {
         return type == EntityType.PLAYER;
     }
 
@@ -295,7 +279,7 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
     }
 
     @Override
-    public boolean isInvulnerableTo(@NotNull DamageSource damageSource) { // is invulnerable to everything <-- todo don't brick killing it via plugin
+    public boolean isInvulnerableTo(final @NotNull DamageSource damageSource) { // is invulnerable to everything
         return !damageSource.is(DamageTypeTags.BYPASSES_INVULNERABILITY);
     }
 
@@ -305,7 +289,7 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
     }
 
     @Override
-    public boolean causeFallDamage(float fallDistance, float damageMultiplier, @NotNull DamageSource damageSource) {
+    public boolean causeFallDamage(final float fallDistance, final float damageMultiplier, final @NotNull DamageSource damageSource) {
         if (fallDistance > 3.0F) {
             this.playSound(this.getFallSounds().big(), 1.0F, 1.0F);
             this.playBlockFallSound();
@@ -322,12 +306,12 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
     }
 
     @Override
-    protected @NotNull Vector3f getPassengerAttachmentPoint(@NotNull Entity passenger, @NotNull EntityDimensions dimensions, float scaleFactor) {
+    protected @NotNull Vector3f getPassengerAttachmentPoint(final Entity ignored, final @NotNull EntityDimensions dimensions, float scaleFactor) {
         return new Vector3f(0.0F, dimensions.height + 0.0625F * scaleFactor, 0.0F);
     }
 
     @Override
-    protected float ridingOffset(@NotNull Entity vehicle) {
+    protected float ridingOffset(final @NotNull Entity vehicle) {
         return 0.5F;
     }
 
@@ -336,6 +320,7 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
     public void tickEndPortal() {
     }
 
+    @SuppressWarnings("resource") // ignore level being auto closeable
     @Override
     protected void handleNetherPortal() {
         if (this.level() instanceof ServerLevel) {
@@ -358,27 +343,26 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
     }
 
     @Override
-    public Entity getRootVehicle() {
+    public @NotNull Entity getRootVehicle() {
         if (underWorldGhost == null) {
-            return null;
+            return this;
+        } else {
+            @NotNull Entity entity = underWorldGhost;
+            while (entity.isPassenger()) {
+                entity = entity.getVehicle();
+            }
+
+            return entity;
         }
-
-        Entity entity;
-
-        for (entity = underWorldGhost; entity.isPassenger(); entity = entity.getVehicle()) {
-            ;
-        }
-
-        return entity;
     }
 
     @Override
-    protected void addPassenger(Entity passenger) {
+    protected void addPassenger(final @NotNull Entity passenger) {
         super.addPassenger(passenger); // here for protected access
     }
 
     @Override
-    protected boolean removePassenger(Entity entity, boolean suppressCancellation) {
+    protected boolean removePassenger(final @NotNull Entity entity, final boolean suppressCancellation) {
         return super.removePassenger(entity, suppressCancellation); // here for protected access
     }
 
@@ -391,6 +375,7 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
         return underWorldGhost.isPassenger();
     }
 
+    @Override
     public @Nullable Entity getVehicle() {
         if (underWorldGhost == null) {
             return null;
@@ -399,7 +384,8 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
         return underWorldGhost.getVehicle();
     }
 
-    protected AABB getHitbox() {
+    @Override
+    protected @NotNull AABB getHitbox() {
         if (underWorldGhost == null) {
             return this.getBoundingBox();
         }
@@ -409,7 +395,7 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
     }
 
     @Override
-    public boolean startRiding(Entity entity, boolean force) {
+    public boolean startRiding(final @NotNull Entity entity, final boolean force) {
         if (underWorldGhost == null) {
             return false;
         }
@@ -418,13 +404,14 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
     }
 
     @Override
-    public void stopRiding(boolean suppressCancellation) {
+    public void stopRiding(final boolean suppressCancellation) {
         if (underWorldGhost != null) {
             underWorldGhost.stopRiding(suppressCancellation);
         }
     }
 
-    public boolean canTargetEntity(@NotNull LivingEntity entity) {
+    @SuppressWarnings("resource") // ignore level being auto closeable
+    public boolean canTargetEntity(final @NotNull LivingEntity entity) {
         return this.level() == entity.level() &&
             EntitySelector.NO_CREATIVE_OR_SPECTATOR.test(entity) &&
             !this.isAlliedTo(entity) &&

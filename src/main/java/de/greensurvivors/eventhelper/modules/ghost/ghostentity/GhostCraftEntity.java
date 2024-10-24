@@ -41,12 +41,12 @@ public class GhostCraftEntity extends CraftMob implements IGhost, CraftEnemy {
     }
 
     @Override
-    public GhostNMSEntity getHandle() {
+    public @NotNull GhostNMSEntity getHandle() {
         return (GhostNMSEntity) this.entity;
     }
 
     @Override
-    public String toString() {
+    public @NotNull String toString() {
         return "CraftGhost";
     }
 }

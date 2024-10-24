@@ -27,7 +27,7 @@ public class UnderWorldGhostNMSEntity extends Monster {
      * do NOT - I repeat - do NOT call UNDERWORLD_GHOST_TYPE.create!
      * There is no way to add the important game parameter there!
      */
-    public static final EntityType<UnderWorldGhostNMSEntity> UNDERWORLD_GHOST_TYPE = registerEntityType(
+    public static final @NotNull EntityType<UnderWorldGhostNMSEntity> UNDERWORLD_GHOST_TYPE = registerEntityType(
         (EntityType.Builder.
             of(null, MobCategory.MISC).
             sized(0.6F, 1F). // 1 block height to fit through all gaps
@@ -58,13 +58,12 @@ public class UnderWorldGhostNMSEntity extends Monster {
 
     @SuppressWarnings("unchecked")
     // has to be called while the server is bootstrapping, or else the registry will be frozen!
-    private static <T extends Entity> EntityType<T> registerEntityType(EntityType.Builder<Entity> type) {
-        final EntityType<T> registered = (EntityType<T>) Registry.register(BuiltInRegistries.ENTITY_TYPE, "underworld_ghost",
+    private static <T extends Entity> @NotNull EntityType<T> registerEntityType(final @NotNull EntityType.Builder<Entity> type) {
+        return (EntityType<T>) Registry.register(BuiltInRegistries.ENTITY_TYPE, "underworld_ghost",
             type.build("underworld_ghost"));
-        return registered;
     }
 
-    public static AttributeSupplier.Builder createAttributes() {
+    public static @NotNull AttributeSupplier.Builder createAttributes() {
         return Monster.createMonsterAttributes().
             add(Attributes.MAX_HEALTH, 500.0D).
             add(Attributes.MOVEMENT_SPEED, 0.30000001192092896D).
@@ -89,7 +88,7 @@ public class UnderWorldGhostNMSEntity extends Monster {
     Also, since the field is private we have to use reflection to set it to a new value!
     If you have an idea how to solve this any mess better, please tell me!
     */
-    public @Nullable AttributeInstance getAttribute(@NotNull Attribute attribute) {
+    public @Nullable AttributeInstance getAttribute(final @NotNull Attribute attribute) {
         try {
             return super.getAttribute(attribute);
         } catch (NullPointerException ignored) {
@@ -124,7 +123,10 @@ public class UnderWorldGhostNMSEntity extends Monster {
 
     @Override
     public @NotNull Packet<ClientGamePacketListener> getAddEntityPacket() { // overwrite with skeleton type
-        return new ClientboundAddEntityPacket(getId(), getUUID(), getX(), getY(), getZ(), getXRot(), getYRot(), EntityType.ALLAY, 0, getDeltaMovement(), getYHeadRot());
+        return new ClientboundAddEntityPacket(getId(), getUUID(),
+            getX(), getY(), getZ(), getXRot(), getYRot(),
+            EntityType.ALLAY, 0,
+            getDeltaMovement(), getYHeadRot());
     }
 
     @Override
@@ -132,7 +134,7 @@ public class UnderWorldGhostNMSEntity extends Monster {
         return getBukkitEntity();
     }
 
-    @SuppressWarnings("resource")
+    @SuppressWarnings("resource") // ignore level being auto closeable
     @Override
     public @NotNull UnderWorldGhostCraftEntity getBukkitEntity() {
         if (this.bukkitEntity == null) {
@@ -146,16 +148,12 @@ public class UnderWorldGhostNMSEntity extends Monster {
     }
 
     @Override
-    protected @NotNull Vector3f getPassengerAttachmentPoint(@NotNull Entity passenger, @NotNull EntityDimensions dimensions, float scaleFactor) {
+    protected @NotNull Vector3f getPassengerAttachmentPoint(final Entity ignored, final @NotNull EntityDimensions dimensions, final float scaleFactor) {
         float walkAnimationSpeed = Math.min(0.25F, this.walkAnimation.speed());
         float walkAnimationPos = this.walkAnimation.position();
         float bumpOffset = 0.12F * Mth.cos(walkAnimationPos * 0.5F) * 2.0F * walkAnimationSpeed;
 
         return new Vector3f(0.0F, (float) ghostGame.getConfig().getPathfindOffset() + bumpOffset * scaleFactor, 0.0F);
-    }
-
-    @Override
-    protected void registerGoals() {
     }
 
     @Override
@@ -175,7 +173,7 @@ public class UnderWorldGhostNMSEntity extends Monster {
     }
 
     @Override
-    public boolean hasLineOfSight(@NotNull Entity entity) {
+    public boolean hasLineOfSight(final @NotNull Entity entity) {
         return parentMob.hasLineOfSight(entity);
     }
 
@@ -197,19 +195,18 @@ public class UnderWorldGhostNMSEntity extends Monster {
         return true;
     }
 
-    @Nullable
     @Override
-    public ItemStack getPickResult() {
+    public @Nullable ItemStack getPickResult() {
         return this.parentMob.getPickResult();
     }
 
     @Override
-    public boolean hurt(@NotNull DamageSource source, float amount) {
+    public boolean hurt(final @NotNull DamageSource source, float amount) {
         return !this.isInvulnerableTo(source);
     }
 
     @Override
-    public boolean is(@NotNull Entity entity) {
+    public boolean is(final @NotNull Entity entity) {
         return this == entity || this.parentMob == entity;
     }
 
@@ -223,40 +220,41 @@ public class UnderWorldGhostNMSEntity extends Monster {
         return true;
     }
 
-    public boolean hasIndirectPassenger(Entity passenger) {
+    @Override
+    public boolean hasIndirectPassenger(final @NotNull Entity passenger) {
         if (passenger == parentMob) {
             return true;
         } else if (passenger instanceof GhostNMSEntity ghostNMS) {
             UnderWorldGhostNMSEntity underWorldGhost = ghostNMS.underWorldGhost;
 
-            if (!underWorldGhost.isPassenger()) {
-                return false;
-            } else {
-                Entity entity1 = underWorldGhost.getVehicle();
+            if (underWorldGhost.isPassenger()) {
+                Entity vehicle = underWorldGhost.getVehicle();
 
-                return entity1 == parentMob || this.hasIndirectPassenger(entity1);
+                return vehicle == parentMob || this.hasIndirectPassenger(vehicle);
+            } else {
+                return false;
             }
         } else if (!passenger.isPassenger()) {
             return false;
         } else {
-            Entity entity1 = passenger.getVehicle();
+            Entity vehicle = passenger.getVehicle();
 
-            return entity1 == this ? true : this.hasIndirectPassenger(entity1);
+            return vehicle == this || this.hasIndirectPassenger(vehicle);
         }
     }
 
     @Override
-    protected void addPassenger(Entity passenger) {
+    protected void addPassenger(final @NotNull Entity passenger) {
         parentMob.addPassenger(passenger); // here because of protected access
     }
 
     @Override
-    protected boolean removePassenger(Entity entity, boolean suppressCancellation) {
+    protected boolean removePassenger(final @NotNull Entity entity, final boolean suppressCancellation) {
         return parentMob.removePassenger(entity, suppressCancellation);
     }
 
     @Override
-    public void remove(Entity.RemovalReason entity_removalreason, EntityRemoveEvent.Cause cause) {
+    public void remove(final @NotNull Entity.RemovalReason entity_removalreason, final @NotNull EntityRemoveEvent.Cause cause) {
         super.remove(entity_removalreason, cause);
 
         if (!parentMob.isRemoved()) {

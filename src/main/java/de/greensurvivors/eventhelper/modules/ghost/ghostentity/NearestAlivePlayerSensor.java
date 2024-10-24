@@ -1,6 +1,7 @@
 package de.greensurvivors.eventhelper.modules.ghost.ghostentity;
 
 import com.destroystokyo.paper.util.maplist.ReferenceList;
+import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.modules.ghost.player.AlivePlayer;
 import io.papermc.paper.util.player.NearbyPlayers;
 import net.minecraft.core.BlockPos;
@@ -32,9 +33,9 @@ import java.util.Set;
 import java.util.function.Supplier;
 
 public class NearestAlivePlayerSensor extends Sensor<GhostNMSEntity> {
-    public static final SensorType<NearestAlivePlayerSensor> NEAREST_ALIVE_PLAYER_SENSOR = register();
+    public static final @NotNull SensorType<NearestAlivePlayerSensor> NEAREST_ALIVE_PLAYER_SENSOR = register();
 
-    private static <U extends Sensor<?>> SensorType<U> register() {
+    private static <U extends Sensor<?>> @NotNull SensorType<U> register() {
         Constructor<SensorType> constructor;
         try {
             constructor = SensorType.class.getDeclaredConstructor(Supplier.class);
@@ -57,7 +58,7 @@ public class NearestAlivePlayerSensor extends Sensor<GhostNMSEntity> {
     }
 
     @Override
-    protected void doTick(@NotNull ServerLevel world, @NotNull GhostNMSEntity entity) {
+    protected void doTick(final @NotNull ServerLevel world, final @NotNull GhostNMSEntity entity) {
         NearbyPlayers nearbyPlayers = world.chunkSource.chunkMap.getNearbyPlayers();
         Vec3 entityPos = entity.position();
         ReferenceList<ServerPlayer> nearby = nearbyPlayers.getPlayersByChunk(
@@ -111,6 +112,8 @@ public class NearestAlivePlayerSensor extends Sensor<GhostNMSEntity> {
 
         Brain<GhostNMSEntity> brain = entity.getBrain();
         if (path != null) {
+            EventHelper.getPlugin().getComponentLogger().info("final path is to" + path.getTarget());
+
             brain.setMemory(MemoryModuleType.ATTACK_TARGET, Optional.of(nearPlayerLocations.get(path.getTarget())));
             brain.setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(nearPlayerLocations.get(path.getTarget()), (float) followVelocityAt, 1)); // todo dirty fix
         } else {
