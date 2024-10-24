@@ -46,6 +46,9 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     private final @NotNull ConfigOption<@NotNull List<@NotNull Location>> ghostSpawnLocations = new ConfigOption<>("ghost.spawnLocations", List.of()); // we need fast random access. But the locations should be unique! // todo check for very close together locations!
     private final @NotNull ConfigOption<@NotNull List<@NotNull Position>> ghostIdlePositions = new ConfigOption<>("ghost.idlePositions", List.of()); // we need fast random access. But the locations should be unique! // todo check for very close together locations!
     private final @NotNull ConfigOption<@NotNull @Range(from = 1, to = Integer.MAX_VALUE) Integer> ghostAmount = new ConfigOption<>("ghost.amount", 1);
+    // vex
+
+    private final @NotNull ConfigOption<@NotNull List<@NotNull Location>> vexSpawnLocations = new ConfigOption<>("vex.spawnLocations", List.of()); // we need fast random access. But the locations should be unique! // todo check for very close together locations!
     // general
     private final @NotNull String name_id;
     private final @NotNull ConfigOption<@NotNull Component> displayName;
@@ -155,19 +158,19 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                         idleVelocity.setValue(config.getDouble(idleVelocity.getPath(), idleVelocity.getFallback()));
                         followVelocity.setValue(config.getDouble(followVelocity.getPath(), followVelocity.getFallback()));
 
-                        final @NotNull List<?> spawnObjectList = config.getList(ghostSpawnLocations.getPath(), List.of());
-                        final @NotNull ArrayList<@NotNull Location> newSpawnLocations = new ArrayList<>(spawnObjectList.size());
+                        final @NotNull List<?> ghostSpawnObjectList = config.getList(ghostSpawnLocations.getPath(), List.of());
+                        final @NotNull ArrayList<@NotNull Location> newGhostSpawnLocations = new ArrayList<>(ghostSpawnObjectList.size());
 
-                        for (Object object : spawnObjectList) {
+                        for (Object object : ghostSpawnObjectList) {
                             if (object instanceof Location location) {
-                                if (!newSpawnLocations.contains(location)) {
-                                    newSpawnLocations.add(location);
+                                if (!newGhostSpawnLocations.contains(location)) {
+                                    newGhostSpawnLocations.add(location);
                                 }
                             } else if (object instanceof Map<?, ?> map) {
                                 Location location = Location.deserialize((Map<String, Object>) map);
 
-                                if (!newSpawnLocations.contains(location)) {
-                                    newSpawnLocations.add(location);
+                                if (!newGhostSpawnLocations.contains(location)) {
+                                    newGhostSpawnLocations.add(location);
                                 }
                             } else if (object instanceof ConfigurationSection section) {
                                 Map<String, Object> map = new HashMap<>();
@@ -180,12 +183,12 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
 
                                 Location location = Location.deserialize(map);
 
-                                if (!newSpawnLocations.contains(location)) {
-                                    newSpawnLocations.add(location);
+                                if (!newGhostSpawnLocations.contains(location)) {
+                                    newGhostSpawnLocations.add(location);
                                 }
                             }
                         }
-                        ghostSpawnLocations.setValue(newSpawnLocations);
+                        ghostSpawnLocations.setValue(newGhostSpawnLocations);
 
                         final @NotNull List<?> idleObjectList = config.getList(ghostIdlePositions.getPath(), List.of());
                         final @NotNull ArrayList<@NotNull Position> newIdlePositions = new ArrayList<>(idleObjectList.size());
@@ -212,6 +215,38 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                         ghostIdlePositions.setValue(newIdlePositions);
 
                         ghostAmount.setValue(config.getInt(ghostAmount.getPath(), ghostAmount.getFallback()));
+
+                        final @NotNull List<?> vexSpawnObjectList = config.getList(vexSpawnLocations.getPath(), List.of());
+                        final @NotNull ArrayList<@NotNull Location> newVexSpawnLocations = new ArrayList<>(vexSpawnObjectList.size());
+
+                        for (Object object : vexSpawnObjectList) {
+                            if (object instanceof Location location) {
+                                if (!newVexSpawnLocations.contains(location)) {
+                                    newVexSpawnLocations.add(location);
+                                }
+                            } else if (object instanceof Map<?, ?> map) {
+                                Location location = Location.deserialize((Map<String, Object>) map);
+
+                                if (!newVexSpawnLocations.contains(location)) {
+                                    newVexSpawnLocations.add(location);
+                                }
+                            } else if (object instanceof ConfigurationSection section) {
+                                Map<String, Object> map = new HashMap<>();
+
+                                Set<String> keys = section.getKeys(false);
+
+                                for (String key : keys) {
+                                    map.put(key, section.get(key));
+                                }
+
+                                Location location = Location.deserialize(map);
+
+                                if (!newVexSpawnLocations.contains(location)) {
+                                    newVexSpawnLocations.add(location);
+                                }
+                            }
+                        }
+                        vexSpawnLocations.setValue(newVexSpawnLocations);
 
                         final @Nullable String rawDisplayName = config.getString(displayName.getPath());
                         if (rawDisplayName == null) {
@@ -322,6 +357,8 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                         config.set(ghostSpawnLocations.getPath(), ghostSpawnLocations.getValueOrFallback());
                         config.set(ghostIdlePositions.getPath(), ghostIdlePositions.getValueOrFallback().stream().map(AModulConfig::serializePosition).toList());
                         config.set(ghostAmount.getPath(), ghostAmount.getValueOrFallback());
+
+                        config.set(vexSpawnLocations.getPath(), vexSpawnLocations.getValueOrFallback());
 
                         config.set(gameInitCommands.getPath(), gameInitCommands.getValueOrFallback());
                         config.set(gameStartCommands.getPath(), gameStartCommands.getValueOrFallback());
@@ -470,6 +507,54 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
 
     public void removeAllGhostSpawnLocations() {
         if (ghostSpawnLocations.hasValue()) {
+
+            save().thenAccept(result -> {
+                if (result) {
+                    reload();
+                }
+            });
+        }
+    }
+
+    public @NotNull List<@NotNull Location> getVexSpawnLocations() {
+        return vexSpawnLocations.getValueOrFallback();
+    }
+
+    public void addVexSpawnLocation(final @NotNull Location newLocation) {
+        if (vexSpawnLocations.hasValue()) {
+
+            if (!vexSpawnLocations.getValueOrFallback().contains(newLocation)) {
+                vexSpawnLocations.getValueOrFallback().add(newLocation);
+            }
+        } else {
+            List<Location> locations = new ArrayList<>();
+            locations.add(newLocation);
+
+            vexSpawnLocations.setValue(locations);
+        }
+
+        save().thenAccept(result -> {
+            if (result) {
+                reload();
+            }
+        });
+    }
+
+    public void removeVexSpawnLocation(final @NotNull Location newLocation) {
+        if (vexSpawnLocations.hasValue()) {
+
+            if (vexSpawnLocations.getValueOrFallback().remove(newLocation)) {
+                save().thenAccept(result -> {
+                    if (result) {
+                        reload();
+                    }
+                });
+            }
+        }
+    }
+
+    public void removeAllVexSpawnLocations() {
+        if (vexSpawnLocations.hasValue()) {
 
             save().thenAccept(result -> {
                 if (result) {
