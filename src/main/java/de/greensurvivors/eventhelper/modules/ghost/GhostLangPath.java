@@ -51,6 +51,7 @@ public record GhostLangPath(@NotNull String path, @NotNull String defaultValue) 
         ERROR_JOIN_GAME_STATE = new GhostLangPath("error.join.game-state"),
         ERROR_MODUL_NOT_ENABLED = new GhostLangPath("error.module-not-enabled"),
         ARG_NOT_A_GAME = new GhostLangPath("error.arg.not-a-game"),
+        GAME_POINTS_MSG = new GhostLangPath("game.points.message"),
         GAME_POINTS_MILESTONE_25 = new GhostLangPath("game.points.milestone.25"),
         GAME_POINTS_MILESTONE_50 = new GhostLangPath("game.points.milestone.50"),
         GAME_POINTS_MILESTONE_75 = new GhostLangPath("game.points.milestone.75"),
