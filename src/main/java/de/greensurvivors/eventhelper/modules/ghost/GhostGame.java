@@ -11,6 +11,7 @@ import de.greensurvivors.eventhelper.messages.MessageManager;
 import de.greensurvivors.eventhelper.messages.SharedPlaceHolder;
 import de.greensurvivors.eventhelper.modules.ghost.entity.IGhost;
 import de.greensurvivors.eventhelper.modules.ghost.player.*;
+import de.greensurvivors.eventhelper.modules.ghost.vex.IVex;
 import de.greensurvivors.simplequests.SimpleQuests;
 import de.greensurvivors.simplequests.events.QuestCompleatedEvent;
 import net.kyori.adventure.text.Component;
@@ -62,6 +63,7 @@ public class GhostGame implements Listener { // todo spectating command
     private final @NotNull Map<@NotNull UUID, @NotNull AGhostGamePlayer> players = new ConcurrentHashMap<>();
     private final @NotNull Map<@NotNull UUID, @NotNull SpectatingPlayer> spectators = new ConcurrentHashMap<>();
     private final @NotNull Set<@NotNull IGhost> ghosts = new HashSet<>();
+    private final @NotNull Set<@NotNull IVex> vexes = new HashSet<>();
     private final @NotNull Scoreboard scoreboard;
     private final @NotNull Team perishedTeam;
     private @NotNull GameState gameState;
@@ -100,14 +102,6 @@ public class GhostGame implements Listener { // todo spectating command
         }
     }
 
-    /* // probably not needed, since PlayerQuitEvent should get called anyways
-    @EventHandler(ignoreCancelled = true)
-    private void onPlayerKick(final @NotNull PlayerKickEvent event) {
-        if (players.containsKey(event.getPlayer().getUniqueId())) {
-            playerQuit(event.getPlayer(), true);
-        }
-    }*/
-
     @EventHandler(ignoreCancelled = true)
     private void onQuestComplete(final @NotNull QuestCompleatedEvent event) { // todo reset whole questline not just requirement and end
         AGhostGamePlayer ghostGamePlayer = players.get(event.getPlayer().getUniqueId());
@@ -144,12 +138,13 @@ public class GhostGame implements Listener { // todo spectating command
         Player player = event.getPlayer();
         final AGhostGamePlayer ghostGamePlayer = players.get(player.getUniqueId());
         if (ghostGamePlayer instanceof AlivePlayer alivePlayer) {
-            getConfig().getMouseTraps();
-            alivePlayer.trapInMouseTrap(getMouseTraps().get(ThreadLocalRandom.current().nextInt(getMouseTraps().size())));
-
-            if (areAllPlayersDead()) {
+            if (wouldAllPlayersBeDead(alivePlayer)) {
+                // don't do things you have immediately undo after or maybe even can't easily undo like an async tp
                 endGame(EndReason.ALL_DEAD);
             } else {
+                final List<@NotNull MouseTrap> mouseTraps = getMouseTraps();
+                alivePlayer.trapInMouseTrap(mouseTraps.get(ThreadLocalRandom.current().nextInt(mouseTraps.size())));
+
                 // even after canceling the event, health level gets reset. So at least reset them to the expected amount.
                 player.setHealth(config.getStartingHealthAmount());
                 player.setSaturation(config.getStartingSaturationAmount());
@@ -281,8 +276,9 @@ public class GhostGame implements Listener { // todo spectating command
         gameState = GameState.STARTING;
         Random random = ThreadLocalRandom.current();
 
+        final List<@NotNull Location> ghostSpawnLocations = config.getGhostSpawnLocations();
         for (int i = 0; i < config.getAmountOfGhosts(); i++) {
-            Location spawnLocation = config.getGhostSpawnLocations().get(random.nextInt(config.getGhostSpawnLocations().size()));
+            Location spawnLocation = ghostSpawnLocations.get(random.nextInt(ghostSpawnLocations.size()));
 
             IGhost newGhost = IGhost.spawnNew(spawnLocation, CreatureSpawnEvent.SpawnReason.CUSTOM, this, ghost -> {
                 ghost.setPersistent(true);  // don't despawn
@@ -291,6 +287,18 @@ public class GhostGame implements Listener { // todo spectating command
             });
 
             ghosts.add(newGhost);
+        }
+
+        final List<@NotNull Location> vexSpawnLocations = config.getVexSpawnLocations();
+        for (int i = 0; i < config.getAmountOfGhosts(); i++) {
+            Location spawnLocation = vexSpawnLocations.get(random.nextInt(vexSpawnLocations.size()));
+
+            IVex newGhost = IVex.spawnNew(spawnLocation, CreatureSpawnEvent.SpawnReason.CUSTOM, this, vex -> {
+                vex.setPersistent(true);  // don't despawn
+                //vex.setInvulnerable(true);
+            });
+
+            vexes.add(newGhost);
         }
 
         if (timeTask != null) {
@@ -472,8 +480,6 @@ public class GhostGame implements Listener { // todo spectating command
                 if (players.isEmpty()) {
                     endGame(EndReason.GAME_EMPTY);
                 }
-
-                // todo tick mouse traps here
             }
         } else {
             endGame(EndReason.TIME);
@@ -490,7 +496,7 @@ public class GhostGame implements Listener { // todo spectating command
         HandlerList.unregisterAll(this);
     }
 
-    public void endGame(final @NotNull EndReason reason) { // todo do we need anything else here?
+    public void endGame(final @NotNull EndReason reason) {
         switch (reason) {
             case EXTERN -> { // Command
 
@@ -623,11 +629,13 @@ public class GhostGame implements Listener { // todo spectating command
         }
 
         for (QuestModifier questModifier : getConfig().getTasks().values()) {
-            if (questModifier.getQuestIdentifier().equals(alivePlayer.getQuestModifier().getQuestIdentifier())) {
+            if (alivePlayer.getQuestModifier() != null && questModifier.getQuestIdentifier().equals(alivePlayer.getQuestModifier().getQuestIdentifier())) {
                 SimpleQuests.getInstance().getDatabaseManager().setTimesQuestFinished(player, questModifier.getRequiredQuestIdentifier(), 1);
             } else {
                 SimpleQuests.getInstance().getDatabaseManager().setTimesQuestFinished(player, questModifier.getRequiredQuestIdentifier(), 0);
             }
+
+            SimpleQuests.getInstance().getDatabaseManager().setTimesQuestFinished(player, questModifier.getQuestIdentifier(), 0);
         }
 
         player.setGameMode(GameMode.SURVIVAL);
@@ -648,9 +656,13 @@ public class GhostGame implements Listener { // todo spectating command
 
     // used for rejoining a game
     protected void makeAlivePlayerAgain(final @NotNull AlivePlayer oldAlivePlayer) {
+        final @Nullable Player player = oldAlivePlayer.getBukkitPlayer();
+        if (player == null) {
+            return;
+        }
+
         final AlivePlayer newAlivePlayer = new AlivePlayer(oldAlivePlayer);
         players.put(oldAlivePlayer.getUuid(), newAlivePlayer);
-        Player player = oldAlivePlayer.getBukkitPlayer();
 
         if (oldAlivePlayer.getMouseTrapTrappedIn() == null) {
             player.teleportAsync(config.getLobbyLocation());
@@ -666,6 +678,18 @@ public class GhostGame implements Listener { // todo spectating command
         }
         for (SpectatingPlayer spectatingPlayer : spectators.values()) {
             player.hidePlayer(plugin, spectatingPlayer.getBukkitPlayer());
+        }
+
+        final QuestModifier oldAlivePlayerQuestModifier = oldAlivePlayer.getQuestModifier();
+
+        for (QuestModifier questModifier : getConfig().getTasks().values()) {
+            if (oldAlivePlayerQuestModifier != null && questModifier.getQuestIdentifier().equals(oldAlivePlayerQuestModifier.getQuestIdentifier())) {
+                SimpleQuests.getInstance().getDatabaseManager().setTimesQuestFinished(player, questModifier.getRequiredQuestIdentifier(), 1);
+            } else {
+                SimpleQuests.getInstance().getDatabaseManager().setTimesQuestFinished(player, questModifier.getRequiredQuestIdentifier(), 0);
+            }
+
+            SimpleQuests.getInstance().getDatabaseManager().setTimesQuestFinished(player, questModifier.getQuestIdentifier(), 0);
         }
 
         plugin.getMessageManager().sendLang(player, GhostLangPath.PLAYER_GAME_JOIN,
@@ -759,6 +783,17 @@ public class GhostGame implements Listener { // todo spectating command
             player.hidePlayer(plugin, spectatingPlayer.getBukkitPlayer());
         }
 
+        final QuestModifier deadPlayerQuestModifier = deadPlayer.getQuestModifier();
+        for (QuestModifier questModifier : getConfig().getTasks().values()) {
+            if (deadPlayerQuestModifier != null && questModifier.getQuestIdentifier().equals(deadPlayerQuestModifier.getQuestIdentifier())) {
+                SimpleQuests.getInstance().getDatabaseManager().setTimesQuestFinished(player, questModifier.getRequiredQuestIdentifier(), 1);
+            } else {
+                SimpleQuests.getInstance().getDatabaseManager().setTimesQuestFinished(player, questModifier.getRequiredQuestIdentifier(), 0);
+            }
+
+            SimpleQuests.getInstance().getDatabaseManager().setTimesQuestFinished(player, questModifier.getQuestIdentifier(), 0);
+        }
+
         plugin.getMessageManager().sendLang(player, GhostLangPath.PLAYER_GAME_JOIN,
             Placeholder.component(SharedPlaceHolder.TEXT.getKey(), getConfig().getDisplayName()));
         broadcastExcept(GhostLangPath.PLAYER_GAME_JOIN_BROADCAST, player.getUniqueId(),
@@ -800,6 +835,12 @@ public class GhostGame implements Listener { // todo spectating command
                         iterator.remove();
                     }
                 }
+            }
+
+            // reset all quests
+            for (QuestModifier questModifier : getConfig().getTasks().values()) {
+                SimpleQuests.getInstance().getDatabaseManager().setTimesQuestFinished(player, questModifier.getRequiredQuestIdentifier(), 0);
+                SimpleQuests.getInstance().getDatabaseManager().setTimesQuestFinished(player, questModifier.getQuestIdentifier(), 0);
             }
 
             final QuestModifier oldQuestModifier = ghostGamePlayer.getQuestModifier();
@@ -918,9 +959,12 @@ public class GhostGame implements Listener { // todo spectating command
         broadcastExcept(langPath, null);
     }
 
-    public @NotNull CompletableFuture<@NotNull Boolean> reload() { // todo should this reset the game?
+    public @NotNull CompletableFuture<@NotNull Boolean> reload() {
+        endGame(EndReason.EXTERN);
+        gameState = GameState.RESETTING; // lock from joining while we wait for config
+
         return config.reload().thenApply(result -> {
-            resetGame();
+            gameState = GameState.IDLE;
             return result;
         });
     }
@@ -935,6 +979,18 @@ public class GhostGame implements Listener { // todo spectating command
 
     public @NotNull GhostGameConfig getConfig() {
         return config;
+    }
+
+    protected boolean wouldAllPlayersBeDead(final @NotNull AlivePlayer alivePlayer) {
+        for (AGhostGamePlayer ghostGamePlayer : players.values()) {
+            if (ghostGamePlayer instanceof AlivePlayer otherAlivePlayer &&
+                !alivePlayer.getUuid().equals(otherAlivePlayer.getUuid()) &&
+                otherAlivePlayer.getMouseTrapTrappedIn() == null) { // trapped players alone can't win!
+                return false;
+            }
+        }
+
+        return true;
     }
 
     protected boolean areAllPlayersDead() {
@@ -961,7 +1017,7 @@ public class GhostGame implements Listener { // todo spectating command
         return ghostGamePlayer == null ? spectators.get(player.getUniqueId()) : ghostGamePlayer;
     }
 
-    public void gainPoints(final @NotNull AGhostGamePlayer pointGainingPlayer, final double newGainedPoints) { // todo message to player
+    public void gainPoints(final @NotNull AGhostGamePlayer pointGainingPlayer, final double newGainedPoints) {
         this.gainedPoints += newGainedPoints;
 
         if (gainedPoints >= getConfig().getPointGoal()) {
@@ -973,9 +1029,10 @@ public class GhostGame implements Listener { // todo spectating command
             for (Iterator<Map.Entry<UUID, AGhostGamePlayer>> iterator = players.entrySet().iterator(); iterator.hasNext(); ) {
                 Map.Entry<UUID, AGhostGamePlayer> entry = iterator.next();
 
+                // sync xp bar for points display
                 Player playerInGame = plugin.getServer().getPlayer(entry.getKey());
 
-                if (playerInGame == null) {
+                if (playerInGame == null) { // sanity check - should never trigger
                     if (entry.getValue() instanceof AlivePlayer alivePlayer) {
                         MouseTrap trap = alivePlayer.getMouseTrapTrappedIn();
 
@@ -985,6 +1042,7 @@ public class GhostGame implements Listener { // todo spectating command
                         }
                     }
 
+                    plugin.getComponentLogger().warn("removed player with uuid {} from the ghost game {}, because they where missing on the server (sync points xp)", entry.getKey(), getName_id());
                     iterator.remove();
                 } else {
                     playerInGame.setExp(percent);
@@ -996,22 +1054,28 @@ public class GhostGame implements Listener { // todo spectating command
 
                 return;
             }
+            // should never be null, we just did a sanity check on all players in game
+            final @NotNull Player bukkitPlayer = pointGainingPlayer.getBukkitPlayer();
 
+            plugin.getMessageManager().sendLang(bukkitPlayer, GhostLangPath.GAME_POINTS_MSG,
+                Placeholder.unparsed(SharedPlaceHolder.NUMBER.getKey(), String.valueOf(newGainedPoints)));
+
+            // annouce for mile stones
             if (percent - 0.25f < stepSize) {
                 broadcastAll(GhostLangPath.GAME_POINTS_MILESTONE_25,
-                    Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), pointGainingPlayer.getBukkitPlayer().displayName()),
+                    Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), bukkitPlayer.displayName()),
                     Placeholder.unparsed(SharedPlaceHolder.NUMBER.getKey(), String.valueOf(newGainedPoints)));
             } else if (percent - 0.5f < stepSize) {
                 broadcastAll(GhostLangPath.GAME_POINTS_MILESTONE_50,
-                    Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), pointGainingPlayer.getBukkitPlayer().displayName()),
+                    Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), bukkitPlayer.displayName()),
                     Placeholder.unparsed(SharedPlaceHolder.NUMBER.getKey(), String.valueOf(newGainedPoints)));
             } else if (percent - 0.75f < stepSize) {
                 broadcastAll(GhostLangPath.GAME_POINTS_MILESTONE_75,
-                    Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), pointGainingPlayer.getBukkitPlayer().displayName()),
+                    Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), bukkitPlayer.displayName()),
                     Placeholder.unparsed(SharedPlaceHolder.NUMBER.getKey(), String.valueOf(newGainedPoints)));
             } else if (percent - 0.9f < stepSize) {
                 broadcastAll(GhostLangPath.GAME_POINTS_MILESTONE_90,
-                    Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), pointGainingPlayer.getBukkitPlayer().displayName()),
+                    Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), bukkitPlayer.displayName()),
                     Placeholder.unparsed(SharedPlaceHolder.NUMBER.getKey(), String.valueOf(newGainedPoints)));
             }
         }
