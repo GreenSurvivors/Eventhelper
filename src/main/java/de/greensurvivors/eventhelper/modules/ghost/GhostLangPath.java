@@ -27,7 +27,9 @@ public record GhostLangPath(@NotNull String path, @NotNull String defaultValue) 
         COMMAND_SET_MAX_PLAYERS_ERROR_SMALLER_THEN_MIN = new GhostLangPath("command.set.max-players.error.smaller-then-min"),
         COMMAND_SET_PLAYER_SPEAD_SUCCESS = new GhostLangPath("command.set.player-spread.success"),
         COMMAND_ADD_GHOST_SPAWNPOINT_SUCCESS = new GhostLangPath("command.add.ghost.spawnpoint.success"),
+        COMMAND_ADD_VEX_SPAWNPOINT_SUCCESS = new GhostLangPath("command.add.vex.spawnpoint.success"),
         COMMAND_REMOVEALL_GHOST_SPAWNPOINT_SUCCESS = new GhostLangPath("command.remove-all.ghost.spawnpoint.success"),
+        COMMAND_REMOVEALL_VEX_SPAWNPOINT_SUCCESS = new GhostLangPath("command.remove-all.vex.spawnpoint.success"),
         COMMAD_HELP_TEXT = new GhostLangPath("command.help-text"),
 
     PLAYER_GAME_JOIN = new GhostLangPath("game.player.join.self"), // todo per game override
@@ -37,7 +39,8 @@ public record GhostLangPath(@NotNull String path, @NotNull String defaultValue) 
         PLAYER_CAPTURED = new GhostLangPath("game.player.trap.trapped"),
         PLAYER_TRAP_TIME_REMAINING = new GhostLangPath("game.player.trap.time.remaining"),
         PLAYER_TRAP_PERISH = new GhostLangPath("game.player.trap.perish"),
-        PLAYER_TRAP_RELEASE = new GhostLangPath("game.player.trap.release"),
+        PLAYER_TRAP_RELEASE_BROADCAST = new GhostLangPath("game.player.trap.release.broadcast"),
+        PLAYER_TRAP_ONLY_ALIVE_CAN_RELEASE = new GhostLangPath("game.player.trap.release.error.not-alive"),
         PLAYER_PERISHED_TASK_DONE_BROADCAST = new GhostLangPath("game.player.perished.tasks-done.broadcast"),
         PLAYER_PERISHED_TASK_DONE_SELF = new GhostLangPath("game.player.perished.tasks-done.self"),
         GAME_WIN_BROADCAST = new GhostLangPath("game.win.broadcast"), // todo per game override
