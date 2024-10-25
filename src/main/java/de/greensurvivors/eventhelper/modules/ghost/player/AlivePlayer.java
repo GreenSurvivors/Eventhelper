@@ -2,18 +2,26 @@ package de.greensurvivors.eventhelper.modules.ghost.player;
 
 import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.modules.ghost.GhostGame;
+import de.greensurvivors.eventhelper.modules.ghost.GhostLangPath;
 import de.greensurvivors.eventhelper.modules.ghost.MouseTrap;
 import de.greensurvivors.eventhelper.modules.ghost.QuestModifier;
+import de.greensurvivors.eventhelper.modules.ghost.vex.UnsafeArea;
+import org.bukkit.entity.Player;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class AlivePlayer extends AGhostGamePlayer { // todo
     private final @NotNull Set<QuestModifier> doneTaskIds = new HashSet<>();
     private @Nullable QuestModifier currentTaskModifier;
     private @Nullable MouseTrap trappedIn;
+    private @NotNull Map<@NotNull UnsafeArea, Duration> unsafeAreasIn = new ConcurrentHashMap<>();
 
     public AlivePlayer(final @NotNull EventHelper plugin,
                        final @NotNull GhostGame game,
@@ -118,5 +126,45 @@ public class AlivePlayer extends AGhostGamePlayer { // todo
         }
 
         return result;
+    }
+
+    public void tickUnsafeAreas(double millisSinceLastTick) {
+        if (this.getMouseTrapTrappedIn() != null) {
+            final Player bukkitPlayer = getBukkitPlayer();
+
+            if (bukkitPlayer != null) {
+                for (MouseTrap mouseTrap : getGame().getMouseTraps()) {
+                    UnsafeArea unsafeArea = mouseTrap.getUnsafeArea();
+                    if (unsafeArea != null) {
+                        if (unsafeArea.isInArea(this)) {
+                            Duration duration = unsafeAreasIn.get(unsafeArea);
+
+                            if (duration == null) {
+                                unsafeAreasIn.put(unsafeArea, Duration.ZERO);
+                            } else {
+                                duration = duration.plusMillis((long) millisSinceLastTick);
+
+                                if (duration.compareTo(unsafeArea.getTimeUntilDeath()) > 0) {
+                                    bukkitPlayer.setHealth(0.0);
+                                } else {
+                                    unsafeAreasIn.put(unsafeArea, duration);
+
+                                    if (!unsafeArea.getWarnInterval().isNegative()) {
+                                        if (duration.toMillis() % unsafeArea.getWarnInterval().toMillis() <= millisSinceLastTick) {
+                                            plugin.getMessageManager().sendLang(bukkitPlayer, GhostLangPath.PLAYER_UNSAFE_AREA_WARNING);
+                                            bukkitPlayer.addPotionEffect(new PotionEffect(PotionEffectType.CONFUSION, 2, 1, false, true, false));
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            unsafeAreasIn.remove(unsafeArea);
+                        }
+                    } // trap does not have an unsafe area
+                }
+            } else {
+                throw new GhostGame.PlayerNotAliveException("Player with uuid " + getUuid() + " should tick unsafe areas but ins't a valid Bukkit player!");
+            }
+        }
     }
 }

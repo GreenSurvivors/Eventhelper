@@ -32,7 +32,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
 
-public class NearestAlivePlayerSensor extends Sensor<GhostNMSEntity> {
+public class NearestAlivePlayerSensor extends Sensor<NMSGhostEntity> {
     public static final @NotNull SensorType<NearestAlivePlayerSensor> NEAREST_ALIVE_PLAYER_SENSOR = register();
 
     private static <U extends Sensor<?>> @NotNull SensorType<U> register() {
@@ -58,7 +58,7 @@ public class NearestAlivePlayerSensor extends Sensor<GhostNMSEntity> {
     }
 
     @Override
-    protected void doTick(final @NotNull ServerLevel world, final @NotNull GhostNMSEntity entity) {
+    protected void doTick(final @NotNull ServerLevel world, final @NotNull NMSGhostEntity entity) {
         NearbyPlayers nearbyPlayers = world.chunkSource.chunkMap.getNearbyPlayers();
         Vec3 entityPos = entity.position();
         ReferenceList<ServerPlayer> nearby = nearbyPlayers.getPlayersByChunk(
@@ -110,7 +110,7 @@ public class NearestAlivePlayerSensor extends Sensor<GhostNMSEntity> {
         // I believe distance 0 means we are at the beginning and range multiple is almost always 1, except for bees for some reason
         Path path = entity.getNavigation().pathFinder.findPath(pathNavigationRegion, entity, nearPlayerLocations.keySet(), followRangeAt, 0, 1.0f);
 
-        Brain<GhostNMSEntity> brain = entity.getBrain();
+        Brain<NMSGhostEntity> brain = entity.getBrain();
         if (path != null) {
             EventHelper.getPlugin().getComponentLogger().info("final path is to" + path.getTarget());
 

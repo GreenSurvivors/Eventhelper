@@ -45,6 +45,7 @@ public record GhostLangPath(@NotNull String path, @NotNull String defaultValue) 
         PLAYER_TRAP_ONLY_ALIVE_CAN_RELEASE = new GhostLangPath("game.player.trap.release.error.not-alive"),
         PLAYER_PERISHED_TASK_DONE_BROADCAST = new GhostLangPath("game.player.perished.tasks-done.broadcast"),
         PLAYER_PERISHED_TASK_DONE_SELF = new GhostLangPath("game.player.perished.tasks-done.self"),
+        PLAYER_UNSAFE_AREA_WARNING = new GhostLangPath("game.player.unsafe-area.warning"),
         GAME_WIN_BROADCAST = new GhostLangPath("game.win.broadcast"), // todo per game override
         GAME_LOOSE_TIME_BROADCAST = new GhostLangPath("game.loose.time.broadcast"), // todo per game override
         GAME_LOOSE_DEATH_BROADCAST = new GhostLangPath("game.loose.death.broadcast"), // todo per game override

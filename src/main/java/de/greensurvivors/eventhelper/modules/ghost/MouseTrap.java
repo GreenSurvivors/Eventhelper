@@ -5,6 +5,7 @@ import de.greensurvivors.eventhelper.Utils;
 import de.greensurvivors.eventhelper.messages.MessageManager;
 import de.greensurvivors.eventhelper.messages.SharedPlaceHolder;
 import de.greensurvivors.eventhelper.modules.ghost.player.AlivePlayer;
+import de.greensurvivors.eventhelper.modules.ghost.vex.UnsafeArea;
 import io.papermc.paper.math.Position;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.Bukkit;
@@ -23,18 +24,20 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 
 @SuppressWarnings("UnstableApiUsage") // Position
-public class MouseTrap implements ConfigurationSerializable, Listener { // todo freeing mechanism
+public class MouseTrap implements ConfigurationSerializable, Listener {
     private final static @NotNull String
         WORLD_NAME_KEY = "worldName",
         SPAWN_POS_IN_KEY = "spawnPositionIn",
         SPAWN_POS_OUT_KEY = "spawnPositionOut",
-        RELEASE_BUTTON_POS_KEY = "releaseButtonPosition";
+        RELEASE_BUTTON_POS_KEY = "releaseButtonPosition",
+        UNSAFE_AREA_KEY = "unsafeArea";
 
     private final @NotNull EventHelper plugin;
     private final @NotNull Position spawnPositionIn;
     private final @NotNull Position spawnPositionOut;
     private final @NotNull String worldName;
     private final @NotNull Position releaseButtonPosition;
+    private final @Nullable UnsafeArea unsafeArea;
 
     private final transient @NotNull Map<@NotNull AlivePlayer, @NotNull Long> trappedPlayers = new HashMap<>();
 
@@ -45,12 +48,14 @@ public class MouseTrap implements ConfigurationSerializable, Listener { // todo 
                      final @NotNull String worldName,
                      final @NotNull Position spawnPositionIn,
                      final @NotNull Position spawnPositionOut,
-                     final @NotNull Position releaseButtonPosition) {
+                     final @NotNull Position releaseButtonPosition,
+                     final @Nullable UnsafeArea unsafeArea) {
         this.plugin = plugin;
         this.spawnPositionIn = spawnPositionIn;
         this.worldName = worldName;
         this.spawnPositionOut = spawnPositionOut;
         this.releaseButtonPosition = releaseButtonPosition;
+        this.unsafeArea = unsafeArea;
     }
 
     /**
@@ -70,8 +75,11 @@ public class MouseTrap implements ConfigurationSerializable, Listener { // todo 
                     if (map.get(RELEASE_BUTTON_POS_KEY) instanceof Map<?, ?> releaseButtonPosMap) {
                         Position releaseButtonPosition = Utils.deserializePosition(Utils.checkSerialzedMap(releaseButtonPosMap, ignored -> {
                         }));
-
-                        return new MouseTrap(EventHelper.getPlugin(), worldName, spawnPositionIn, spawnPositionOut, releaseButtonPosition);
+                        if (map.get(UNSAFE_AREA_KEY) instanceof UnsafeArea unsafeArea) {
+                            return new MouseTrap(EventHelper.getPlugin(), worldName, spawnPositionIn, spawnPositionOut, releaseButtonPosition, unsafeArea);
+                        } else {
+                            return new MouseTrap(EventHelper.getPlugin(), worldName, spawnPositionIn, spawnPositionOut, releaseButtonPosition, null);
+                        }
                     } else {
                         throw new NoSuchElementException("Serialized MouseTrap " + map + " does not contain a release button position value.");
                     }
@@ -101,7 +109,8 @@ public class MouseTrap implements ConfigurationSerializable, Listener { // todo 
             WORLD_NAME_KEY, worldName,
             SPAWN_POS_IN_KEY, Utils.serializePosition(spawnPositionIn),
             SPAWN_POS_OUT_KEY, Utils.serializePosition(spawnPositionOut),
-            RELEASE_BUTTON_POS_KEY, Utils.serializePosition(releaseButtonPosition));
+            RELEASE_BUTTON_POS_KEY, Utils.serializePosition(releaseButtonPosition),
+            UNSAFE_AREA_KEY, unsafeArea);
     }
 
     /**
@@ -131,7 +140,7 @@ public class MouseTrap implements ConfigurationSerializable, Listener { // todo 
         trappedPlayers.remove(alivePlayer);
     }
 
-    public void releaseAllPlayers() { // todo optional message
+    public void releaseAllPlayers() {
         final @Nullable World world = Bukkit.getWorld(worldName);
         final @Nullable Location spawnLocationOut;
         if (world != null) {
@@ -152,7 +161,6 @@ public class MouseTrap implements ConfigurationSerializable, Listener { // todo 
             iterator.remove();
         }
 
-
         trappedPlayers.clear();
     }
 
@@ -165,5 +173,9 @@ public class MouseTrap implements ConfigurationSerializable, Listener { // todo 
             (Math.sqrt(releaseButtonPosition.x() - location.x()) +
                 Math.sqrt(releaseButtonPosition.y() - location.y()) +
                 Math.sqrt(releaseButtonPosition.z() - location.z())) <= 0.25;
+    }
+
+    public @Nullable UnsafeArea getUnsafeArea() {
+        return unsafeArea;
     }
 }

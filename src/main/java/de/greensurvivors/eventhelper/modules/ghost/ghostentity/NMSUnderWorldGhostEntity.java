@@ -22,12 +22,12 @@ import org.joml.Vector3f;
 import javax.annotation.Nullable;
 import java.lang.reflect.Field;
 
-public class UnderWorldGhostNMSEntity extends Monster {
+public class NMSUnderWorldGhostEntity extends Monster {
     /**
      * do NOT - I repeat - do NOT call UNDERWORLD_GHOST_TYPE.create!
      * There is no way to add the important game parameter there!
      */
-    public static final @NotNull EntityType<UnderWorldGhostNMSEntity> UNDERWORLD_GHOST_TYPE = registerEntityType(
+    public static final @NotNull EntityType<NMSUnderWorldGhostEntity> UNDERWORLD_GHOST_TYPE = registerEntityType(
         (EntityType.Builder.
             of(null, MobCategory.MISC).
             sized(0.6F, 1F). // 1 block height to fit through all gaps
@@ -35,10 +35,10 @@ public class UnderWorldGhostNMSEntity extends Monster {
                 clientTrackingRange(10)));
 
     private final @NotNull GhostGame ghostGame;
-    private final @NotNull GhostNMSEntity parentMob;
-    private volatile @Nullable UnderWorldGhostCraftEntity bukkitEntity;
+    private final @NotNull NMSGhostEntity parentMob;
+    private volatile @Nullable CraftUnderWorldGhostEntity bukkitEntity;
 
-    public UnderWorldGhostNMSEntity(final @NotNull GhostNMSEntity parentMob, final @NotNull GhostGame ghostGame) {
+    public NMSUnderWorldGhostEntity(final @NotNull NMSGhostEntity parentMob, final @NotNull GhostGame ghostGame) {
         super(UNDERWORLD_GHOST_TYPE, parentMob.level());
 
         setCanPickUpLoot(false);
@@ -136,11 +136,11 @@ public class UnderWorldGhostNMSEntity extends Monster {
 
     @SuppressWarnings("resource") // ignore level being auto closeable
     @Override
-    public @NotNull UnderWorldGhostCraftEntity getBukkitEntity() {
+    public @NotNull CraftUnderWorldGhostEntity getBukkitEntity() {
         if (this.bukkitEntity == null) {
             synchronized (this) {
                 if (this.bukkitEntity == null) {
-                    return this.bukkitEntity = new UnderWorldGhostCraftEntity(this.level().getCraftServer(), this);
+                    return this.bukkitEntity = new CraftUnderWorldGhostEntity(this.level().getCraftServer(), this);
                 }
             }
         }
@@ -224,8 +224,8 @@ public class UnderWorldGhostNMSEntity extends Monster {
     public boolean hasIndirectPassenger(final @NotNull Entity passenger) {
         if (passenger == parentMob) {
             return true;
-        } else if (passenger instanceof GhostNMSEntity ghostNMS) {
-            UnderWorldGhostNMSEntity underWorldGhost = ghostNMS.underWorldGhost;
+        } else if (passenger instanceof NMSGhostEntity ghostNMS) {
+            NMSUnderWorldGhostEntity underWorldGhost = ghostNMS.underWorldGhost;
 
             if (underWorldGhost.isPassenger()) {
                 Entity vehicle = underWorldGhost.getVehicle();

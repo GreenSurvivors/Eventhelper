@@ -15,8 +15,8 @@ import org.jetbrains.annotations.Nullable;
 import java.util.function.Consumer;
 
 
-public class GhostCraftEntity extends CraftMob implements IGhost, CraftEnemy {
-    public GhostCraftEntity(final @NotNull CraftServer server, final @NotNull GhostNMSEntity entity) {
+public class CraftGhostEntity extends CraftMob implements IGhost, CraftEnemy {
+    public CraftGhostEntity(final @NotNull CraftServer server, final @NotNull NMSGhostEntity entity) {
         super(server, entity);
     }
 
@@ -26,7 +26,7 @@ public class GhostCraftEntity extends CraftMob implements IGhost, CraftEnemy {
                                   final @Nullable Consumer<IGhost> function) {
         ServerLevel serverLevel = ((CraftWorld) location.getWorld()).getHandle();
 
-        GhostNMSEntity ghostNMSEntity = new GhostNMSEntity(
+        NMSGhostEntity ghostNMSEntity = new NMSGhostEntity(
             serverLevel.getMinecraftWorld(),
             ghostGame);
 
@@ -41,8 +41,8 @@ public class GhostCraftEntity extends CraftMob implements IGhost, CraftEnemy {
     }
 
     @Override
-    public @NotNull GhostNMSEntity getHandle() {
-        return (GhostNMSEntity) this.entity;
+    public @NotNull NMSGhostEntity getHandle() {
+        return (NMSGhostEntity) this.entity;
     }
 
     @Override

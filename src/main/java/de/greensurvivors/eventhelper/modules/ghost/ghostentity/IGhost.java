@@ -15,6 +15,6 @@ public interface IGhost extends Flying, Enemy {
                            final @NotNull CreatureSpawnEvent.SpawnReason reason,
                            final @NotNull GhostGame ghostGame,
                            final @Nullable Consumer<IGhost> function) {
-        return GhostCraftEntity.spawnNew(location, reason, ghostGame, function);
+        return CraftGhostEntity.spawnNew(location, reason, ghostGame, function);
     }
 }

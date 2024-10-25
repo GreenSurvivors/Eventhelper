@@ -3,6 +3,7 @@ package de.greensurvivors.eventhelper.modules.ghost;
 import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.config.ConfigOption;
 import de.greensurvivors.eventhelper.modules.AModulConfig;
+import de.greensurvivors.eventhelper.modules.ghost.vex.UnsafeArea;
 import io.papermc.paper.math.Position;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -35,6 +36,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
         ConfigurationSerialization.registerClass(PathModifier.class);
         ConfigurationSerialization.registerClass(MouseTrap.class);
         ConfigurationSerialization.registerClass(QuestModifier.class);
+        ConfigurationSerialization.registerClass(UnsafeArea.class);
     }
     // ghost
     private final @NotNull ConfigOption<@NotNull Map<Material, PathModifier>> pathFindableMats = new ConfigOption<>("ghost.pathfind.pathFindables", new HashMap<>(Map.of(Material.YELLOW_GLAZED_TERRACOTTA, new PathModifier())));

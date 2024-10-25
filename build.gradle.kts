@@ -1,5 +1,3 @@
-//import net.minecrell.pluginyml.bukkit.BukkitPluginDescription
-
 plugins {
     `java-library`
     //java
@@ -66,7 +64,7 @@ tasks {
 
     runServer {
         downloadPlugins {
-            // make sure to double check the version id on the Modrinth version page
+            // make sure to double-check the version id on the Modrinth version page
             // for 1.21+ :
             //modrinth("worldguard", "J66QOTLZ")
             // for 1.20.4 --> 1.21

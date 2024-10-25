@@ -5,8 +5,8 @@ import de.greensurvivors.eventhelper.command.MainCmd;
 import de.greensurvivors.eventhelper.config.SharedConfig;
 import de.greensurvivors.eventhelper.messages.MessageManager;
 import de.greensurvivors.eventhelper.modules.ModulRegistery;
-import de.greensurvivors.eventhelper.modules.ghost.ghostentity.GhostNMSEntity;
-import de.greensurvivors.eventhelper.modules.ghost.ghostentity.UnderWorldGhostNMSEntity;
+import de.greensurvivors.eventhelper.modules.ghost.ghostentity.NMSGhostEntity;
+import de.greensurvivors.eventhelper.modules.ghost.ghostentity.NMSUnderWorldGhostEntity;
 import net.minecraft.core.registries.BuiltInRegistries;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
@@ -60,8 +60,8 @@ public class EventHelper extends JavaPlugin {
             }
 
             // add our own entities
-            NamespacedKey ghostNamespacedKey = CraftNamespacedKey.fromMinecraft(BuiltInRegistries.ENTITY_TYPE.getResourceKey(GhostNMSEntity.GHOST_TYPE).orElseThrow().location());
-            NamespacedKey underworldNamespacedKey = CraftNamespacedKey.fromMinecraft(BuiltInRegistries.ENTITY_TYPE.getResourceKey(UnderWorldGhostNMSEntity.UNDERWORLD_GHOST_TYPE).orElseThrow().location());
+            NamespacedKey ghostNamespacedKey = CraftNamespacedKey.fromMinecraft(BuiltInRegistries.ENTITY_TYPE.getResourceKey(NMSGhostEntity.GHOST_TYPE).orElseThrow().location());
+            NamespacedKey underworldNamespacedKey = CraftNamespacedKey.fromMinecraft(BuiltInRegistries.ENTITY_TYPE.getResourceKey(NMSUnderWorldGhostEntity.UNDERWORLD_GHOST_TYPE).orElseThrow().location());
             builder.put(ghostNamespacedKey, org.bukkit.entity.EntityType.GHAST);
             builder.put(underworldNamespacedKey, org.bukkit.entity.EntityType.ALLAY);
 

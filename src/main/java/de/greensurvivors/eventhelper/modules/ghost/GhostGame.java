@@ -248,14 +248,14 @@ public class GhostGame implements Listener { // todo spectating command
 
     public void startStartingCountdown() {
         gameState = GameState.COUNTDOWN;
-        tickCountdown(10);
+        doCountdown(10);
 
         for (String cmd : getConfig().getGameInitCommands()) {
             plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), gameNamePattern.matcher(cmd).replaceAll(getName_id()));
         }
     }
 
-    protected void tickCountdown(int secondsRemain) {
+    protected void doCountdown(int secondsRemain) {
         if (secondsRemain > 0) {
             for (Iterator<Map.Entry<UUID, AGhostGamePlayer>> iterator = players.entrySet().iterator(); iterator.hasNext(); ) {
                 Map.Entry<UUID, AGhostGamePlayer> entry = iterator.next();
@@ -278,7 +278,7 @@ public class GhostGame implements Listener { // todo spectating command
                     iterator.remove();
                 }
             }
-            plugin.getServer().getScheduler().runTaskLater(plugin, () -> tickCountdown(secondsRemain - 1), 20);
+            plugin.getServer().getScheduler().runTaskLater(plugin, () -> doCountdown(secondsRemain - 1), 20);
         } else {
             startGame();
         }
@@ -354,17 +354,22 @@ public class GhostGame implements Listener { // todo spectating command
         gameState = GameState.RUNNING;
     }
 
+    @SuppressWarnings("UnstableApiUsage") // tick manager
     protected void tick() {
         amountOfTicksRun++;
 
         long gameDurationInTicks = config.getGameDuration().toSeconds() * 20;
 
         if (amountOfTicksRun <= gameDurationInTicks) {
-            if (config.getStartPlayerTime() >= 0 && config.getEndPlayerTime() >= 0) {
-                long timeDiff = config.getEndPlayerTime() - config.getStartPlayerTime();
+            float tickRate = plugin.getServer().getServerTickManager().getTickRate();
+            double millisPerTick = 1000D / tickRate;
 
-                if (timeDiff > 0) {
-                    long playerTimeNow = config.getStartPlayerTime() + amountOfTicksRun * gameDurationInTicks / timeDiff;
+            // tick player time
+            if (config.getStartPlayerTime() >= 0 && config.getEndPlayerTime() >= 0) {
+                long playerTimeSpan = config.getEndPlayerTime() - config.getStartPlayerTime();
+
+                if (playerTimeSpan > 0) {
+                    long playerTimeNow = config.getStartPlayerTime() + amountOfTicksRun * gameDurationInTicks / playerTimeSpan;
 
                     // set playerTime for alive players
                     for (Iterator<Map.Entry<UUID, AGhostGamePlayer>> iterator = players.entrySet().iterator(); iterator.hasNext(); ) {
@@ -388,83 +393,6 @@ public class GhostGame implements Listener { // todo spectating command
                         }
                     }
 
-                    //noinspection UnstableApiUsage
-                    float tickRate = plugin.getServer().getServerTickManager().getTickRate();
-                    double millisPerTick = 1000D / tickRate;
-
-                    for (MouseTrap mouseTrap : getConfig().getMouseTraps()) {
-                        for (Map.Entry<AlivePlayer, Long> entry : mouseTrap.getTrappedPlayers().entrySet()) {
-
-                            Duration durationToStayAlive = getConfig().getDurationTrappedUntilDeath().minusMillis(System.currentTimeMillis() - entry.getValue());
-                            final long millisToStayAlive = durationToStayAlive.toMillis();
-                            if (millisToStayAlive < 0) {
-                                mouseTrap.removePlayer(entry.getKey());
-                                makePerishedPlayer(entry.getKey().getUuid());
-                                entry.getKey().getBukkitPlayer().teleportAsync(getConfig().getPlayerStartLocation());
-
-                                if (areAllPlayersDead()) {
-                                    endGame(EndReason.ALL_DEAD);
-                                } else {
-                                    broadcastAll(GhostLangPath.PLAYER_TRAP_PERISH);
-                                }
-                            } else {
-                                // checking in seconds will spam, because of 20 ticks / second => 20 messages
-                                // don't do full countdown from 10000 to 1000, if many players got trapped around the same time the game will spam otherwise
-                                if (((millisToStayAlive <= 1000 + millisPerTick) && (millisToStayAlive > 1000)) || // >=1s
-                                    ((millisToStayAlive <= 2000 + millisPerTick) && (millisToStayAlive > 2000)) || // >=2s
-                                    ((millisToStayAlive <= 3000 + millisPerTick) && (millisToStayAlive > 3000)) || // >=3s
-                                    ((millisToStayAlive <= 4000 + millisPerTick) && (millisToStayAlive > 4000)) || // >=4s
-                                    ((millisToStayAlive <= 5000 + millisPerTick) && (millisToStayAlive > 5000)) || // >=5s
-                                    ((millisToStayAlive <= 10000 + millisPerTick) && (millisToStayAlive > 10000)) || // >=10s
-                                    ((millisToStayAlive <= 30000 + millisPerTick) && (millisToStayAlive > 30000)) || // >=30s
-                                    ((millisToStayAlive <= 60000 + millisPerTick) && (millisToStayAlive > 60000)) || // >=1m
-                                    ((millisToStayAlive <= 120000 + millisPerTick) && (millisToStayAlive > 120000))) { // >=2m
-
-                                    broadcastAll(GhostLangPath.PLAYER_TRAP_TIME_REMAINING,
-                                        Placeholder.component(SharedPlaceHolder.TIME.getKey(), MessageManager.formatTime(durationToStayAlive.plusMillis((long) millisPerTick).truncatedTo(ChronoUnit.SECONDS))), // hide ticks
-                                        Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), entry.getKey().getBukkitPlayer().displayName()));
-                                } else {// check if the amount of millis left is in function f(0) = 300000, f(x+1) = 2 * f(x)
-                                    // so 5m, 10m, 20m, 40m... But please, for the love of cod, don't make use of this case.
-                                    // Players shouldn't stay 5 minutes or longer trapped. That's boring!
-                                    // I will come and slap a fish in your face if you do!
-                                    if (millisToStayAlive > 120000 && millisToStayAlive % 300000 <= millisPerTick) {
-                                        broadcastAll(GhostLangPath.PLAYER_TRAP_TIME_REMAINING,
-                                            Placeholder.component(SharedPlaceHolder.TIME.getKey(), MessageManager.formatTime(durationToStayAlive.plusMillis((long) millisPerTick).truncatedTo(ChronoUnit.SECONDS))), // hide ticks
-                                            Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), entry.getKey().getBukkitPlayer().displayName()));
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    if ((amountOfTicksRun * millisPerTick) % getConfig().getFeedDuration().toMillis() == 0) {
-                        for (AGhostGamePlayer ghostGamePlayer : players.values()) {
-                            final Player bukkitPlayer = ghostGamePlayer.getBukkitPlayer();
-
-                            // skip feeding the player if worldguard is enabled but the player wasn't in the correct region
-                            // todo somehow make caching work without hard depending on worldguard
-                            if (plugin.getDependencyManager().isWorldGuardEnabled()) {
-                                com.sk89q.worldedit.world.World weWorld = BukkitAdapter.adapt(bukkitPlayer.getWorld());
-                                RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
-                                RegionManager rm = container.get(weWorld);
-
-                                if (rm != null) {
-                                    ProtectedRegion protectedRegion = rm.getRegion(getConfig().getFeedRegionName());
-
-                                    com.sk89q.worldedit.entity.Player wePlayer = BukkitAdapter.adapt(bukkitPlayer);
-                                    if (!protectedRegion.contains(wePlayer.getLocation().toVector().toBlockPoint())) {
-                                        continue;
-                                    }
-                                }
-                            }
-
-                            int foodLevel = bukkitPlayer.getFoodLevel();
-
-                            if (foodLevel < getConfig().getFeedMaxAmount()) {
-                                bukkitPlayer.setFoodLevel(foodLevel + getConfig().getFeedAmount());
-                            }
-                        }
-                    }
                 } else {
                     // just set to start time for players
                     for (Iterator<Map.Entry<UUID, AGhostGamePlayer>> iterator = players.entrySet().iterator(); iterator.hasNext(); ) {
@@ -489,10 +417,93 @@ public class GhostGame implements Listener { // todo spectating command
                     }
                 }
 
-                // check if players just vanished
-                if (players.isEmpty()) {
-                    endGame(EndReason.GAME_EMPTY);
+                // tick players in mousetraps
+                for (MouseTrap mouseTrap : getConfig().getMouseTraps()) {
+                    for (Map.Entry<AlivePlayer, Long> entry : mouseTrap.getTrappedPlayers().entrySet()) {
+
+                        Duration durationToStayAlive = getConfig().getDurationTrappedUntilDeath().minusMillis(System.currentTimeMillis() - entry.getValue());
+                        final long millisToStayAlive = durationToStayAlive.toMillis();
+                        if (millisToStayAlive < 0) {
+                            mouseTrap.removePlayer(entry.getKey());
+                            makePerishedPlayer(entry.getKey().getUuid());
+                            entry.getKey().getBukkitPlayer().teleportAsync(getConfig().getPlayerStartLocation());
+
+                            if (areAllPlayersDead()) {
+                                endGame(EndReason.ALL_DEAD);
+                            } else {
+                                broadcastAll(GhostLangPath.PLAYER_TRAP_PERISH);
+                            }
+                        } else {
+                            // checking in seconds will spam, because of 20 ticks / second => 20 messages
+                            // don't do full countdown from 10000 to 1000, if many players got trapped around the same time the game will spam otherwise
+                            if (((millisToStayAlive <= 1000 + millisPerTick) && (millisToStayAlive > 1000)) || // >=1s
+                                ((millisToStayAlive <= 2000 + millisPerTick) && (millisToStayAlive > 2000)) || // >=2s
+                                ((millisToStayAlive <= 3000 + millisPerTick) && (millisToStayAlive > 3000)) || // >=3s
+                                ((millisToStayAlive <= 4000 + millisPerTick) && (millisToStayAlive > 4000)) || // >=4s
+                                ((millisToStayAlive <= 5000 + millisPerTick) && (millisToStayAlive > 5000)) || // >=5s
+                                ((millisToStayAlive <= 10000 + millisPerTick) && (millisToStayAlive > 10000)) || // >=10s
+                                ((millisToStayAlive <= 30000 + millisPerTick) && (millisToStayAlive > 30000)) || // >=30s
+                                ((millisToStayAlive <= 60000 + millisPerTick) && (millisToStayAlive > 60000)) || // >=1m
+                                ((millisToStayAlive <= 120000 + millisPerTick) && (millisToStayAlive > 120000))) { // >=2m
+
+                                broadcastAll(GhostLangPath.PLAYER_TRAP_TIME_REMAINING,
+                                    Placeholder.component(SharedPlaceHolder.TIME.getKey(), MessageManager.formatTime(durationToStayAlive.plusMillis((long) millisPerTick).truncatedTo(ChronoUnit.SECONDS))), // hide ticks
+                                    Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), entry.getKey().getBukkitPlayer().displayName()));
+                            } else {// check if the amount of millis left is in function f(0) = 300000, f(x+1) = 2 * f(x)
+                                // so 5m, 10m, 20m, 40m... But please, for the love of cod, don't make use of this case.
+                                // Players shouldn't stay 5 minutes or longer trapped. That's boring!
+                                // I will come and slap a fish in your face if you do!
+                                if (millisToStayAlive > 120000 && millisToStayAlive % 300000 <= millisPerTick) {
+                                    broadcastAll(GhostLangPath.PLAYER_TRAP_TIME_REMAINING,
+                                        Placeholder.component(SharedPlaceHolder.TIME.getKey(), MessageManager.formatTime(durationToStayAlive.plusMillis((long) millisPerTick).truncatedTo(ChronoUnit.SECONDS))), // hide ticks
+                                        Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), entry.getKey().getBukkitPlayer().displayName()));
+                                }
+                            }
+                        }
+                    }
                 }
+            }
+
+            // tick feeding
+            if ((amountOfTicksRun * millisPerTick) % getConfig().getFeedDuration().toMillis() == 0) {
+                for (AGhostGamePlayer ghostGamePlayer : players.values()) {
+                    final Player bukkitPlayer = ghostGamePlayer.getBukkitPlayer();
+
+                    // skip feeding the player if worldguard is enabled but the player wasn't in the correct region
+                    // todo somehow make caching work without hard depending on worldguard
+                    if (plugin.getDependencyManager().isWorldGuardEnabled()) {
+                        com.sk89q.worldedit.world.World weWorld = BukkitAdapter.adapt(bukkitPlayer.getWorld());
+                        RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
+                        RegionManager rm = container.get(weWorld);
+
+                        if (rm != null) {
+                            ProtectedRegion protectedRegion = rm.getRegion(getConfig().getFeedRegionName());
+
+                            com.sk89q.worldedit.entity.Player wePlayer = BukkitAdapter.adapt(bukkitPlayer);
+                            if (!protectedRegion.contains(wePlayer.getLocation().toVector().toBlockPoint())) {
+                                continue;
+                            }
+                        }
+                    }
+
+                    int foodLevel = bukkitPlayer.getFoodLevel();
+
+                    if (foodLevel < getConfig().getFeedMaxAmount()) {
+                        bukkitPlayer.setFoodLevel(foodLevel + getConfig().getFeedAmount());
+                    }
+                }
+            }
+
+            // tick unsafe areas
+            for (AGhostGamePlayer ghostGamePlayer : players.values()) {
+                if (ghostGamePlayer instanceof AlivePlayer alivePlayer) {
+                    alivePlayer.tickUnsafeAreas(millisPerTick);
+                }
+            }
+
+            // check if players just perished
+            if (players.isEmpty()) {
+                endGame(EndReason.GAME_EMPTY);
             }
         } else {
             endGame(EndReason.TIME);
@@ -771,7 +782,7 @@ public class GhostGame implements Listener { // todo spectating command
         player.teleportAsync(getConfig().getSpectatorStartLocation());
     }
 
-    protected void makePerishedPlayer(final @NotNull UUID uuid) throws NoAlivePlayerException {
+    protected void makePerishedPlayer(final @NotNull UUID uuid) throws PlayerNotAliveException {
         final @Nullable AGhostGamePlayer ghostGamePlayer = players.get(uuid);
 
         if (ghostGamePlayer instanceof AlivePlayer alivePlayer) {
@@ -783,7 +794,7 @@ public class GhostGame implements Listener { // todo spectating command
             player.setGameMode(GameMode.SURVIVAL);
 
         } else {
-            throw new NoAlivePlayerException("Tried to perish player with UUID " + uuid + ", but they where not alive!");
+            throw new PlayerNotAliveException("Tried to perish player with UUID " + uuid + ", but they where not alive!");
         }
     }
 
@@ -1118,7 +1129,7 @@ public class GhostGame implements Listener { // todo spectating command
         RESETTING
     }
 
-    protected static class NoAlivePlayerException extends IllegalArgumentException {
+    public static class PlayerNotAliveException extends IllegalArgumentException {
         @Serial
         private static final long serialVersionUID = 6702629890736910312L;
 
@@ -1126,7 +1137,7 @@ public class GhostGame implements Listener { // todo spectating command
          * Constructs an {@code NoAlivePlayerException} with no
          * detail message.
          */
-        public NoAlivePlayerException() {
+        public PlayerNotAliveException() {
             super();
         }
 
@@ -1136,7 +1147,7 @@ public class GhostGame implements Listener { // todo spectating command
          *
          * @param s the detail message.
          */
-        public NoAlivePlayerException(String s) {
+        public PlayerNotAliveException(String s) {
             super(s);
         }
 
@@ -1155,7 +1166,7 @@ public class GhostGame implements Listener { // todo spectating command
          *                is permitted, and indicates that the cause is nonexistent or
          *                unknown.)
          */
-        public NoAlivePlayerException(String message, Throwable cause) {
+        public PlayerNotAliveException(String message, Throwable cause) {
             super(message, cause);
         }
 
@@ -1172,7 +1183,7 @@ public class GhostGame implements Listener { // todo spectating command
          *              permitted, and indicates that the cause is nonexistent or
          *              unknown.)
          */
-        public NoAlivePlayerException(Throwable cause) {
+        public PlayerNotAliveException(Throwable cause) {
             super(cause);
         }
     }

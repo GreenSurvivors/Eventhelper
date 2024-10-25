@@ -10,10 +10,10 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class GhostPathNavigation extends GroundPathNavigation {
-    private final @NotNull GhostNMSEntity ghostNMS;
+    private final @NotNull NMSGhostEntity ghostNMS;
 
-    public GhostPathNavigation(final @NotNull UnderWorldGhostNMSEntity underWorldGhostNMS,
-                               final @NotNull GhostNMSEntity ghostNMS,
+    public GhostPathNavigation(final @NotNull NMSUnderWorldGhostEntity underWorldGhostNMS,
+                               final @NotNull NMSGhostEntity ghostNMS,
                                final @NotNull Level world) {
         super(underWorldGhostNMS, world);
         this.ghostNMS = ghostNMS;

@@ -24,7 +24,7 @@ public class VexAI {
     private static final float SPEED_MULTIPLIER_WHEN_FIGHTING = 1.2F;
     private static final int MELEE_ATTACK_COOLDOWN = 18;
     private static final int DISTURBANCE_LOCATION_EXPIRY_TIME = 100;
-    private static final List<SensorType<? extends Sensor<? super VexNMSEntity>>> SENSOR_TYPES = List.of(SensorType.NEAREST_PLAYERS, VexEntitySensor.VEX_ENTITY_SENSOR_TYPE);
+    private static final List<SensorType<? extends Sensor<? super NMSVexEntity>>> SENSOR_TYPES = List.of(SensorType.NEAREST_PLAYERS, VexEntitySensor.VEX_ENTITY_SENSOR_TYPE);
     private static final List<MemoryModuleType<?>> MEMORY_TYPES = List.of(
         MemoryModuleType.NEAREST_LIVING_ENTITIES,
         MemoryModuleType.NEAREST_VISIBLE_LIVING_ENTITIES,
@@ -43,16 +43,16 @@ public class VexAI {
         MemoryModuleType.VIBRATION_COOLDOWN
     );
 
-    public static void updateActivity(final @NotNull VexNMSEntity nmsVex) {
+    public static void updateActivity(final @NotNull NMSVexEntity nmsVex) {
         nmsVex.getBrain()
             .setActiveActivityToFirstValid(
                 ImmutableList.of(Activity.FIGHT, Activity.INVESTIGATE, Activity.IDLE)
             );
     }
 
-    protected static Brain<?> makeBrain(final @NotNull VexNMSEntity nmsVex, final @NotNull Dynamic<?> dynamic) {
-        Brain.Provider<VexNMSEntity> provider = Brain.provider(MEMORY_TYPES, SENSOR_TYPES);
-        Brain<VexNMSEntity> brain = provider.makeBrain(dynamic);
+    protected static Brain<?> makeBrain(final @NotNull NMSVexEntity nmsVex, final @NotNull Dynamic<?> dynamic) {
+        Brain.Provider<NMSVexEntity> provider = Brain.provider(MEMORY_TYPES, SENSOR_TYPES);
+        Brain<NMSVexEntity> brain = provider.makeBrain(dynamic);
         initCoreActivity(brain);
         initIdleActivity(brain);
         initFightActivity(nmsVex, brain);
@@ -63,13 +63,13 @@ public class VexAI {
         return brain;
     }
 
-    private static void initCoreActivity(final @NotNull Brain<VexNMSEntity> brain) {
+    private static void initCoreActivity(final @NotNull Brain<NMSVexEntity> brain) {
         brain.addActivity(
             Activity.CORE, 0, ImmutableList.of(new Swim(0.8F), SetVexLookTargetBehavior.create(), new LookAtTargetSink(45, 90), new MoveToTargetSink())
         );
     }
 
-    private static void initIdleActivity(final @NotNull Brain<VexNMSEntity> brain) {
+    private static void initIdleActivity(final @NotNull Brain<NMSVexEntity> brain) {
         brain.addActivity(
             Activity.IDLE,
             10,
@@ -81,7 +81,7 @@ public class VexAI {
         );
     }
 
-    private static void initInvestigateActivity(final @NotNull Brain<VexNMSEntity> brain) {
+    private static void initInvestigateActivity(final @NotNull Brain<NMSVexEntity> brain) {
         brain.addActivityAndRemoveMemoryWhenStopped(
             Activity.INVESTIGATE,
             5,
@@ -90,7 +90,7 @@ public class VexAI {
         );
     }
 
-    private static void initFightActivity(final @NotNull VexNMSEntity nmsVex, final @NotNull Brain<VexNMSEntity> brain) {
+    private static void initFightActivity(final @NotNull NMSVexEntity nmsVex, final @NotNull Brain<NMSVexEntity> brain) {
         brain.addActivityAndRemoveMemoryWhenStopped(
             Activity.FIGHT,
             10,
@@ -107,18 +107,18 @@ public class VexAI {
         );
     }
 
-    private static boolean isTarget(@NotNull VexNMSEntity nmsVex, LivingEntity entity) {
+    private static boolean isTarget(@NotNull NMSVexEntity nmsVex, LivingEntity entity) {
         return nmsVex.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).filter(entityx -> entityx == entity).isPresent();
     }
 
-    private static void onTargetInvalid(final @NotNull VexNMSEntity nmsVex, final @NotNull LivingEntity suspect) {
+    private static void onTargetInvalid(final @NotNull NMSVexEntity nmsVex, final @NotNull LivingEntity suspect) {
         if (!nmsVex.canTargetEntity(suspect)) {
             nmsVex.clearAnger(suspect);
         }
     }
 
     @SuppressWarnings("resource") // ignore level being auto closeable
-    public static void setDisturbanceLocation(final @NotNull VexNMSEntity nmsVex, final @NotNull BlockPos pos) {
+    public static void setDisturbanceLocation(final @NotNull NMSVexEntity nmsVex, final @NotNull BlockPos pos) {
         if (nmsVex.level().getWorldBorder().isWithinBounds(pos)
             && nmsVex.getEntityAngryAt().isEmpty()
             && nmsVex.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).isEmpty()) {

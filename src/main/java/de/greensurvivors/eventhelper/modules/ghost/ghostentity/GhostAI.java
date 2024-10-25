@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Set;
 
 public class GhostAI {
-    protected static final List<SensorType<? extends Sensor<? super GhostNMSEntity>>> SENSOR_TYPES =
+    protected static final List<SensorType<? extends Sensor<? super NMSGhostEntity>>> SENSOR_TYPES =
         ImmutableList.of(
             SensorType.NEAREST_LIVING_ENTITIES,
             NearestAlivePlayerSensor.NEAREST_ALIVE_PLAYER_SENSOR
@@ -34,7 +34,7 @@ public class GhostAI {
         MemoryModuleType.NEAREST_ATTACKABLE
     );
 
-    protected static Brain<?> makeBrain(final @NotNull GhostNMSEntity ghost, final @NotNull Brain<GhostNMSEntity> brain) {
+    protected static Brain<?> makeBrain(final @NotNull NMSGhostEntity ghost, final @NotNull Brain<NMSGhostEntity> brain) {
         initCoreActivity(brain);
         initIdleActivity(ghost, brain);
         initFightActivity(ghost, brain);
@@ -44,11 +44,11 @@ public class GhostAI {
         return brain;
     }
 
-    private static void initCoreActivity(final @NotNull Brain<GhostNMSEntity> brain) {
+    private static void initCoreActivity(final @NotNull Brain<NMSGhostEntity> brain) {
         brain.addActivity(Activity.CORE, 0, ImmutableList.of(new GhostSwimBehavior(0.8F), new LookAtTargetSink(45, 90), new MoveToTargetSink()));
     }
 
-    private static void initIdleActivity(final @NotNull GhostNMSEntity ghost, final @NotNull Brain<GhostNMSEntity> brain) {
+    private static void initIdleActivity(final @NotNull NMSGhostEntity ghost, final @NotNull Brain<NMSGhostEntity> brain) {
         brain.addActivity(
             Activity.IDLE,
             10,
@@ -67,7 +67,7 @@ public class GhostAI {
         );
     }
 
-    private static void initFightActivity(final @NotNull GhostNMSEntity ghost, final @NotNull Brain<GhostNMSEntity> brain) {
+    private static void initFightActivity(final @NotNull NMSGhostEntity ghost, final @NotNull Brain<NMSGhostEntity> brain) {
         brain.addActivityAndRemoveMemoryWhenStopped(
             Activity.FIGHT,
             10,
@@ -81,10 +81,10 @@ public class GhostAI {
         );
     }
 
-    private static void onTargetInvalid(GhostNMSEntity entity, LivingEntity entity1) {
+    private static void onTargetInvalid(NMSGhostEntity entity, LivingEntity entity1) {
     }
 
-    public static void updateActivity(final @NotNull GhostNMSEntity ghost) {
+    public static void updateActivity(final @NotNull NMSGhostEntity ghost) {
         Activity activity = ghost.getBrain().getActiveNonCoreActivity().orElse(null);
         ghost.getBrain().setActiveActivityToFirstValid(ImmutableList.of(Activity.FIGHT, Activity.IDLE));
         Activity activity2 = ghost.getBrain().getActiveNonCoreActivity().orElse(null);

@@ -19,7 +19,7 @@ public class RandomStrollInRegionBehavior {
     private static final int MAX_XZ_DIST = 10;
     private static final int MAX_Y_DIST = 7;
 
-    public static OneShot<VexNMSEntity> fly(float speed) {
+    public static OneShot<NMSVexEntity> fly(float speed) {
         return BehaviorBuilder.create(
             context -> context.group(context.absent(MemoryModuleType.WALK_TARGET)).apply(context, walkTarget -> (world, entity, time) -> {
                 final @NotNull Vec3 vec3 = entity.getViewVector(0.0F);
@@ -34,7 +34,7 @@ public class RandomStrollInRegionBehavior {
 
     @SuppressWarnings("resource") // ignore level being auto closeable
     public static @Nullable BlockPos randomPosFactory(
-        final @NotNull VexNMSEntity entity,
+        final @NotNull NMSVexEntity entity,
         final double directionX,
         final double directionZ) {
         final @Nullable BlockPos blockPos = RandomPos.generateRandomDirectionWithinRadians(

@@ -23,7 +23,7 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
-public class VexEntitySensor extends NearestLivingEntitySensor<VexNMSEntity> {
+public class VexEntitySensor extends NearestLivingEntitySensor<NMSVexEntity> {
     public static final @NotNull SensorType<VexEntitySensor> VEX_ENTITY_SENSOR_TYPE = register();
 
     private static <U extends Sensor<?>> @Override SensorType<U> register() {
@@ -46,7 +46,7 @@ public class VexEntitySensor extends NearestLivingEntitySensor<VexNMSEntity> {
     }
 
     @Override
-    protected void doTick(final @NotNull ServerLevel world, final @NotNull VexNMSEntity entity) {
+    protected void doTick(final @NotNull ServerLevel world, final @NotNull NMSVexEntity entity) {
         super.doTick(world, entity);
         getClosest(entity, entityx -> entityx.getType() == EntityType.PLAYER)
             .or(() -> getClosest(entity, entityx -> entityx.getType() != EntityType.PLAYER))
@@ -56,7 +56,7 @@ public class VexEntitySensor extends NearestLivingEntitySensor<VexNMSEntity> {
             );
     }
 
-    private static @NotNull Optional<LivingEntity> getClosest(final @NotNull VexNMSEntity nmsVex, final @NotNull Predicate<LivingEntity> targetPredicate) {
+    private static @NotNull Optional<LivingEntity> getClosest(final @NotNull NMSVexEntity nmsVex, final @NotNull Predicate<LivingEntity> targetPredicate) {
         return nmsVex.getBrain()
             .getMemory(MemoryModuleType.NEAREST_LIVING_ENTITIES)
             .stream()

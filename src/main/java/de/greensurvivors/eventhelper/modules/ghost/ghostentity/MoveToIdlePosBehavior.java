@@ -17,7 +17,7 @@ import java.util.Optional;
 
 @SuppressWarnings("UnstableApiUsage") // Position
 public class MoveToIdlePosBehavior {
-    public static @NotNull OneShot<GhostNMSEntity> moveToIdlePos() {
+    public static @NotNull OneShot<NMSGhostEntity> moveToIdlePos() {
         return BehaviorBuilder.create(
             context -> context.group(context.absent(MemoryModuleType.WALK_TARGET)).apply(context, walkTarget -> (world, entity, time) -> {
                 Optional<Vec3> optional = Optional.ofNullable(getPos(entity));
@@ -28,7 +28,7 @@ public class MoveToIdlePosBehavior {
     }
 
     @Nullable
-    public static Vec3 getPos(final @NotNull GhostNMSEntity entity) {
+    public static Vec3 getPos(final @NotNull NMSGhostEntity entity) {
         return RandomPos.generateRandomPos(() -> {
             final @NotNull List<@NotNull Position> idlePositions = entity.ghostGame.getConfig().getIdlePositions();
 

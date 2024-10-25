@@ -18,8 +18,8 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Consumer;
 
-public class VexCraftEntity extends CraftMob implements IVex, CraftEnemy {
-    public VexCraftEntity(final @NotNull CraftServer server, final @NotNull Mob entity) {
+public class CraftVexEntity extends CraftMob implements IVex, CraftEnemy {
+    public CraftVexEntity(final @NotNull CraftServer server, final @NotNull Mob entity) {
         super(server, entity);
     }
 
@@ -29,7 +29,7 @@ public class VexCraftEntity extends CraftMob implements IVex, CraftEnemy {
                                 final @Nullable Consumer<IVex> function) {
 
         ServerLevel serverLevel = ((CraftWorld) location.getWorld()).getHandle();
-        VexNMSEntity nmsVexEntity = new VexNMSEntity(
+        NMSVexEntity nmsVexEntity = new NMSVexEntity(
             serverLevel.getMinecraftWorld(),
             ghostGame);
 
@@ -40,8 +40,8 @@ public class VexCraftEntity extends CraftMob implements IVex, CraftEnemy {
     }
 
     @Override
-    public @NotNull VexNMSEntity getHandle() {
-        return (VexNMSEntity) this.entity;
+    public @NotNull NMSVexEntity getHandle() {
+        return (NMSVexEntity) this.entity;
     }
 
     @Override

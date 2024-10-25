@@ -5,14 +5,14 @@ import org.bukkit.craftbukkit.v1_20_R3.entity.CraftMob;
 import org.jetbrains.annotations.NotNull;
 
 
-public class UnderWorldGhostCraftEntity extends CraftMob {
-    public UnderWorldGhostCraftEntity(final @NotNull CraftServer server, final @NotNull UnderWorldGhostNMSEntity entity) {
+public class CraftUnderWorldGhostEntity extends CraftMob {
+    public CraftUnderWorldGhostEntity(final @NotNull CraftServer server, final @NotNull NMSUnderWorldGhostEntity entity) {
         super(server, entity);
     }
 
     @Override
-    public UnderWorldGhostNMSEntity getHandle() {
-        return (UnderWorldGhostNMSEntity) this.entity;
+    public NMSUnderWorldGhostEntity getHandle() {
+        return (NMSUnderWorldGhostEntity) this.entity;
     }
 
     @Override

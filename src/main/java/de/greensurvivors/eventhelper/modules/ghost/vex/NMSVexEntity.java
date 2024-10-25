@@ -42,7 +42,7 @@ import java.util.Collections;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 
-public class VexNMSEntity extends Vex implements VibrationSystem { // todo system to stay in region
+public class NMSVexEntity extends Vex implements VibrationSystem { // todo system to stay in region
     private static final int VIBRATION_COOLDOWN_TICKS = 40;
     private static final int ANGERMANAGEMENT_TICK_DELAY = 20;
     private static final int DEFAULT_ANGER = 35;
@@ -51,10 +51,10 @@ public class VexNMSEntity extends Vex implements VibrationSystem { // todo syste
     private final VibrationSystem.User vibrationUser = new VibrationUser();
     private final VibrationSystem.Data vibrationData = new VibrationSystem.Data();
     AngerManagement angerManagement = new AngerManagement(this::canTargetEntity, Collections.emptyList());
-    private volatile @Nullable VexCraftEntity bukkitEntity;
+    private volatile @Nullable CraftVexEntity bukkitEntity;
     private final @NotNull GhostGame ghostGame;
 
-    public VexNMSEntity(final @NotNull Level world, final @NotNull GhostGame ghostGame) {
+    public NMSVexEntity(final @NotNull Level world, final @NotNull GhostGame ghostGame) {
         super(EntityType.VEX, world);
 
         this.ghostGame = ghostGame;
@@ -68,11 +68,11 @@ public class VexNMSEntity extends Vex implements VibrationSystem { // todo syste
     }
 
     @Override
-    public @NotNull VexCraftEntity getBukkitEntity() {
+    public @NotNull CraftVexEntity getBukkitEntity() {
         if (this.bukkitEntity == null) {
             synchronized (this) {
                 if (this.bukkitEntity == null) {
-                    return this.bukkitEntity = new VexCraftEntity(this.level().getCraftServer(), this);
+                    return this.bukkitEntity = new CraftVexEntity(this.level().getCraftServer(), this);
                 }
             }
         }
@@ -136,8 +136,8 @@ public class VexNMSEntity extends Vex implements VibrationSystem { // todo syste
     }
 
     @Override
-    public @NotNull Brain<VexNMSEntity> getBrain() {
-        return (Brain<VexNMSEntity>) super.getBrain();
+    public @NotNull Brain<NMSVexEntity> getBrain() {
+        return (Brain<NMSVexEntity>) super.getBrain();
     }
 
     @Override
@@ -303,7 +303,7 @@ public class VexNMSEntity extends Vex implements VibrationSystem { // todo syste
 
     private class VibrationUser implements VibrationSystem.User {
         private static final int GAME_EVENT_LISTENER_RANGE = 24;
-        private final PositionSource positionSource = new EntityPositionSource(VexNMSEntity.this, VexNMSEntity.this.getEyeHeight());
+        private final PositionSource positionSource = new EntityPositionSource(NMSVexEntity.this, NMSVexEntity.this.getEyeHeight());
 
         VibrationUser() {
         }
@@ -333,11 +333,11 @@ public class VexNMSEntity extends Vex implements VibrationSystem { // todo syste
                                            final @NotNull BlockPos pos,
                                            final @NotNull GameEvent event,
                                            final @NotNull GameEvent.Context emitter) {
-            if (!VexNMSEntity.this.isNoAi() && !VexNMSEntity.this.isDeadOrDying() && !VexNMSEntity.this.getBrain().hasMemoryValue(MemoryModuleType.VIBRATION_COOLDOWN) && world.getWorldBorder().isWithinBounds(pos)) {
+            if (!NMSVexEntity.this.isNoAi() && !NMSVexEntity.this.isDeadOrDying() && !NMSVexEntity.this.getBrain().hasMemoryValue(MemoryModuleType.VIBRATION_COOLDOWN) && world.getWorldBorder().isWithinBounds(pos)) {
                 Entity entity = emitter.sourceEntity();
 
                 if (entity instanceof LivingEntity entityliving) {
-                    return VexNMSEntity.this.canTargetEntity(entityliving);
+                    return NMSVexEntity.this.canTargetEntity(entityliving);
                 }
 
                 return true;
@@ -353,40 +353,40 @@ public class VexNMSEntity extends Vex implements VibrationSystem { // todo syste
                                        final @Nullable Entity sourceEntity,
                                        final @Nullable Entity entity,
                                        final float distance) {
-            if (!VexNMSEntity.this.isDeadOrDying()) {
+            if (!NMSVexEntity.this.isDeadOrDying()) {
                 // ignore vibrations outside of region
-                if (!VexNMSEntity.this.isWithinRestriction(entity == null ? sourceEntity.blockPosition() : entity.blockPosition())) {
+                if (!NMSVexEntity.this.isWithinRestriction(entity == null ? sourceEntity.blockPosition() : entity.blockPosition())) {
                     return;
                 }
 
-                VexNMSEntity.this.brain.setMemoryWithExpiry(MemoryModuleType.VIBRATION_COOLDOWN, Unit.INSTANCE, VIBRATION_COOLDOWN_TICKS);
-                world.broadcastEntityEvent(VexNMSEntity.this, (byte) 61);
-                VexNMSEntity.this.playSound(SoundEvents.WARDEN_TENDRIL_CLICKS, 5.0F, VexNMSEntity.this.getVoicePitch());
+                NMSVexEntity.this.brain.setMemoryWithExpiry(MemoryModuleType.VIBRATION_COOLDOWN, Unit.INSTANCE, VIBRATION_COOLDOWN_TICKS);
+                world.broadcastEntityEvent(NMSVexEntity.this, (byte) 61);
+                NMSVexEntity.this.playSound(SoundEvents.WARDEN_TENDRIL_CLICKS, 5.0F, NMSVexEntity.this.getVoicePitch());
                 BlockPos blockposition1 = pos;
 
                 if (entity != null) {
-                    if (VexNMSEntity.this.closerThan(entity, 30.0D)) {
-                        if (VexNMSEntity.this.getBrain().hasMemoryValue(MemoryModuleType.RECENT_PROJECTILE)) {
-                            if (VexNMSEntity.this.canTargetEntity(entity)) {
+                    if (NMSVexEntity.this.closerThan(entity, 30.0D)) {
+                        if (NMSVexEntity.this.getBrain().hasMemoryValue(MemoryModuleType.RECENT_PROJECTILE)) {
+                            if (NMSVexEntity.this.canTargetEntity(entity)) {
                                 blockposition1 = entity.blockPosition();
                             }
 
-                            VexNMSEntity.this.increaseAngerAt(entity);
+                            NMSVexEntity.this.increaseAngerAt(entity);
                         } else {
-                            VexNMSEntity.this.increaseAngerAt(entity, 10);
+                            NMSVexEntity.this.increaseAngerAt(entity, 10);
                         }
                     }
 
-                    VexNMSEntity.this.getBrain().setMemoryWithExpiry(MemoryModuleType.RECENT_PROJECTILE, Unit.INSTANCE, 100L);
+                    NMSVexEntity.this.getBrain().setMemoryWithExpiry(MemoryModuleType.RECENT_PROJECTILE, Unit.INSTANCE, 100L);
                 } else {
-                    VexNMSEntity.this.increaseAngerAt(sourceEntity);
+                    NMSVexEntity.this.increaseAngerAt(sourceEntity);
                 }
 
-                if (!VexNMSEntity.this.getAngerLevel().isAngry()) {
-                    Optional<LivingEntity> optional = VexNMSEntity.this.angerManagement.getActiveEntity();
+                if (!NMSVexEntity.this.getAngerLevel().isAngry()) {
+                    Optional<LivingEntity> optional = NMSVexEntity.this.angerManagement.getActiveEntity();
 
                     if (entity != null || optional.isEmpty() || optional.get() == sourceEntity) {
-                        VexAI.setDisturbanceLocation(VexNMSEntity.this, blockposition1);
+                        VexAI.setDisturbanceLocation(NMSVexEntity.this, blockposition1);
                     }
                 }
             }

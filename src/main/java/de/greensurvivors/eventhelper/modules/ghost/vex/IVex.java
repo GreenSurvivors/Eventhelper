@@ -17,7 +17,7 @@ public interface IVex extends Flying, Enemy {
                          final @NotNull CreatureSpawnEvent.SpawnReason reason,
                          final @NotNull GhostGame ghostGame,
                          final @Nullable Consumer<IVex> function) {
-        return VexCraftEntity.spawnNew(location, reason, ghostGame, function);
+        return CraftVexEntity.spawnNew(location, reason, ghostGame, function);
     }
 
     /**

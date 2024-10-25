@@ -1,8 +1,8 @@
 package de.greensurvivors.eventhelper;
 
-import de.greensurvivors.eventhelper.modules.ghost.ghostentity.GhostNMSEntity;
+import de.greensurvivors.eventhelper.modules.ghost.ghostentity.NMSGhostEntity;
+import de.greensurvivors.eventhelper.modules.ghost.ghostentity.NMSUnderWorldGhostEntity;
 import de.greensurvivors.eventhelper.modules.ghost.ghostentity.NearestAlivePlayerSensor;
-import de.greensurvivors.eventhelper.modules.ghost.ghostentity.UnderWorldGhostNMSEntity;
 import de.greensurvivors.eventhelper.modules.ghost.vex.VexEntitySensor;
 import io.papermc.paper.plugin.bootstrap.BootstrapContext;
 import io.papermc.paper.plugin.bootstrap.PluginBootstrap;
@@ -16,8 +16,8 @@ public class Bootstrapper implements PluginBootstrap {
     @Override
     public void bootstrap(@NotNull BootstrapContext context) { // todo use RegistryAccess on 1.21+
         // register types before registries are frozen
-        EntityType<GhostNMSEntity> ghostType = GhostNMSEntity.GHOST_TYPE; // call to static
-        EntityType<UnderWorldGhostNMSEntity> underWorldType = UnderWorldGhostNMSEntity.UNDERWORLD_GHOST_TYPE; // call to static
+        EntityType<NMSGhostEntity> ghostType = NMSGhostEntity.GHOST_TYPE; // call to static
+        EntityType<NMSUnderWorldGhostEntity> underWorldType = NMSUnderWorldGhostEntity.UNDERWORLD_GHOST_TYPE; // call to static
         SensorType<NearestAlivePlayerSensor> someSensor = NearestAlivePlayerSensor.NEAREST_ALIVE_PLAYER_SENSOR;
         SensorType<VexEntitySensor> vexEntitySensorType = VexEntitySensor.VEX_ENTITY_SENSOR_TYPE;
 

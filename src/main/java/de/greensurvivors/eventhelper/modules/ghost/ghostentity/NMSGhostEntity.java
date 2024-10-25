@@ -41,20 +41,20 @@ import javax.annotation.Nullable;
 import java.lang.reflect.Field;
 
 // wanders around looking for player if no target. can target through walls but must path find there
-public class GhostNMSEntity extends Monster implements Enemy { // todo make use of the block the underworld ghost is standing on!
+public class NMSGhostEntity extends Monster implements Enemy { // todo make use of the block the underworld ghost is standing on!
     /**
      * do NOT - I repeat - do NOT call GHOST_TYPE.create!
      * There is no way to add the important game parameter there!
      */
-    public static final EntityType<GhostNMSEntity> GHOST_TYPE = registerEntityType(
+    public static final EntityType<NMSGhostEntity> GHOST_TYPE = registerEntityType(
         (EntityType.Builder.
             of(null, MobCategory.MONSTER).
             sized(4.0F, 4.0F).
             noSave(). // don't save this entity to disk.
                 clientTrackingRange(10)));
     protected final @NotNull GhostGame ghostGame;
-    private volatile @Nullable GhostCraftEntity bukkitEntity;
-    protected UnderWorldGhostNMSEntity underWorldGhost;
+    private volatile @Nullable CraftGhostEntity bukkitEntity;
+    protected NMSUnderWorldGhostEntity underWorldGhost;
 
     @SuppressWarnings("unchecked")
     // has to be called while the server is bootstrapping, or else the registry will be frozen!
@@ -63,7 +63,7 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
             type.build("ghost"));
     }
 
-    public GhostNMSEntity(final @NotNull Level world, final @NotNull GhostGame ghostGame) {
+    public NMSGhostEntity(final @NotNull Level world, final @NotNull GhostGame ghostGame) {
         super(GHOST_TYPE, world);
 
         this.navigation.setCanFloat(true); // can swim. not like floating in the air
@@ -146,12 +146,12 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
 
     @Override
     @SuppressWarnings("unchecked") // don't worry. Over overridden #makeBrain() does ensure it has the right type.
-    public @NotNull Brain<GhostNMSEntity> getBrain() {
-        return (Brain<GhostNMSEntity>) super.getBrain();
+    public @NotNull Brain<NMSGhostEntity> getBrain() {
+        return (Brain<NMSGhostEntity>) super.getBrain();
     }
 
     @Override
-    protected @NotNull Brain.Provider<GhostNMSEntity> brainProvider() {
+    protected @NotNull Brain.Provider<NMSGhostEntity> brainProvider() {
         return Brain.provider(GhostAI.MEMORY_TYPES, GhostAI.SENSOR_TYPES);
     }
 
@@ -162,11 +162,11 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
 
     @Override
     @SuppressWarnings("resource") // ignore level being auto closeable
-    public @NotNull GhostCraftEntity getBukkitEntity() {
+    public @NotNull CraftGhostEntity getBukkitEntity() {
         if (this.bukkitEntity == null) {
             synchronized (this) {
                 if (this.bukkitEntity == null) {
-                    return this.bukkitEntity = new GhostCraftEntity(this.level().getCraftServer(), this);
+                    return this.bukkitEntity = new CraftGhostEntity(this.level().getCraftServer(), this);
                 }
             }
         }
@@ -189,7 +189,7 @@ public class GhostNMSEntity extends Monster implements Enemy { // todo make use 
                                                   final @NotNull MobSpawnType spawnReason,
                                                   final @Nullable SpawnGroupData entityData,
                                                   final @Nullable CompoundTag entityNbt) {
-        this.underWorldGhost = new UnderWorldGhostNMSEntity(this, ghostGame);
+        this.underWorldGhost = new NMSUnderWorldGhostEntity(this, ghostGame);
 
         level().addFreshEntity(underWorldGhost, CreatureSpawnEvent.SpawnReason.CUSTOM);
 
