@@ -40,6 +40,7 @@ import org.joml.Vector3f;
 import javax.annotation.Nullable;
 import java.lang.reflect.Field;
 
+// wanders around looking for player if no target. can target through walls but must path find there
 public class GhostNMSEntity extends Monster implements Enemy { // todo make use of the block the underworld ghost is standing on!
     /**
      * do NOT - I repeat - do NOT call GHOST_TYPE.create!

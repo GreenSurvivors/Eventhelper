@@ -39,7 +39,6 @@ public class VexAI {
         MemoryModuleType.ATTACK_COOLING_DOWN,
         MemoryModuleType.NEAREST_ATTACKABLE,
         MemoryModuleType.DISTURBANCE_LOCATION,
-        MemoryModuleType.RECENT_PROJECTILE,
         MemoryModuleType.TOUCH_COOLDOWN,
         MemoryModuleType.VIBRATION_COOLDOWN
     );
@@ -76,7 +75,7 @@ public class VexAI {
             10,
             ImmutableList.of(
                 new RunOne<>(
-                    ImmutableList.of(Pair.of(RandomStroll.fly(SPEED_MULTIPLIER_WHEN_IDLING), 2), Pair.of(new DoNothing(30, 60), 1))
+                    ImmutableList.of(Pair.of(RandomStrollInRegionBehavior.fly(SPEED_MULTIPLIER_WHEN_IDLING), 2), Pair.of(new DoNothing(30, 60), 1))
                 )
             )
         );

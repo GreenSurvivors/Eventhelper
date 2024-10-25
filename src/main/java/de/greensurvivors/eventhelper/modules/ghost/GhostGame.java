@@ -86,6 +86,10 @@ public class GhostGame implements Listener { // todo spectating command
         perishedTeam.setCanSeeFriendlyInvisibles(true);
     }
 
+    public @NotNull GhostModul getGhostModul() {
+        return ghostModul;
+    }
+
     @EventHandler(ignoreCancelled = true)
     private void onPlayerQuit(final @NotNull PlayerQuitEvent event) {
         if (players.containsKey(event.getPlayer().getUniqueId()) ||
@@ -303,6 +307,7 @@ public class GhostGame implements Listener { // todo spectating command
 
             IVex newGhost = IVex.spawnNew(spawnLocation, CreatureSpawnEvent.SpawnReason.CUSTOM, this, vex -> {
                 vex.setPersistent(true);  // don't despawn
+                vex.setCollidable(false); // don't be a push around
                 //vex.setInvulnerable(true);
             });
 

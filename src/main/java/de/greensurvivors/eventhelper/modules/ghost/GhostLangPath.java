@@ -27,8 +27,10 @@ public record GhostLangPath(@NotNull String path, @NotNull String defaultValue) 
         COMMAND_SET_MAX_PLAYERS_ERROR_SMALLER_THEN_MIN = new GhostLangPath("command.set.max-players.error.smaller-then-min"),
         COMMAND_SET_PLAYER_SPEAD_SUCCESS = new GhostLangPath("command.set.player-spread.success"),
         COMMAND_ADD_GHOST_SPAWNPOINT_SUCCESS = new GhostLangPath("command.add.ghost.spawnpoint.success"),
+        COMMAND_ADD_GHOST_IDLE_POS_SUCCESS = new GhostLangPath("command.add.ghost.idle-pos.success"),
         COMMAND_ADD_VEX_SPAWNPOINT_SUCCESS = new GhostLangPath("command.add.vex.spawnpoint.success"),
         COMMAND_REMOVEALL_GHOST_SPAWNPOINT_SUCCESS = new GhostLangPath("command.remove-all.ghost.spawnpoint.success"),
+        COMMAND_REMOVEALL_GHOST_IDLEPOS_SUCCESS = new GhostLangPath("command.remove-all.ghost.idle-pos.success"),
         COMMAND_REMOVEALL_VEX_SPAWNPOINT_SUCCESS = new GhostLangPath("command.remove-all.vex.spawnpoint.success"),
         COMMAD_HELP_TEXT = new GhostLangPath("command.help-text"),
 
