@@ -29,7 +29,7 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
-// wanders around looking for player if no target. can target through walls but must path find there
+@SuppressWarnings("UnstableApiUsage") // Position
 public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create and call events
     static {
         ConfigurationSerialization.registerClass(PathModifier.class);
@@ -495,10 +495,10 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
         });
     }
 
-    public void removeGhostSpawnLocation(final @NotNull Location newLocation) {
+    public void removeGhostSpawnLocation(final @NotNull Location location) {
         if (ghostSpawnLocations.hasValue()) {
 
-            if (ghostSpawnLocations.getValueOrFallback().remove(newLocation)) {
+            if (ghostSpawnLocations.getValueOrFallback().remove(location)) {
                 save().thenAccept(result -> {
                     if (result) {
                         reload();
@@ -510,6 +510,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
 
     public void removeAllGhostSpawnLocations() {
         if (ghostSpawnLocations.hasValue()) {
+            ghostSpawnLocations.getValueOrFallback().clear();
 
             save().thenAccept(result -> {
                 if (result) {
@@ -543,10 +544,10 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
         });
     }
 
-    public void removeVexSpawnLocation(final @NotNull Location newLocation) {
+    public void removeVexSpawnLocation(final @NotNull Location location) {
         if (vexSpawnLocations.hasValue()) {
 
-            if (vexSpawnLocations.getValueOrFallback().remove(newLocation)) {
+            if (vexSpawnLocations.getValueOrFallback().remove(location)) {
                 save().thenAccept(result -> {
                     if (result) {
                         reload();
@@ -558,6 +559,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
 
     public void removeAllVexSpawnLocations() {
         if (vexSpawnLocations.hasValue()) {
+            vexSpawnLocations.getValueOrFallback().clear();
 
             save().thenAccept(result -> {
                 if (result) {
@@ -569,6 +571,51 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
 
     public @NotNull List<@NotNull Position> getIdlePositions() { // todo make configuable
         return ghostIdlePositions.getValueOrFallback();
+    }
+
+    public void addGhostIdlePosition(final @NotNull Position newPosition) {
+        if (ghostIdlePositions.hasValue()) {
+
+            if (!ghostIdlePositions.getValueOrFallback().contains(newPosition)) {
+                ghostIdlePositions.getValueOrFallback().add(newPosition);
+            }
+        } else {
+            List<Position> positions = new ArrayList<>();
+            positions.add(newPosition);
+
+            ghostIdlePositions.setValue(positions);
+        }
+
+        save().thenAccept(result -> {
+            if (result) {
+                reload();
+            }
+        });
+    }
+
+    public void removeGhostIdlePosition(final @NotNull Position position) {
+        if (ghostIdlePositions.hasValue()) {
+
+            if (ghostIdlePositions.getValueOrFallback().remove(position)) {
+                save().thenAccept(result -> {
+                    if (result) {
+                        reload();
+                    }
+                });
+            }
+        }
+    }
+
+    public void removeAllGhostIdlePositions() {
+        if (ghostIdlePositions.hasValue()) {
+            ghostIdlePositions.getValueOrFallback().clear();
+
+            save().thenAccept(result -> {
+                if (result) {
+                    reload();
+                }
+            });
+        }
     }
 
     public int getAmountOfGhosts() {

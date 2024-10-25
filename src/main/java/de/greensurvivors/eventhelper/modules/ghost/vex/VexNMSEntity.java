@@ -1,6 +1,5 @@
 package de.greensurvivors.eventhelper.modules.ghost.vex;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.mojang.serialization.Dynamic;
 import de.greensurvivors.eventhelper.modules.ghost.GhostGame;
 import net.minecraft.core.BlockPos;
@@ -18,7 +17,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
-import net.minecraft.world.entity.ai.navigation.GroundPathNavigation;
+import net.minecraft.world.entity.ai.navigation.FlyingPathNavigation;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
 import net.minecraft.world.entity.monster.Vex;
 import net.minecraft.world.entity.monster.warden.AngerLevel;
@@ -34,6 +33,7 @@ import net.minecraft.world.level.pathfinder.BlockPathTypes;
 import net.minecraft.world.level.pathfinder.FlyNodeEvaluator;
 import net.minecraft.world.level.pathfinder.Node;
 import net.minecraft.world.level.pathfinder.PathFinder;
+import org.bukkit.craftbukkit.v1_20_R3.util.CraftLocation;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
@@ -60,7 +60,6 @@ public class VexNMSEntity extends Vex implements VibrationSystem { // todo syste
         this.ghostGame = ghostGame;
 
         hasLimitedLife = false;
-        this.setPathfindingMalus(BlockPathTypes.UNPASSABLE_RAIL, 0.0F);
         this.setPathfindingMalus(BlockPathTypes.DAMAGE_OTHER, 8.0F);
         this.setPathfindingMalus(BlockPathTypes.POWDER_SNOW, 8.0F);
         this.setPathfindingMalus(BlockPathTypes.LAVA, 8.0F);
@@ -160,6 +159,7 @@ public class VexNMSEntity extends Vex implements VibrationSystem { // todo syste
     public boolean canTargetEntity(final @Nullable Entity entity) {
         if (entity instanceof LivingEntity entityliving) {
             return this.level() == entity.level() &&
+                ghostGame.getGhostModul().isInValidArea(CraftLocation.toBukkit(entityliving.position(), entityliving.level().getWorld())) &&
                 EntitySelector.NO_CREATIVE_OR_SPECTATOR.test(entity) &&
                 !this.isAlliedTo(entity) &&
                 entityliving.getType() != EntityType.ARMOR_STAND &&
@@ -205,7 +205,7 @@ public class VexNMSEntity extends Vex implements VibrationSystem { // todo syste
 
     @Override
     public @Nullable LivingEntity getTarget() {
-        return this.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null); // CraftBukkit - decompile error
+        return this.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
     }
 
     @Override
@@ -233,7 +233,7 @@ public class VexNMSEntity extends Vex implements VibrationSystem { // todo syste
     }
 
     public void setAttackTarget(final @NotNull LivingEntity target) {
-        this.getBrain().setMemory(MemoryModuleType.ATTACK_TARGET, target); // CraftBukkit - decompile error
+        this.getBrain().setMemory(MemoryModuleType.ATTACK_TARGET, target);
         this.getBrain().eraseMemory(MemoryModuleType.CANT_REACH_WALK_TARGET_SINCE);
     }
 
@@ -247,20 +247,21 @@ public class VexNMSEntity extends Vex implements VibrationSystem { // todo syste
         if (!this.isNoAi() && !this.getBrain().hasMemoryValue(MemoryModuleType.TOUCH_COOLDOWN)) {
             this.getBrain().setMemoryWithExpiry(MemoryModuleType.TOUCH_COOLDOWN, Unit.INSTANCE, TOUCH_COOLDOWN_TICKS);
             this.increaseAngerAt(entity);
-            VexAI.setDisturbanceLocation(this, entity.blockPosition());
+            if (this.isWithinRestriction(entity.blockPosition())) {
+                VexAI.setDisturbanceLocation(this, entity.blockPosition());
+            }
         }
 
         super.doPush(entity);
     }
 
-    @VisibleForTesting
     public AngerManagement getAngerManagement() {
         return this.angerManagement;
     }
 
     @Override
     protected @NotNull PathNavigation createNavigation(final @NotNull Level world) {
-        return new GroundPathNavigation(this, world) {
+        return new FlyingPathNavigation(this, world) {
             @Override
             protected @NotNull PathFinder createPathFinder(int range) {
                 this.nodeEvaluator = new FlyNodeEvaluator();
@@ -283,6 +284,21 @@ public class VexNMSEntity extends Vex implements VibrationSystem { // todo syste
     @Override
     public @NotNull VibrationSystem.User getVibrationUser() {
         return this.vibrationUser;
+    }
+
+    @Override
+    public boolean isWithinRestriction(final @NotNull BlockPos pos) {
+        return ghostGame.getGhostModul().isInValidArea(CraftLocation.toBukkit(pos, level()));
+    }
+
+    @Override
+    public boolean hasRestriction() {
+        return true;
+    }
+
+    @Override
+    public float getRestrictRadius() {
+        return 0;
     }
 
     private class VibrationUser implements VibrationSystem.User {
@@ -338,6 +354,11 @@ public class VexNMSEntity extends Vex implements VibrationSystem { // todo syste
                                        final @Nullable Entity entity,
                                        final float distance) {
             if (!VexNMSEntity.this.isDeadOrDying()) {
+                // ignore vibrations outside of region
+                if (!VexNMSEntity.this.isWithinRestriction(entity == null ? sourceEntity.blockPosition() : entity.blockPosition())) {
+                    return;
+                }
+
                 VexNMSEntity.this.brain.setMemoryWithExpiry(MemoryModuleType.VIBRATION_COOLDOWN, Unit.INSTANCE, VIBRATION_COOLDOWN_TICKS);
                 world.broadcastEntityEvent(VexNMSEntity.this, (byte) 61);
                 VexNMSEntity.this.playSound(SoundEvents.WARDEN_TENDRIL_CLICKS, 5.0F, VexNMSEntity.this.getVoicePitch());
