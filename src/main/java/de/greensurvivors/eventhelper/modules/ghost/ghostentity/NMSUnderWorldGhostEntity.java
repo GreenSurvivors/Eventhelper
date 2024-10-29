@@ -11,9 +11,12 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.ai.attributes.*;
+import net.minecraft.world.entity.ai.navigation.GroundPathNavigation;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.item.ItemStack;
+import org.bukkit.Material;
 import org.bukkit.craftbukkit.v1_20_R3.attribute.CraftAttributeMap;
+import org.bukkit.craftbukkit.v1_20_R3.block.CraftBlockType;
 import org.bukkit.craftbukkit.v1_20_R3.entity.CraftLivingEntity;
 import org.bukkit.event.entity.EntityRemoveEvent;
 import org.jetbrains.annotations.NotNull;
@@ -50,9 +53,10 @@ public class NMSUnderWorldGhostEntity extends Monster {
         this.setYRot(parentMob.getXRot());
         this.setYRot(parentMob.getYRot());
 
-        final GhostPathNavigation ghostPathNavigation = new GhostPathNavigation(this, parentMob, parentMob.level());
-        ghostPathNavigation.setCanFloat(true); // can swim. not like floating in the air
-        navigation = ghostPathNavigation;
+        final GroundPathNavigation groundPathNavigation = new GroundPathNavigation(this, parentMob.level());
+        groundPathNavigation.setCanFloat(true); // can swim. not like floating in the air
+        groundPathNavigation.setAvoidSun(false);
+        navigation = groundPathNavigation;
         this.setPersistenceRequired();
     }
 
@@ -122,6 +126,23 @@ public class NMSUnderWorldGhostEntity extends Monster {
     }
 
     @Override
+    public void tick() {
+        super.tick();
+
+        final Material material = CraftBlockType.minecraftToBukkit(getBlockStateOn().getBlock());
+        double followRangeAt = ghostGame.getConfig().getFollowRangeAt(material);
+
+        if (followRangeAt > 0) {
+            getAttributes().getInstance(Attributes.FOLLOW_RANGE).setBaseValue(followRangeAt);
+        }
+
+        double followVelocityAt = ghostGame.getConfig().getFollowVelocityAt(material);
+        if (followVelocityAt > 0) {
+            getAttributes().getInstance(Attributes.MOVEMENT_SPEED).setBaseValue(followVelocityAt);
+        }
+    }
+
+    @Override
     public @NotNull Packet<ClientGamePacketListener> getAddEntityPacket() { // overwrite with skeleton type
         return new ClientboundAddEntityPacket(getId(), getUUID(),
             getX(), getY(), getZ(), getXRot(), getYRot(),
@@ -153,7 +174,7 @@ public class NMSUnderWorldGhostEntity extends Monster {
         float walkAnimationPos = this.walkAnimation.position();
         float bumpOffset = 0.12F * Mth.cos(walkAnimationPos * 0.5F) * 2.0F * walkAnimationSpeed;
 
-        return new Vector3f(0.0F, (float) ghostGame.getConfig().getPathfindOffset() + bumpOffset * scaleFactor, 0.0F);
+        return new Vector3f(0.0F, (float) ghostGame.getConfig().getPathfindOffset() + 2.0f + bumpOffset * scaleFactor, 0.0F); // hardcoded offset to float 2 blocks above ground.
     }
 
     @Override

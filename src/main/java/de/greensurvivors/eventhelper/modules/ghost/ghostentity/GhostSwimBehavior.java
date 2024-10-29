@@ -16,7 +16,7 @@ public class GhostSwimBehavior extends Behavior<NMSGhostEntity> {
 
     @Override
     protected boolean checkExtraStartConditions(final @NotNull ServerLevel world, final @NotNull NMSGhostEntity ghost) {
-        return ghost.underWorldGhost.isInWater() && ghost.underWorldGhost.getFluidHeight(FluidTags.WATER) > ghost.getFluidJumpThreshold() || ghost.underWorldGhost.isInLava();
+        return ghost.underWorldGhost.isInWater() && ghost.underWorldGhost.getFluidHeight(FluidTags.WATER) > ghost.underWorldGhost.getFluidJumpThreshold() || ghost.underWorldGhost.isInLava();
     }
 
     @Override

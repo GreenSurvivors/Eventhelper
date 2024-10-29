@@ -1,11 +1,7 @@
 package de.greensurvivors.eventhelper.modules.ghost.player;
 
 import de.greensurvivors.eventhelper.EventHelper;
-import de.greensurvivors.eventhelper.modules.ghost.GhostGame;
-import de.greensurvivors.eventhelper.modules.ghost.GhostLangPath;
-import de.greensurvivors.eventhelper.modules.ghost.MouseTrap;
-import de.greensurvivors.eventhelper.modules.ghost.QuestModifier;
-import de.greensurvivors.eventhelper.modules.ghost.vex.UnsafeArea;
+import de.greensurvivors.eventhelper.modules.ghost.*;
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -17,11 +13,11 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
-public class AlivePlayer extends AGhostGamePlayer { // todo
-    private final @NotNull Set<QuestModifier> doneTaskIds = new HashSet<>();
+public class AlivePlayer extends AGhostGamePlayer {
+    private final @NotNull Set<@NotNull QuestModifier> doneTaskIds = new HashSet<>();
+    private final @NotNull Map<@NotNull UnsafeArea, Duration> unsafeAreasIn = new ConcurrentHashMap<>();
     private @Nullable QuestModifier currentTaskModifier;
     private @Nullable MouseTrap trappedIn;
-    private @NotNull Map<@NotNull UnsafeArea, Duration> unsafeAreasIn = new ConcurrentHashMap<>();
 
     public AlivePlayer(final @NotNull EventHelper plugin,
                        final @NotNull GhostGame game,
@@ -128,8 +124,8 @@ public class AlivePlayer extends AGhostGamePlayer { // todo
         return result;
     }
 
-    public void tickUnsafeAreas(double millisSinceLastTick) {
-        if (this.getMouseTrapTrappedIn() != null) {
+    public void tickUnsafeAreas(final double millisSinceLastTick) {
+        if (this.getMouseTrapTrappedIn() == null) {
             final Player bukkitPlayer = getBukkitPlayer();
 
             if (bukkitPlayer != null) {
@@ -150,9 +146,12 @@ public class AlivePlayer extends AGhostGamePlayer { // todo
                                     unsafeAreasIn.put(unsafeArea, duration);
 
                                     if (!unsafeArea.getWarnInterval().isNegative()) {
-                                        if (duration.toMillis() % unsafeArea.getWarnInterval().toMillis() <= millisSinceLastTick) {
+                                        if (duration.toMillis() % unsafeArea.getWarnInterval().toMillis() < millisSinceLastTick) {
+                                            // at least 2 seconds or how long it takes to the next interval + a half second
+                                            int effectDuration = Math.max(40, (int) unsafeArea.getWarnInterval().toMillis() / 50 + 10);
+
                                             plugin.getMessageManager().sendLang(bukkitPlayer, GhostLangPath.PLAYER_UNSAFE_AREA_WARNING);
-                                            bukkitPlayer.addPotionEffect(new PotionEffect(PotionEffectType.CONFUSION, 2, 1, false, true, false));
+                                            bukkitPlayer.addPotionEffect(new PotionEffect(PotionEffectType.CONFUSION, effectDuration, 1, false, true, false));
                                         }
                                     }
                                 }

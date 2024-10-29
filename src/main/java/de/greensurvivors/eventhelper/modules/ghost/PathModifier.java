@@ -27,10 +27,10 @@ public class PathModifier implements ConfigurationSerializable {
         if (map.get(FOLLOW_RANGE_KEY) instanceof Number newFollowRange && newFollowRange.intValue() > 0) {
             result.followRange.setValue(newFollowRange.intValue());
         }
-        if (map.get(IDLE_VELOCITY_KEY) instanceof Number idleVelocity && idleVelocity.intValue() > 0) {
+        if (map.get(IDLE_VELOCITY_KEY) instanceof Number idleVelocity && idleVelocity.doubleValue() > 0) {
             result.idleVelocity.setValue(idleVelocity.doubleValue());
         }
-        if (map.get(FOLLOW_VELOCITY_KEY) instanceof Number newFollowVelocity && newFollowVelocity.intValue() > 0) {
+        if (map.get(FOLLOW_VELOCITY_KEY) instanceof Number newFollowVelocity && newFollowVelocity.doubleValue() > 0) {
             result.followVelocity.setValue(newFollowVelocity.doubleValue());
         }
 
@@ -58,5 +58,14 @@ public class PathModifier implements ConfigurationSerializable {
 
     public @Nullable Double getOverwriteFollowVelocity() {
         return followVelocity.getValueOrFallback() > 0.0D ? followVelocity.getValueOrFallback() : null;
+    }
+
+    @Override
+    public @NotNull String toString() {
+        return "PathModifier [" +
+            followRange.getPath() + "-> " + followRange.getValueOrFallback() + ", " +
+            idleVelocity.getPath() + "-> " + idleVelocity.getValueOrFallback() + ", " +
+            followVelocity.getPath() + "-> " + followVelocity.getValueOrFallback() +
+            "]";
     }
 }

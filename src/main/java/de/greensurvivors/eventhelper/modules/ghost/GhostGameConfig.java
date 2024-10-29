@@ -3,7 +3,6 @@ package de.greensurvivors.eventhelper.modules.ghost;
 import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.config.ConfigOption;
 import de.greensurvivors.eventhelper.modules.AModulConfig;
-import de.greensurvivors.eventhelper.modules.ghost.vex.UnsafeArea;
 import io.papermc.paper.math.Position;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -43,8 +42,8 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     private final @NotNull ConfigOption<@NotNull Double> pathFindOffset = new ConfigOption<>("ghost.pathfind.offset", 30.0D);
     private final @NotNull ConfigOption<@NotNull Integer> followRange = new ConfigOption<>("ghost.follow.range", 30); // in blocks
     private final @NotNull ConfigOption<@NotNull Long> followTimeOut = new ConfigOption<>("ghost.follow.timeout", 1L); // in milliseconds
-    private final @NotNull ConfigOption<@NotNull Double> idleVelocity = new ConfigOption<>("ghost.velocity.idle", 1.0D);  // in blocks / s ?
-    private final @NotNull ConfigOption<@NotNull Double> followVelocity = new ConfigOption<>("ghost.velocity.follow", 1.5D); // in blocks / s ?
+    private final @NotNull ConfigOption<@NotNull Double> idleVelocity = new ConfigOption<>("ghost.velocity.idle", 0.39D);  // in blocks / t
+    private final @NotNull ConfigOption<@NotNull Double> followVelocity = new ConfigOption<>("ghost.velocity.follow", 0.39D); // in blocks / t
     private final @NotNull ConfigOption<@NotNull List<@NotNull Location>> ghostSpawnLocations = new ConfigOption<>("ghost.spawnLocations", List.of()); // we need fast random access. But the locations should be unique! // todo check for very close together locations!
     private final @NotNull ConfigOption<@NotNull List<@NotNull Position>> ghostIdlePositions = new ConfigOption<>("ghost.idlePositions", List.of()); // we need fast random access. But the locations should be unique! // todo check for very close together locations!
     private final @NotNull ConfigOption<@NotNull @Range(from = 1, to = Integer.MAX_VALUE) Integer> ghostAmount = new ConfigOption<>("ghost.amount", 1);
@@ -135,6 +134,24 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
 
                         Object pathFindableMatsObj = config.get(pathFindableMats.getPath());
                         if (pathFindableMatsObj instanceof Map<?, ?> map) {
+                            final @NotNull Map<Material, PathModifier> result = new LinkedHashMap<>(map.size());
+
+                            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                                if (entry.getKey() instanceof String key && entry.getValue() instanceof PathModifier pathModifier) {
+                                    final @Nullable Material material = Material.matchMaterial(key);
+
+                                    if (material != null) {
+                                        result.put(material, pathModifier);
+                                    }
+                                } else {
+                                    plugin.getLogger().warning("Could not read data \"" + entry + "\" for " + pathFindableMats.getPath() + " in ghost config!");
+                                }
+                            }
+
+                            pathFindableMats.setValue(result);
+                        } else if (pathFindableMatsObj instanceof ConfigurationSection pathFindableMatsSection) {
+                            Map<String, Object> map = pathFindableMatsSection.getValues(false);
+
                             final @NotNull Map<Material, PathModifier> result = new LinkedHashMap<>(map.size());
 
                             for (Map.Entry<?, ?> entry : map.entrySet()) {

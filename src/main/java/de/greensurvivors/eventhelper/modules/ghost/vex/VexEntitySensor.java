@@ -26,7 +26,7 @@ import java.util.function.Supplier;
 public class VexEntitySensor extends NearestLivingEntitySensor<NMSVexEntity> {
     public static final @NotNull SensorType<VexEntitySensor> VEX_ENTITY_SENSOR_TYPE = register();
 
-    private static <U extends Sensor<?>> @Override SensorType<U> register() {
+    private static <U extends Sensor<?>> @NotNull SensorType<U> register() {
         Constructor<SensorType> constructor;
         try {
             constructor = SensorType.class.getDeclaredConstructor(Supplier.class);

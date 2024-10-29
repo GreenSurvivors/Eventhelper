@@ -1,4 +1,4 @@
-package de.greensurvivors.eventhelper.modules.ghost.vex;
+package de.greensurvivors.eventhelper.modules.ghost;
 
 import de.greensurvivors.eventhelper.modules.ghost.player.AlivePlayer;
 import org.bukkit.Location;
@@ -7,6 +7,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 public class UnsafeArea implements ConfigurationSerializable {
     private final static @NotNull String
@@ -32,13 +33,34 @@ public class UnsafeArea implements ConfigurationSerializable {
         this.timeUntilDeath = timeUntilDeath;
     }
 
+    @SuppressWarnings("unused") // used by ConfigurationSerializable
+    public static UnsafeArea deserialize(@NotNull Map<String, Object> serializedMap) throws NoSuchElementException {
+        if (serializedMap.get(CENTER_LOCATION_KEY) instanceof Location center) {
+            if (serializedMap.get(RADIUS_KEY) instanceof Number radius) {
+                if (serializedMap.get(WARN_INTERVAL_KEY) instanceof Number warnInterval) {
+                    if (serializedMap.get(TIME_UNTIL_DEATH) instanceof Number timeUntilDeath) {
+                        return new UnsafeArea(center, radius.intValue(), Duration.ofMillis(warnInterval.longValue() * 50), Duration.ofMillis(timeUntilDeath.longValue() * 50));
+                    } else {
+                        throw new NoSuchElementException("Serialized UnsafeArea " + serializedMap + " does not contain a valid time until death value.");
+                    }
+                } else {
+                    throw new NoSuchElementException("Serialized UnsafeArea " + serializedMap + " does not contain a valid warn interval value.");
+                }
+            } else {
+                throw new NoSuchElementException("Serialized UnsafeArea " + serializedMap + " does not contain a valid distance value.");
+            }
+        } else {
+            throw new NoSuchElementException("Serialized UnsafeArea " + serializedMap + " does not contain a valid center location value.");
+        }
+    }
+
     @Override
     public @NotNull Map<String, Object> serialize() {
         return Map.of(
             CENTER_LOCATION_KEY, center,
             RADIUS_KEY, radius,
-            WARN_INTERVAL_KEY, warnInterval,
-            TIME_UNTIL_DEATH, timeUntilDeath
+            WARN_INTERVAL_KEY, warnInterval.toMillis() / 50,
+            TIME_UNTIL_DEATH, timeUntilDeath.toMillis() / 50
         );
     }
 

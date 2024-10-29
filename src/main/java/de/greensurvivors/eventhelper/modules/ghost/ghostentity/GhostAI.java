@@ -45,7 +45,7 @@ public class GhostAI {
     }
 
     private static void initCoreActivity(final @NotNull Brain<NMSGhostEntity> brain) {
-        brain.addActivity(Activity.CORE, 0, ImmutableList.of(new GhostSwimBehavior(0.8F), new LookAtTargetSink(45, 90), new MoveToTargetSink()));
+        brain.addActivity(Activity.CORE, 0, ImmutableList.of(new GhostSwimBehavior(0.8F), new LookAtTargetSink(45, 90), new GhostMoveToTargetSinkBehavior()));
     }
 
     private static void initIdleActivity(final @NotNull NMSGhostEntity ghost, final @NotNull Brain<NMSGhostEntity> brain) {

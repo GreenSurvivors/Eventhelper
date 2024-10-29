@@ -144,7 +144,7 @@ public class GhostGame implements Listener { // todo spectating command
         if (ghostGamePlayer instanceof AlivePlayer alivePlayer) {
             if (wouldAllPlayersBeDead(alivePlayer)) {
                 // don't do things you have immediately undo after or maybe even can't easily undo like an async tp
-                endGame(EndReason.ALL_DEAD);
+                plugin.getServer().getScheduler().runTask(plugin, () -> endGame(EndReason.ALL_DEAD));
             } else {
                 final List<@NotNull MouseTrap> mouseTraps = getMouseTraps();
                 alivePlayer.trapInMouseTrap(mouseTraps.get(ThreadLocalRandom.current().nextInt(mouseTraps.size())));
@@ -301,17 +301,19 @@ public class GhostGame implements Listener { // todo spectating command
             ghosts.add(newGhost);
         }
 
-        final List<@NotNull Location> vexSpawnLocations = config.getVexSpawnLocations();
-        for (int i = 0; i < config.getAmountOfVexes(); i++) {
-            Location spawnLocation = vexSpawnLocations.get(random.nextInt(vexSpawnLocations.size()));
+        final @NotNull List<@NotNull Location> vexSpawnLocations = config.getVexSpawnLocations();
+        if (!vexSpawnLocations.isEmpty()) {
+            for (int i = 0; i < config.getAmountOfVexes(); i++) {
+                Location spawnLocation = vexSpawnLocations.get(random.nextInt(vexSpawnLocations.size()));
 
-            IVex newGhost = IVex.spawnNew(spawnLocation, CreatureSpawnEvent.SpawnReason.CUSTOM, this, vex -> {
-                vex.setPersistent(true);  // don't despawn
-                vex.setCollidable(false); // don't be a push around
-                //vex.setInvulnerable(true);
-            });
+                IVex newGhost = IVex.spawnNew(spawnLocation, CreatureSpawnEvent.SpawnReason.CUSTOM, this, vex -> {
+                    vex.setPersistent(true);  // don't despawn
+                    vex.setCollidable(false); // don't be a push around
+                    //vex.setInvulnerable(true);
+                });
 
-            vexes.add(newGhost);
+                vexes.add(newGhost);
+            }
         }
 
         if (timeTask != null) {

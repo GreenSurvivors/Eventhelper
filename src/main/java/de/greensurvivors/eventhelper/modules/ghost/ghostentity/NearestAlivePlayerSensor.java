@@ -1,7 +1,6 @@
 package de.greensurvivors.eventhelper.modules.ghost.ghostentity;
 
 import com.destroystokyo.paper.util.maplist.ReferenceList;
-import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.modules.ghost.player.AlivePlayer;
 import io.papermc.paper.util.player.NearbyPlayers;
 import net.minecraft.core.BlockPos;
@@ -20,8 +19,6 @@ import net.minecraft.world.entity.ai.sensing.SensorType;
 import net.minecraft.world.level.PathNavigationRegion;
 import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.phys.Vec3;
-import org.bukkit.Material;
-import org.bukkit.craftbukkit.v1_20_R3.block.CraftBlockType;
 import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.Constructor;
@@ -67,15 +64,12 @@ public class NearestAlivePlayerSensor extends Sensor<NMSGhostEntity> {
             io.papermc.paper.util.player.NearbyPlayers.NearbyMapType.GENERAL_REALLY_SMALL
         );
 
-        final Material material = CraftBlockType.minecraftToBukkit(entity.underWorldGhost.getFeetBlockState().getBlock());
-        int followRangeAt = entity.ghostGame.getConfig().getFollowRangeAt(material);
+        int followRangeAt = entity.getFollowRangeAt();
         if (followRangeAt <= 0) {
             followRangeAt = 16;
         }
-        double followVelocityAt = entity.ghostGame.getConfig().getFollowVelocityAt(material);
-        if (followVelocityAt <= 0) {
-            followVelocityAt = 0.39284D;
-        }
+        // I have no idea why the normal speed is too slow.
+        double followVelocityAt = 1.4D; // entity.getFollowVelocityAt();
         final int offsetVal = 2 * followRangeAt;
         PathNavigationRegion pathNavigationRegion = new PathNavigationRegion(world, entity.blockPosition().offset(-offsetVal, -offsetVal, -offsetVal), entity.blockPosition().offset(offsetVal, offsetVal, offsetVal));
 
@@ -108,14 +102,13 @@ public class NearestAlivePlayerSensor extends Sensor<NMSGhostEntity> {
         }
 
         // I believe distance 0 means we are at the beginning and range multiple is almost always 1, except for bees for some reason
+        // distance means the distance to the target that is acceptable to end up next to it.
         Path path = entity.getNavigation().pathFinder.findPath(pathNavigationRegion, entity, nearPlayerLocations.keySet(), followRangeAt, 0, 1.0f);
 
         Brain<NMSGhostEntity> brain = entity.getBrain();
         if (path != null) {
-            EventHelper.getPlugin().getComponentLogger().info("final path is to" + path.getTarget());
-
             brain.setMemory(MemoryModuleType.ATTACK_TARGET, Optional.of(nearPlayerLocations.get(path.getTarget())));
-            brain.setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(nearPlayerLocations.get(path.getTarget()), (float) followVelocityAt, 1)); // todo dirty fix
+            brain.setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(nearPlayerLocations.get(path.getTarget()), (float) followVelocityAt, 0)); // todo dirty fix
         } else {
             brain.setMemory(MemoryModuleType.ATTACK_TARGET, Optional.empty());
         }

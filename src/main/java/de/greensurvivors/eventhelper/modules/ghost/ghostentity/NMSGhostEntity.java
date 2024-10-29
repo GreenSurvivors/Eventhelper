@@ -1,6 +1,7 @@
 package de.greensurvivors.eventhelper.modules.ghost.ghostentity;
 
 import com.mojang.serialization.Dynamic;
+import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.modules.ghost.GhostGame;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
@@ -66,7 +67,6 @@ public class NMSGhostEntity extends Monster implements Enemy { // todo make use 
     public NMSGhostEntity(final @NotNull Level world, final @NotNull GhostGame ghostGame) {
         super(GHOST_TYPE, world);
 
-        this.navigation.setCanFloat(true); // can swim. not like floating in the air
         this.ghostGame = ghostGame;
         this.setPersistenceRequired();
     }
@@ -424,16 +424,33 @@ public class NMSGhostEntity extends Monster implements Enemy { // todo make use 
 
     public double getIdleVelocity() {
         if (underWorldGhost == null) {
-            return 0.4D;
+            return 0.3D;
         }
 
-        final Material material = CraftBlockType.minecraftToBukkit(underWorldGhost.getFeetBlockState().getBlock());
+        final Material material = CraftBlockType.minecraftToBukkit(underWorldGhost.getBlockStateOn().getBlock());
         double idleVelocityAt = ghostGame.getConfig().getIdleVelocityAt(material);
 
         if (idleVelocityAt <= 0) {
-            return 0.4D;
+            return 0.3D;
         } else {
             return idleVelocityAt;
         }
+    }
+
+    public int getFollowRangeAt() {
+        return (int) underWorldGhost.getAttributeValue(Attributes.FOLLOW_RANGE);
+    }
+
+    public double getFollowVelocityAt() {
+        final Material material = CraftBlockType.minecraftToBukkit(underWorldGhost.getBlockStateOn().getBlock());
+
+        double followVelocityAt = ghostGame.getConfig().getFollowVelocityAt(material);
+        if (followVelocityAt <= 0) {
+            followVelocityAt = 0.39284D;
+        }
+
+        EventHelper.getPlugin().getComponentLogger().info("requested FollowVelocity at " + underWorldGhost.getOnPos() + ", mat: " + material + " velocity: " + followVelocityAt);
+
+        return followVelocityAt;
     }
 }

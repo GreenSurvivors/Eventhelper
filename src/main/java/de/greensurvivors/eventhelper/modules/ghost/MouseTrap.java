@@ -5,7 +5,6 @@ import de.greensurvivors.eventhelper.Utils;
 import de.greensurvivors.eventhelper.messages.MessageManager;
 import de.greensurvivors.eventhelper.messages.SharedPlaceHolder;
 import de.greensurvivors.eventhelper.modules.ghost.player.AlivePlayer;
-import de.greensurvivors.eventhelper.modules.ghost.vex.UnsafeArea;
 import io.papermc.paper.math.Position;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.Bukkit;
@@ -18,10 +17,7 @@ import org.bukkit.event.player.PlayerTeleportEvent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.NoSuchElementException;
+import java.util.*;
 
 @SuppressWarnings("UnstableApiUsage") // Position
 public class MouseTrap implements ConfigurationSerializable, Listener {
@@ -104,13 +100,14 @@ public class MouseTrap implements ConfigurationSerializable, Listener {
     }
 
     @Override
-    public @NotNull Map<String, Object> serialize() {
-        return Map.of(
-            WORLD_NAME_KEY, worldName,
-            SPAWN_POS_IN_KEY, Utils.serializePosition(spawnPositionIn),
-            SPAWN_POS_OUT_KEY, Utils.serializePosition(spawnPositionOut),
-            RELEASE_BUTTON_POS_KEY, Utils.serializePosition(releaseButtonPosition),
-            UNSAFE_AREA_KEY, unsafeArea);
+    public @NotNull Map<@NotNull String, @Nullable Object> serialize() {
+        final @NotNull Map<@NotNull String, @Nullable Object> serializedMap = new LinkedHashMap<>();
+        serializedMap.put(WORLD_NAME_KEY, worldName);
+        serializedMap.put(SPAWN_POS_IN_KEY, Utils.serializePosition(spawnPositionIn));
+        serializedMap.put(SPAWN_POS_OUT_KEY, Utils.serializePosition(spawnPositionOut));
+        serializedMap.put(RELEASE_BUTTON_POS_KEY, Utils.serializePosition(releaseButtonPosition));
+        serializedMap.put(UNSAFE_AREA_KEY, unsafeArea);
+        return serializedMap;
     }
 
     /**
