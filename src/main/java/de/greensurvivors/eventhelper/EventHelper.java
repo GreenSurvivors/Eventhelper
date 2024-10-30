@@ -7,6 +7,7 @@ import de.greensurvivors.eventhelper.messages.MessageManager;
 import de.greensurvivors.eventhelper.modules.ModulRegistery;
 import de.greensurvivors.eventhelper.modules.ghost.ghostentity.NMSGhostEntity;
 import de.greensurvivors.eventhelper.modules.ghost.ghostentity.NMSUnderWorldGhostEntity;
+import de.greensurvivors.eventhelper.modules.ghost.vex.NMSVexEntity;
 import net.minecraft.core.registries.BuiltInRegistries;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
@@ -62,8 +63,10 @@ public class EventHelper extends JavaPlugin {
             // add our own entities
             NamespacedKey ghostNamespacedKey = CraftNamespacedKey.fromMinecraft(BuiltInRegistries.ENTITY_TYPE.getResourceKey(NMSGhostEntity.GHOST_TYPE).orElseThrow().location());
             NamespacedKey underworldNamespacedKey = CraftNamespacedKey.fromMinecraft(BuiltInRegistries.ENTITY_TYPE.getResourceKey(NMSUnderWorldGhostEntity.UNDERWORLD_GHOST_TYPE).orElseThrow().location());
+            NamespacedKey vexNamespacedKey = CraftNamespacedKey.fromMinecraft(BuiltInRegistries.ENTITY_TYPE.getResourceKey(NMSVexEntity.VEX_TYPE).orElseThrow().location());
             builder.put(ghostNamespacedKey, org.bukkit.entity.EntityType.GHAST);
             builder.put(underworldNamespacedKey, org.bukkit.entity.EntityType.ALLAY);
+            builder.put(vexNamespacedKey, org.bukkit.entity.EntityType.VEX);
 
             // Access the private field
             Field privateAttributesField = Registry.SimpleRegistry.class.getDeclaredField("map");

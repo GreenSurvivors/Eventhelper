@@ -172,10 +172,16 @@ public class GhostGame implements Listener { // todo spectating command
         if (clickedBlock != null) {
             if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
                 if (Tag.BUTTONS.isTagged(clickedBlock.getType())) {
+                    final AGhostGamePlayer ghostGamePlayer = players.get(event.getPlayer().getUniqueId());
+                    // ignore interactions outside the game
+                    if (ghostGamePlayer == null && spectators.get(event.getPlayer().getUniqueId()) == null) {
+                        return;
+                    }
+
                     for (MouseTrap mouseTrap : getMouseTraps()) {
                         if (mouseTrap.isReleaseBlockLocation(clickedBlock.getLocation())) {
                             // don't allow dead or spectating players to free anyone
-                            if (!(players.get(event.getPlayer().getUniqueId()) instanceof AlivePlayer)) {
+                            if (!(ghostGamePlayer instanceof AlivePlayer)) {
                                 plugin.getMessageManager().sendLang(event.getPlayer(), GhostLangPath.PLAYER_TRAP_ONLY_ALIVE_CAN_RELEASE);
 
                                 event.setCancelled(true);
@@ -188,10 +194,10 @@ public class GhostGame implements Listener { // todo spectating command
                                 continue;
                             }
 
-                            if (clickedBlock.getBlockData() instanceof Powerable powerable) { // stone buttons do faster power off again
+                            if (clickedBlock.getBlockData() instanceof Powerable powerable) {
                                 powerable.setPowered(true);
 
-                                if (Tag.STONE_BUTTONS.isTagged(clickedBlock.getType())) {
+                                if (Tag.STONE_BUTTONS.isTagged(clickedBlock.getType())) { // stone buttons do faster power off again
                                     plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
                                         powerable.setPowered(false);
                                         clickedBlock.getLocation().getWorld().playSound(clickedBlock.getLocation(), Sound.BLOCK_STONE_BUTTON_CLICK_OFF, SoundCategory.BLOCKS, 1.0f, 1.0f);

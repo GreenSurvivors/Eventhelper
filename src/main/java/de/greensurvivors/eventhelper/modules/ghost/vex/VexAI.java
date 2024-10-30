@@ -4,8 +4,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Dynamic;
-import net.minecraft.core.BlockPos;
-import net.minecraft.util.Unit;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -97,7 +95,8 @@ public class VexAI {
             ImmutableList.of(
                 new VexChargeAttackBehavior(),
                 StopAttackingIfTargetInvalid.create(
-                    entity -> !nmsVex.getAngerLevel().isAngry() || !nmsVex.canTargetEntity(entity), VexAI::onTargetInvalid, false
+                    entity -> !nmsVex.canTargetEntity(entity), (entityinsentient, entityliving) -> {
+                    }, false
                 ),
                 SetEntityLookTarget.create(entity -> isTarget(nmsVex, entity), (float) nmsVex.getAttributeValue(Attributes.FOLLOW_RANGE)),
                 SetWalkTargetFromAttackTargetIfTargetOutOfReach.create(SPEED_MULTIPLIER_WHEN_FIGHTING),
@@ -109,24 +108,6 @@ public class VexAI {
 
     private static boolean isTarget(@NotNull NMSVexEntity nmsVex, LivingEntity entity) {
         return nmsVex.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).filter(entityx -> entityx == entity).isPresent();
-    }
-
-    private static void onTargetInvalid(final @NotNull NMSVexEntity nmsVex, final @NotNull LivingEntity suspect) {
-        if (!nmsVex.canTargetEntity(suspect)) {
-            nmsVex.clearAnger(suspect);
-        }
-    }
-
-    @SuppressWarnings("resource") // ignore level being auto closeable
-    public static void setDisturbanceLocation(final @NotNull NMSVexEntity nmsVex, final @NotNull BlockPos pos) {
-        if (nmsVex.level().getWorldBorder().isWithinBounds(pos)
-            && nmsVex.getEntityAngryAt().isEmpty()
-            && nmsVex.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).isEmpty()) {
-            nmsVex.getBrain().setMemoryWithExpiry(MemoryModuleType.SNIFF_COOLDOWN, Unit.INSTANCE, 100L);
-            nmsVex.getBrain().setMemoryWithExpiry(MemoryModuleType.LOOK_TARGET, new BlockPosTracker(pos), 100L);
-            nmsVex.getBrain().setMemoryWithExpiry(MemoryModuleType.DISTURBANCE_LOCATION, pos, DISTURBANCE_LOCATION_EXPIRY_TIME);
-            nmsVex.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
-        }
     }
 }
 

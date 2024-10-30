@@ -220,7 +220,7 @@ public class GhostModul extends AModul<GeneralGhostConfig> implements Listener {
         return null;
     }
 
-    public boolean isInValidArea(final @NotNull Location location) {
+    public boolean isInValidVexArea(final @NotNull Location location) {
         if (plugin.getDependencyManager().isWorldGuardEnabled()) {
             final @NotNull RegionQuery query = WorldGuard.getInstance().getPlatform().getRegionContainer().createQuery();
             return query.getApplicableRegions(BukkitAdapter.adapt(location)).queryState(null, ghostVexAllowedFlag) == StateFlag.State.ALLOW;
