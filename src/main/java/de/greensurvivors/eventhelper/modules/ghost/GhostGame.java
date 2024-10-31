@@ -147,7 +147,7 @@ public class GhostGame implements Listener {
                 // don't do things you have immediately undo after or maybe even can't easily undo like an async tp
                 plugin.getServer().getScheduler().runTask(plugin, () -> endGame(EndReason.ALL_DEAD));
             } else {
-                if (alivePlayer.getMouseTrapTrappedIn() != null) { // if a player already was trapped, do nothing
+                if (alivePlayer.getMouseTrapTrappedIn() == null) { // if a player already was trapped, do nothing
                     final List<@NotNull MouseTrap> mouseTraps = getMouseTraps();
                     alivePlayer.trapInMouseTrap(mouseTraps.get(ThreadLocalRandom.current().nextInt(mouseTraps.size())));
                 }

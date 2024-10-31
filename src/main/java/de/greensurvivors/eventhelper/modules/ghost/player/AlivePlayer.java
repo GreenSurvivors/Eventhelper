@@ -89,7 +89,7 @@ public class AlivePlayer extends AGhostGamePlayer {
             plugin.getComponentLogger().debug("Player with UUID \"{}\" has finished all available ghost game tasks!", getUuid());
             setNewTaskModifier(allTaskModifiers.stream().skip((int) (allTaskModifiers.size() * ThreadLocalRandom.current().nextDouble())).findFirst().orElse(null));
         } else {
-            int index = ThreadLocalRandom.current().nextInt(allTaskModifiers.size());
+            int index = ThreadLocalRandom.current().nextInt(availebleTaskIds.size());
             setNewTaskModifier(availebleTaskIds.get(index));
         }
 

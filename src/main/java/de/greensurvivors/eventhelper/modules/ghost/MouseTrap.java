@@ -125,7 +125,6 @@ public class MouseTrap implements ConfigurationSerializable, Listener {
             alivePlayer.getGame().broadcastAll(GhostLangPath.PLAYER_CAPTURED,
                 Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), alivePlayer.getBukkitPlayer().displayName()),
                 Placeholder.component(SharedPlaceHolder.TIME.getKey(), MessageManager.formatTime(alivePlayer.getGame().getConfig().getDurationTrappedUntilDeath())));
-
             return true;
         } else {
             return false;
