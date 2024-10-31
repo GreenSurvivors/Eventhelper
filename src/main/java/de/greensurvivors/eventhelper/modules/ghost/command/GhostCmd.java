@@ -95,7 +95,6 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
 
                         if (game != null) {
                             game.playerQuit(player, true);
-                            plugin.getMessageManager().sendLang(player, GhostLangPath.PLAYER_GAME_QUIT);
                         } else {
                             plugin.getMessageManager().sendLang(player, GhostLangPath.ERROR_NOT_PLAYING_SELF);
                         }
@@ -122,11 +121,18 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
                         switch (args.get(1).toLowerCase(Locale.ENGLISH)) {
                             case START_GAME -> {
                                 if (sender.hasPermission(START_PERM)) {
-                                    game.startStartingCountdown();
+                                    if (game.getGameState() == GhostGame.GameState.IDLE) {
+                                        game.startStartingCountdown();
 
-                                    plugin.getMessageManager().sendPrefixedLang(sender,
-                                        GhostLangPath.MESSAGE_PREFIX, GhostLangPath.COMMAND_START_SUCCESS,
-                                        Placeholder.unparsed(SharedPlaceHolder.TEXT.getKey(), game.getName_id()));
+                                        plugin.getMessageManager().sendPrefixedLang(sender,
+                                            GhostLangPath.MESSAGE_PREFIX, GhostLangPath.COMMAND_START_SUCCESS,
+                                            Placeholder.unparsed(SharedPlaceHolder.TEXT.getKey(), game.getName_id()));
+                                    } else {
+                                        plugin.getMessageManager().sendPrefixedLang(sender,
+                                            GhostLangPath.MESSAGE_PREFIX,
+                                            GhostLangPath.COMMAND_START_ERROR_ALREADY_RUNNING,
+                                            Placeholder.unparsed(SharedPlaceHolder.TEXT.getKey(), game.getName_id()));
+                                    }
                                 } else {
                                     plugin.getMessageManager().sendLang(sender, SharedLangPath.NO_PERMISSION);
                                 }

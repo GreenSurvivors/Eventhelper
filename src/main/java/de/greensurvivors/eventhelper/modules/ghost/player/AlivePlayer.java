@@ -97,7 +97,7 @@ public class AlivePlayer extends AGhostGamePlayer {
     }
 
     // used for dying
-    public @NotNull List<@NotNull QuestModifier> generateGhostTasks() {
+    public @NotNull List<@NotNull QuestModifier> generatePerishedTasks() {
         final List<QuestModifier> result = new ArrayList<>();
 
         final Collection<QuestModifier> allTaskModifiers = getGame().getConfig().getTasks().values();
@@ -116,7 +116,7 @@ public class AlivePlayer extends AGhostGamePlayer {
 
                 allTaskModifiers.stream().skip((int) (allTaskModifiers.size() * ThreadLocalRandom.current().nextDouble())).findFirst().ifPresent(result::add);
             } else {
-                int index = ThreadLocalRandom.current().nextInt(allTaskModifiers.size());
+                int index = ThreadLocalRandom.current().nextInt(availebleTaskIds.size());
                 result.add(availebleTaskIds.remove(index));
             }
         }

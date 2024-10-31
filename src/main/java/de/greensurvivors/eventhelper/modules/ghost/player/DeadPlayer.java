@@ -9,7 +9,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 import java.util.UUID;
 
-public class DeadPlayer extends AGhostGamePlayer { // todo
+public class DeadPlayer extends AGhostGamePlayer {
     private final @NotNull List<@NotNull QuestModifier> stillPossibleTasks;
 
     public DeadPlayer(final @NotNull EventHelper plugin,

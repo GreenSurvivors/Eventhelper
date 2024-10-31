@@ -42,7 +42,7 @@ import javax.annotation.Nullable;
 import java.lang.reflect.Field;
 
 // wanders around looking for player if no target. can target through walls but must path find there
-public class NMSGhostEntity extends Monster implements Enemy { // todo make use of the block the underworld ghost is standing on!
+public class NMSGhostEntity extends Monster implements Enemy {
     /**
      * do NOT - I repeat - do NOT call GHOST_TYPE.create!
      * There is no way to add the important game parameter there!
@@ -50,7 +50,7 @@ public class NMSGhostEntity extends Monster implements Enemy { // todo make use 
     public static final EntityType<NMSGhostEntity> GHOST_TYPE = registerEntityType(
         (EntityType.Builder.
             of(null, MobCategory.MONSTER).
-            sized(4.0F, 4.0F).
+            sized(6.0F, 6.0F).
             noSave(). // don't save this entity to disk.
                 clientTrackingRange(10)));
     protected final @NotNull GhostGame ghostGame;

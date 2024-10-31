@@ -57,8 +57,7 @@ public class GhostAI {
                 SetEntityLookTargetSometimes.create(8.0F, UniformInt.of(30, 60)),
                 new RunOne<>(
                     ImmutableList.of(
-                        Pair.of(MoveToIdlePosBehavior.moveToIdlePos(), 2), // todo replace with pathfind to middle
-
+                        Pair.of(MoveToIdlePosBehavior.moveToIdlePos(), 2),
                         Pair.of(SetWalkTargetFromLookTarget.create((float) ghost.getIdleVelocity(), 3), 2),
                         Pair.of(new DoNothing(30, 60), 1)
                     )

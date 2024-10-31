@@ -47,7 +47,7 @@ import javax.annotation.Nullable;
 import java.lang.reflect.Field;
 import java.util.function.BiConsumer;
 
-public class NMSVexEntity extends Vex implements VibrationSystem { // todo system to stay in region
+public class NMSVexEntity extends Vex implements VibrationSystem {
     /**
      * do NOT - I repeat - do NOT call GHOST_TYPE.create!
      * There is no way to add the important game parameter there!
@@ -416,7 +416,7 @@ public class NMSVexEntity extends Vex implements VibrationSystem { // todo syste
                                        final float distance) {
             if (!NMSVexEntity.this.isDeadOrDying()) {
                 // ignore vibrations outside of region
-                if (!NMSVexEntity.this.isWithinRestriction(entity == null ? sourceEntity.blockPosition() : entity.blockPosition())) {
+                if (sourceEntity == null || !NMSVexEntity.this.isWithinRestriction(entity == null ? sourceEntity.blockPosition() : entity.blockPosition())) {
                     return;
                 }
 
