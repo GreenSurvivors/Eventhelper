@@ -69,7 +69,7 @@ public class GhostGame implements Listener {
     private final @NotNull Team perishedTeam;
     private @NotNull GameState gameState;
     private long amountOfTicksRun;
-    private @Nullable BukkitTask timeTask = null; // this has to be sync!
+    private @Nullable BukkitTask tickTask = null; // this has to be sync!
     private double gainedPoints = 0;
 
     public GhostGame(final @NotNull EventHelper plugin, final @NotNull GhostModul modul, final @NotNull String name_id) {
@@ -325,8 +325,8 @@ public class GhostGame implements Listener {
             }
         }
 
-        if (timeTask != null) {
-            timeTask.cancel();
+        if (tickTask != null) {
+            tickTask.cancel();
         }
 
         for (Iterator<Map.Entry<UUID, AGhostGamePlayer>> iterator = players.entrySet().iterator(); iterator.hasNext(); ) {
@@ -361,7 +361,7 @@ public class GhostGame implements Listener {
             plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), gameNamePattern.matcher(cmd).replaceAll(getName_id()));
         }
 
-        timeTask = plugin.getServer().getScheduler().runTaskTimer(plugin, this::tick, 0, 1);
+        tickTask = plugin.getServer().getScheduler().runTaskTimer(plugin, this::tick, 0, 1);
         gameState = GameState.RUNNING;
     }
 
@@ -430,19 +430,22 @@ public class GhostGame implements Listener {
 
             // tick players in mousetraps
             for (MouseTrap mouseTrap : getConfig().getMouseTraps()) {
-                for (Map.Entry<AlivePlayer, Long> entry : mouseTrap.getTrappedPlayers().entrySet()) {
+                for (Iterator<Map.Entry<AlivePlayer, Long>> iterator = mouseTrap.getTrappedPlayers().entrySet().iterator(); iterator.hasNext(); ) {
+                    Map.Entry<AlivePlayer, Long> entry = iterator.next();
 
                     Duration durationToStayAlive = getConfig().getDurationTrappedUntilDeath().minusMillis(System.currentTimeMillis() - entry.getValue());
                     final long millisToStayAlive = durationToStayAlive.toMillis();
                     if (millisToStayAlive < 0) {
-                        mouseTrap.removePlayer(entry.getKey());
+                        iterator.remove();
+
                         makePerishedPlayer(entry.getKey().getUuid());
                         entry.getKey().getBukkitPlayer().teleportAsync(getConfig().getPlayerStartLocation());
 
                         if (areAllPlayersDead()) {
                             endGame(EndReason.ALL_DEAD);
                         } else {
-                            broadcastAll(GhostLangPath.PLAYER_TRAP_PERISH);
+                            broadcastAll(GhostLangPath.PLAYER_TRAP_PERISH,
+                                Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), entry.getKey().getBukkitPlayer().displayName()));
                         }
                     } else {
                         // checking in seconds will spam, because of 20 ticks / second => 20 messages
@@ -587,8 +590,8 @@ public class GhostGame implements Listener {
         }
         vexes.clear();
 
-        if (timeTask != null) {
-            timeTask.cancel();
+        if (tickTask != null) {
+            tickTask.cancel();
         }
         gainedPoints = 0;
         amountOfTicksRun = 0;
