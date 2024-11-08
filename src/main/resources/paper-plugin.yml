@@ -1,0 +1,18 @@
+main: de.greensurvivors.eventhelper.EventHelper
+bootstrapper: de.greensurvivors.eventhelper.Bootstrapper
+loader: de.greensurvivors.eventhelper.Loader
+api-version: '${mainMCVersion}'
+name: EventHelper
+version: ${version}
+description: ${description}
+authors: [ GreensurvivorsTeam ]
+
+dependencies:
+  server:
+    WorldGuard:
+      load: AFTER
+      required: false
+    SimpleQuests:
+      required: false
+      load: BEFORE
+      join-classpath: true
