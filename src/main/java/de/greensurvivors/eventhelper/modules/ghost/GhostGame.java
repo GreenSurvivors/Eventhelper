@@ -127,7 +127,7 @@ public class GhostGame implements Listener {
 
                 if (newQuestModifier != null) { // enable new quest
                     SimpleQuests.getInstance().getDatabaseManager().setTimesQuestFinished(event.getPlayer(), newQuestModifier.getRequiredQuestIdentifier(), 1);
-                } else if (ghostGamePlayer instanceof DeadPlayer) {
+                } else if (ghostGamePlayer instanceof PerishedPlayer) {
                     makePlayerSpectator(ghostGamePlayer.getBukkitPlayer());
 
                     broadcastExcept(GhostLangPath.PLAYER_PERISHED_TASK_DONE_BROADCAST, ghostGamePlayer.getUuid(),
@@ -159,7 +159,7 @@ public class GhostGame implements Listener {
             }
 
             event.setCancelled(true);
-        } else if (ghostGamePlayer instanceof DeadPlayer deadPlayer) {
+        } else if (ghostGamePlayer instanceof PerishedPlayer deadPlayer) {
             event.getPlayer().teleportAsync(getConfig().getPlayerStartLocation());
             makePlayerSpectator(deadPlayer.getBukkitPlayer());
             event.setCancelled(true);
@@ -183,7 +183,7 @@ public class GhostGame implements Listener {
 
                     for (MouseTrap mouseTrap : getMouseTraps()) {
                         if (mouseTrap.isReleaseBlockLocation(clickedBlock.getLocation())) {
-                            // don't allow dead or spectating players to free anyone
+                            // don't allow perished or spectating players to free anyone
                             if (!(ghostGamePlayer instanceof AlivePlayer)) {
                                 plugin.getMessageManager().sendLang(event.getPlayer(), GhostLangPath.PLAYER_TRAP_ONLY_ALIVE_CAN_RELEASE);
 
@@ -255,6 +255,7 @@ public class GhostGame implements Listener {
         }
     }
 
+    /// start countdown before the game starts
     public void startStartingCountdown() {
         gameState = GameState.COUNTDOWN;
         doCountdown(10);
@@ -264,6 +265,7 @@ public class GhostGame implements Listener {
         }
     }
 
+    /// do countdown before the game starts
     protected void doCountdown(int secondsRemain) {
         if (secondsRemain > 0) {
             for (Iterator<Map.Entry<UUID, AGhostGamePlayer>> iterator = players.entrySet().iterator(); iterator.hasNext(); ) {
@@ -293,6 +295,7 @@ public class GhostGame implements Listener {
         }
     }
 
+    /// start the actual game
     protected void startGame() {
         gameState = GameState.STARTING;
         Random random = ThreadLocalRandom.current();
@@ -365,15 +368,16 @@ public class GhostGame implements Listener {
         gameState = GameState.RUNNING;
     }
 
+    /// heartbeat of the game
     @SuppressWarnings("UnstableApiUsage") // tick manager
     protected void tick() {
         amountOfTicksRun++;
 
         long gameDurationInTicks = config.getGameDuration().toMillis() / 50;
 
-        if (amountOfTicksRun <= gameDurationInTicks) {
-            float tickRate = plugin.getServer().getServerTickManager().getTickRate();
-            double millisPerTick = 1000D / tickRate;
+        if (amountOfTicksRun <= gameDurationInTicks) { // check if game has run out of time
+            final float tickRate = plugin.getServer().getServerTickManager().getTickRate();
+            final double millisPerTick = 1000D / tickRate;
 
             // tick player time
             if (config.getStartPlayerTime() >= 0 && config.getEndPlayerTime() >= 0) {
@@ -533,6 +537,7 @@ public class GhostGame implements Listener {
         HandlerList.unregisterAll(this);
     }
 
+    /// ends and resets the game
     public void endGame(final @NotNull EndReason reason) {
         switch (reason) {
             case EXTERN -> { // Command
@@ -610,7 +615,8 @@ public class GhostGame implements Listener {
         }
     }
 
-    public void playerJoin(final @NotNull Player player) { // todo permission
+    /// does not perform a permission check
+    public void playerJoin(final @NotNull Player player) {
         if (ghostModul.getGameParticipatingIn(player) == null) {
             switch (gameState) {
                 case IDLE -> {
@@ -631,7 +637,7 @@ public class GhostGame implements Listener {
                                     // now sort them to what and where they were before quitting
                                     if (offlinePlayer instanceof AlivePlayer alivePlayer) {
                                         makeAlivePlayerAgain(alivePlayer);
-                                    } else if (offlinePlayer instanceof DeadPlayer deadPlayer) {
+                                    } else if (offlinePlayer instanceof PerishedPlayer deadPlayer) {
                                         rePerishPlayer(deadPlayer);
                                     }
                                 } else {
@@ -656,13 +662,14 @@ public class GhostGame implements Listener {
         }
     }
 
+    /// when a player joins a game
     protected void makeAlivePlayer(final @NotNull Player player) {
         final AlivePlayer alivePlayer = new AlivePlayer(plugin, this, player.getUniqueId());
         players.put(player.getUniqueId(), alivePlayer);
 
         // hide players
         for (AGhostGamePlayer otherPlayer : players.values()) {
-            if (otherPlayer instanceof DeadPlayer) {
+            if (otherPlayer instanceof PerishedPlayer) {
                 player.hidePlayer(plugin, otherPlayer.getBukkitPlayer());
             }
         }
@@ -696,7 +703,7 @@ public class GhostGame implements Listener {
             Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), player.displayName()));
     }
 
-    // used for rejoining a game
+    /// used for rejoining a game
     protected void makeAlivePlayerAgain(final @NotNull AlivePlayer oldAlivePlayer) {
         final @Nullable Player player = oldAlivePlayer.getBukkitPlayer();
         if (player == null) {
@@ -714,7 +721,7 @@ public class GhostGame implements Listener {
 
         // hide players
         for (AGhostGamePlayer otherPlayer : players.values()) {
-            if (otherPlayer instanceof DeadPlayer) {
+            if (otherPlayer instanceof PerishedPlayer) {
                 player.hidePlayer(plugin, otherPlayer.getBukkitPlayer());
             }
         }
@@ -764,7 +771,7 @@ public class GhostGame implements Listener {
      * Instead, use {@link #makePlayerSpectator(Player)} even if you have easy access to the player data!
      * using this method means you are missing out of a potential check on game end!
      **/
-    protected void makePlayerSpectator(final @NotNull Player player, final @NotNull PlayerData playerData) {
+    private void makePlayerSpectator(final @NotNull Player player, final @NotNull PlayerData playerData) {
         players.remove(player.getUniqueId());
         spectators.put(player.getUniqueId(), new SpectatingPlayer(plugin, this, player.getUniqueId(), playerData));
 
@@ -798,12 +805,13 @@ public class GhostGame implements Listener {
         plugin.getMessageManager().sendLang(player, GhostLangPath.PLAYER_START_SPECTATING);
     }
 
+    /// called when a player runs out of time while trapped
     protected void makePerishedPlayer(final @NotNull UUID uuid) throws PlayerNotAliveException {
         final @Nullable AGhostGamePlayer ghostGamePlayer = players.get(uuid);
 
         if (ghostGamePlayer instanceof AlivePlayer alivePlayer) {
             final @Nullable Player player = ghostGamePlayer.getBukkitPlayer();
-            players.put(uuid, new DeadPlayer(plugin, this, uuid, alivePlayer.getPlayerData(), alivePlayer.generatePerishedTasks()));
+            players.put(uuid, new PerishedPlayer(plugin, this, uuid, alivePlayer.getPlayerData(), alivePlayer.generatePerishedTasks()));
 
             perishedTeam.addPlayer(player);
             player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, -1, 0, false, false, false));
@@ -815,9 +823,10 @@ public class GhostGame implements Listener {
         }
     }
 
-    protected void rePerishPlayer(final @NotNull DeadPlayer deadPlayer) { // damn necromancers!
+    /// called when a player who perished the last time rejoins the game
+    protected void rePerishPlayer(final @NotNull PerishedPlayer deadPlayer) { // damn necromancers!
         final @Nullable Player player = deadPlayer.getBukkitPlayer();
-        players.put(deadPlayer.getUuid(), new DeadPlayer(plugin, this, deadPlayer.getUuid(), new PlayerData(plugin, player), deadPlayer.getGhostTasks()));
+        players.put(deadPlayer.getUuid(), new PerishedPlayer(plugin, this, deadPlayer.getUuid(), new PlayerData(plugin, player), deadPlayer.getGhostTasks()));
         player.teleportAsync(config.getPlayerStartLocation());
         player.setGameMode(GameMode.SURVIVAL);
 
@@ -846,6 +855,11 @@ public class GhostGame implements Listener {
             Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), player.displayName()));
     }
 
+    /**
+     * reset the player and end the game if they were the last one alive and free
+     *
+     * @param teleport if the player should be teleported to the end location of the game
+     */
     public void playerQuit(final @NotNull Player player, boolean teleport) {
         final @Nullable AGhostGamePlayer ghostGamePlayer = players.get(player.getUniqueId());
         if (ghostGamePlayer != null) {
@@ -860,7 +874,7 @@ public class GhostGame implements Listener {
 
             // reset Scoreboard
             perishedTeam.removePlayer(player);
-            // player will get potion effects removed and dead players will be visible again, after the player data was restored
+            // player will get potion effects removed and perished players will be visible again, after the player data was restored
             ghostGamePlayer.restorePlayer();
 
             if (ghostGamePlayer instanceof AlivePlayer alivePlayer) {
@@ -870,7 +884,7 @@ public class GhostGame implements Listener {
                     trap.removePlayer(alivePlayer);
                     alivePlayer.releaseFromTrap();
                 }
-            } else if (ghostGamePlayer instanceof DeadPlayer) {
+            } else if (ghostGamePlayer instanceof PerishedPlayer) {
                 for (Iterator<AGhostGamePlayer> iterator = players.values().iterator(); iterator.hasNext(); ) {
                     AGhostGamePlayer otherGhostGamePlayer = iterator.next();
                     Player otherPlayer = otherGhostGamePlayer.getBukkitPlayer();
@@ -939,6 +953,7 @@ public class GhostGame implements Listener {
         }
     }
 
+    /// broadcast to all game participants except the one with the given uuid, if not null
     public void broadcastExcept(final @NotNull LangPath langPath,
                                 final @Nullable UUID exception,
                                 final @NotNull TagResolver... resolvers) {
@@ -969,10 +984,12 @@ public class GhostGame implements Listener {
         }
     }
 
+    /// broadcast to all game participants
     public void broadcastAll(final @NotNull LangPath langPath, final @NotNull TagResolver... resolvers) {
         broadcastExcept(langPath, null, resolvers);
     }
 
+    /// broadcast to all game participants except the one with the given uuid, if not null
     public void broadcastExcept(@NotNull LangPath langPath, final @Nullable UUID exception) {
         for (Iterator<Map.Entry<UUID, AGhostGamePlayer>> iterator = players.entrySet().iterator(); iterator.hasNext(); ) {
             Map.Entry<UUID, AGhostGamePlayer> entry = iterator.next();
@@ -1014,10 +1031,12 @@ public class GhostGame implements Listener {
         }
     }
 
+    /// broadcast to all game participants
     public void broadcastAll(@NotNull LangPath langPath) {
         broadcastExcept(langPath, null);
     }
 
+    /// reloads the config. Will end the game
     public @NotNull CompletableFuture<@NotNull Boolean> reload() {
         endGame(EndReason.EXTERN);
         gameState = GameState.RESETTING; // lock from joining while we wait for config
@@ -1028,6 +1047,7 @@ public class GhostGame implements Listener {
         });
     }
 
+    /// intern used game unique name
     public @NotNull String getName_id() {
         return name_id;
     }
@@ -1040,6 +1060,7 @@ public class GhostGame implements Listener {
         return config;
     }
 
+    /// returns true, if all players would be perished or trapped if this player would also die / get trapped
     protected boolean wouldAllPlayersBeDead(final @NotNull AlivePlayer alivePlayer) {
         for (AGhostGamePlayer ghostGamePlayer : players.values()) {
             if (ghostGamePlayer instanceof AlivePlayer otherAlivePlayer &&
@@ -1052,6 +1073,7 @@ public class GhostGame implements Listener {
         return true;
     }
 
+    /// returns true, if all players would are perished or trapped
     protected boolean areAllPlayersDead() {
         for (AGhostGamePlayer ghostGamePlayer : players.values()) {
             if (ghostGamePlayer instanceof AlivePlayer alivePlayer &&

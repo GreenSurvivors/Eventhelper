@@ -45,26 +45,27 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Stream;
 
 public class GhostModul extends AModul<GeneralGhostConfig> implements Listener {
     private final @NotNull Map<@NotNull String, GhostGame> games = new HashMap<>();
     protected @Nullable StateFlag ghostVexAllowedFlag;
     private final static @NotNull Permission PERMISSION_EDIT_SIGN = new Permission("eventhelper.ghost.edit-sign", PermissionDefault.OP);
+    private final static @NotNull Permission PERMISSION_JOIN_GAME = new Permission("eventhelper.ghost.join", PermissionDefault.OP);
+    private final static @NotNull Permission PERMISSION_SPECTATE_GAME = new Permission("eventhelper.ghost.spectate", PermissionDefault.OP);
     private final static @NotNull Permission PERMISSION_GHOST_WILDCARD = new Permission("eventhelper.ghost.*", PermissionDefault.OP,
         Map.of(
-            PERMISSION_EDIT_SIGN.getName(), true
-        )); // todo add as parent to cmds
+            PERMISSION_EDIT_SIGN.getName(), true,
+            PERMISSION_JOIN_GAME.getName(), true,
+            PERMISSION_SPECTATE_GAME.getName(), true
+        ));
 
     public GhostModul(final @NotNull EventHelper plugin) {
         super(plugin, new GeneralGhostConfig(plugin));
         this.getConfig().setModul(this);
 
-        plugin.getMainCmd().registerSubCommand(new GhostCmd(plugin, MainCmd.getParentPermission(), this));
+        plugin.getMainCmd().registerSubCommand(new GhostCmd(plugin, List.of(MainCmd.getParentPermission(), PERMISSION_GHOST_WILDCARD), this));
         plugin.getServer().getPluginManager().addPermission(PERMISSION_EDIT_SIGN);
         plugin.getServer().getPluginManager().addPermission(PERMISSION_GHOST_WILDCARD);
 
@@ -229,8 +230,16 @@ public class GhostModul extends AModul<GeneralGhostConfig> implements Listener {
         }
     }
 
+    public @NotNull Permission getJoinPermission() {
+        return PERMISSION_JOIN_GAME;
+    }
+
+    public @NotNull Permission getSpectatePermission() {
+        return PERMISSION_SPECTATE_GAME;
+    }
+
     @EventHandler(ignoreCancelled = true)
-    private void onSignClick(final @NotNull PlayerInteractEvent event) { // todo permission check
+    private void onSignClick(final @NotNull PlayerInteractEvent event) {
         Block clickedBlock = event.getClickedBlock();
         if (clickedBlock == null) {
             return;
@@ -240,24 +249,32 @@ public class GhostModul extends AModul<GeneralGhostConfig> implements Listener {
             final @NotNull SignSide frontSide = sign.getSide(Side.FRONT);
             final @NotNull Player eventPlayer = event.getPlayer();
             if (plugin.getMessageManager().isStrippedEqualsIgnoreCase(GhostLangPath.SIGN_JOIN, frontSide.line(0))) {
-                @Nullable GhostGame game = getGameByName(PlainTextComponentSerializer.plainText().serialize(frontSide.line(1)).trim());
+                if (eventPlayer.hasPermission(getJoinPermission())) {
+                    @Nullable GhostGame game = getGameByName(PlainTextComponentSerializer.plainText().serialize(frontSide.line(1)).trim());
 
-                if (game != null) {
-                    game.playerJoin(eventPlayer);
+                    if (game != null) {
+                        game.playerJoin(eventPlayer);
+                    } else {
+                        plugin.getMessageManager().sendLang(eventPlayer, GhostLangPath.ARG_NOT_A_GAME,
+                            Placeholder.component(SharedPlaceHolder.ARGUMENT.getKey(), frontSide.line(1)));
+                    }
                 } else {
-                    plugin.getMessageManager().sendLang(eventPlayer, GhostLangPath.ARG_NOT_A_GAME,
-                        Placeholder.component(SharedPlaceHolder.ARGUMENT.getKey(), frontSide.line(1)));
+                    plugin.getMessageManager().sendPrefixedLang(eventPlayer, GhostLangPath.MESSAGE_PREFIX, SharedLangPath.NO_PERMISSION);
                 }
             } else if (plugin.getMessageManager().isStrippedEqualsIgnoreCase(GhostLangPath.SIGN_SPECTATE, frontSide.line(0))) {
-                @Nullable GhostGame game = getGameByName(PlainTextComponentSerializer.plainText().serialize(frontSide.line(1)).trim());
+                if (eventPlayer.hasPermission(getSpectatePermission())) {
+                    @Nullable GhostGame game = getGameByName(PlainTextComponentSerializer.plainText().serialize(frontSide.line(1)).trim());
 
-                if (game != null) {
-                    game.playerSpectate(eventPlayer);
+                    if (game != null) {
+                        game.playerSpectate(eventPlayer);
+                    } else {
+                        plugin.getMessageManager().sendLang(eventPlayer, GhostLangPath.ARG_NOT_A_GAME,
+                            Placeholder.component(SharedPlaceHolder.ARGUMENT.getKey(), frontSide.line(1)));
+                    }
                 } else {
-                    plugin.getMessageManager().sendLang(eventPlayer, GhostLangPath.ARG_NOT_A_GAME,
-                        Placeholder.component(SharedPlaceHolder.ARGUMENT.getKey(), frontSide.line(1)));
+                    plugin.getMessageManager().sendPrefixedLang(eventPlayer, GhostLangPath.MESSAGE_PREFIX, SharedLangPath.NO_PERMISSION);
                 }
-            } else if (plugin.getMessageManager().isStrippedEqualsIgnoreCase(GhostLangPath.SIGN_QUIT, frontSide.line(0))) {
+            } else if (plugin.getMessageManager().isStrippedEqualsIgnoreCase(GhostLangPath.SIGN_QUIT, frontSide.line(0))) { // no quit permission, you can always quit
                 GhostGame game = getGameParticipatingIn(eventPlayer);
 
                 if (game != null) {

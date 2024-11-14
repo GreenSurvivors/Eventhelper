@@ -35,14 +35,13 @@ public class MessageManager {
     private final @NotNull LoadingCache<@NotNull String, @NotNull ResourceBundle> resourceBundles = Caffeine.newBuilder().build(
         this::loadBundle); // todo check
 
-    /**
-     * caches every component without placeholder for faster access in future and loads missing values automatically
-     */
+    /// caches every component without placeholder for faster access in future and loads missing values automatically
     private final @NotNull LoadingCache<@NotNull LangPath, @NotNull Component> langCache = Caffeine.newBuilder().build(
         path -> MiniMessage.miniMessage().deserialize(
             getRawString(path)
         )
     );
+    /// sometimes, like in case of strings, you need to compare two strings without caring for text-style
     private final @NotNull LoadingCache<@NotNull LangPath, @NotNull String> strippedLangCache = Caffeine.newBuilder().build(
         path -> MiniMessage.miniMessage().stripTags(
             getRawString(path)
@@ -55,38 +54,50 @@ public class MessageManager {
         this.plugin = plugin;
     }
 
+    /**
+     * @return the given duration formated as DDdHHhMMmSSsTTt
+     * D = amount of days if any
+     * H = amount of hours, if any
+     * M = amount of minutes, if any
+     * S = amount of seconds, if any
+     * T = amount of ticks, if any
+     */
     public static @NotNull Component formatTime(final @NotNull Duration duration) {
-        String timeStr = "";
+        StringBuilder timeStr = new StringBuilder();
 
         final long days = duration.toDaysPart();
         if (days != 0) {
-            timeStr += days + "d";
+            timeStr.append(days).append("d");
         }
 
         final int hours = duration.toHoursPart();
         if (hours != 0) {
-            timeStr += hours + "h";
+            timeStr.append(hours).append("h");
         }
 
         final int minutes = duration.toMinutesPart();
         if (minutes != 0) {
-            timeStr += minutes + "m";
+            timeStr.append(minutes).append("m");
         }
 
         final int seconds = duration.toSecondsPart();
         if (seconds != 0) {
-            timeStr += seconds + "s";
+            timeStr.append(seconds).append("s");
         }
 
-        final int ticks = duration.toMillisPart() / 50;
+        // the tick rate isn't constant anymore, but can get adjusted ingame.
+        // with a standard tick rate of 20 t/s / 1000 ms/s we would have duration.toMillisPart() / 50.
+        final float ticksPerSecond = Bukkit.getServerTickManager().getTickRate();
+        final int ticks = (int) (duration.toMillisPart() * ticksPerSecond / 1000);
         if (ticks != 0) {
-            timeStr += ticks + "t";
+            timeStr.append(ticks).append("t");
         }
-        return Component.text(timeStr);
+        return Component.text(timeStr.toString());
     }
 
     /**
-     * Use with care, as this fetches raw strings.
+     * Use with care, as this fetches raw aka yet unformatted strings, directly from the ressource bundle,
+     * or the default of the LangPath
      */
     public @NotNull String getRawString(final @NotNull LangPath path) {
         try {
@@ -97,6 +108,13 @@ public class MessageManager {
         }
     }
 
+    /**
+     * Sometimes it may be useful to have a set of alternative messages belonging to the very same LangPath.
+     * Examples may include a random message or matching user input against a set of alternatives.
+     * <p>
+     * Use with care, as this fetches raw aka yet unformatted strings, directly from the ressource bundle,
+     * or the default of the LangPath
+     */
     private @NotNull Set<@NotNull String> getRawStringSet(final @NotNull String modulName,
                                                           final @NotNull LangPath path) {
         String value;
@@ -110,6 +128,7 @@ public class MessageManager {
         return Set.of(value.split("\\s?+,\\s?+"));
     }
 
+    /// set the locale used by the base plugin and every module
     public void setLocale(final @NotNull Locale locale) {
         if (!this.locale.equals(locale)) {
             this.locale = locale;
@@ -128,9 +147,7 @@ public class MessageManager {
         }
     }
 
-    /**
-     * reload language file.
-     */
+    /// reload language file.
     public @Nullable ResourceBundle loadBundle(final @NotNull String modulName) {
         ResourceBundle resourceBundle = null; // reset last bundle
 
@@ -167,10 +184,12 @@ public class MessageManager {
         return resourceBundle;
     }
 
+    /// the resource bundle should be named the modulName followed by "Lang"
     private static @NotNull String makeBundleName(final @NotNull String modulName) {
         return modulName + "Lang";
     }
 
+    /// make sure reading and writing does happen as expected, by escaping special characters
     private @NotNull String saveConvert(final @NotNull String theString,
                                         final boolean escapeSpace) {
         int len = theString.length();
@@ -232,7 +251,8 @@ public class MessageManager {
     }
 
     /**
-     * saves all missing lang files from resources to the modules folder
+     * saves all missing lang files from resources to the modules folder,
+     * as well as appending the old ones with new key-value pairs
      */
     private void initLangFiles(final @NotNull String modulName) {
         CodeSource src = this.getClass().getProtectionDomain().getCodeSource();
@@ -314,16 +334,12 @@ public class MessageManager {
         return MiniMessage.miniMessage().deserialize(getRawString(path), resolver);
     }
 
-    /**
-     * get a component from lang file
-     */
+    ///get a component from lang file
     public @NotNull Component getLang(final @NotNull LangPath path) {
         return langCache.get(path);
     }
 
-    /**
-     * send a component from the lang file to the audience, prefixed with this prefix.
-     */
+    /// send a component from the lang file to the audience, prefixed with this prefix.
     public void sendPrefixedLang(final @NotNull Audience audience,
                                  final @NotNull LangPath prefix,
                                  final @NotNull LangPath path) {
@@ -331,20 +347,20 @@ public class MessageManager {
         audience.sendMessage(langCache.get(prefix).appendSpace().append(langCache.get(path)));
     }
 
-    /**
-     * send a component from the lang file to the audience, prefixed with this prefix.
-     */
+    ///send a component from the lang file to the audience, prefixed with this prefix.
     public void sendLang(final @NotNull Audience audience,
                          final @NotNull LangPath path) {
         audience.sendMessage(langCache.get(path));
     }
 
-    public void sendPrefixedLang(final @NotNull LangPath prefix,
-                                 final @NotNull Audience audience,
+    /// send a component to the audience, prefixed with this prefix.
+    public void sendPrefixedLang(final @NotNull Audience audience,
+                                 final @NotNull LangPath prefix,
                                  final @NotNull Component message) {
         audience.sendMessage(langCache.get(prefix).appendSpace().append(message));
     }
 
+    /// send a component to the audience.
     public void sendLang(final @NotNull Audience audience,
                          final @NotNull Component message) {
         audience.sendMessage(message);
@@ -358,9 +374,7 @@ public class MessageManager {
         Bukkit.broadcast(langCache.get(prefix).appendSpace().append(langCache.get(path)));
     }
 
-    /**
-     * broadcast a component from the lang file on the server
-     */
+    /// broadcast a component from the lang file on the server
     public void broadcastLang(final @NotNull LangPath path) {
         Bukkit.broadcast(langCache.get(path));
     }
@@ -407,6 +421,7 @@ public class MessageManager {
         Bukkit.broadcast(MiniMessage.miniMessage().deserialize(getRawString(path), resolver));
     }
 
+    ///Compares the plain text associated with the LangPath to the serialized component, ignoring casing
     public boolean isStrippedEqualsIgnoreCase(final @NotNull LangPath langPath, final @NotNull Component component) {
         String strToTest = PlainTextComponentSerializer.plainText().serialize(component).trim();
 

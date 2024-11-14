@@ -26,9 +26,9 @@ public class TNTKnockbackConfig extends AModulConfig<TNTKnockbackModul> {
 
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             synchronized (this) {
-                if (this.modul != null) {
+                if (getModul() != null) {
                     if (!Files.isRegularFile(configPath)) {
-                        plugin.saveResource(modul.getName() + "/" + configPath.getFileName().toString(), false);
+                        plugin.saveResource(getModul().getName() + "/" + configPath.getFileName().toString(), false);
                     }
 
                     try (BufferedReader bufferedReader = Files.newBufferedReader(configPath)) {
@@ -41,17 +41,17 @@ public class TNTKnockbackConfig extends AModulConfig<TNTKnockbackModul> {
                             if (dataVersion.compareTo(lastVersion) < 0) {
                                 plugin.getComponentLogger().warn("Found modul config for \"{}\" was saved in a newer data version ({}), " +
                                         "expected: {}. Trying to load anyway but some this most definitely will be broken!",
-                                    modul.getName(), lastVersion, dataVersion);
+                                    getModul().getName(), lastVersion, dataVersion);
                             }
                         } else {
                             plugin.getComponentLogger().warn("The data version for modul config for \"{}\" was missing." +
-                                " Proceed with care!", modul.getName());
+                                " Proceed with care!", getModul().getName());
                         }
 
                         isEnabled.setValue(config.getBoolean(isEnabled.getPath()));
                         Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(isEnabled.getValueOrFallback())); // back to main thread
                     } catch (IOException e) {
-                        plugin.getComponentLogger().error("Could not load modul config for {} from file!", modul.getName(), e);
+                        plugin.getComponentLogger().error("Could not load modul config for {} from file!", getModul().getName(), e);
 
                         isEnabled.setValue(Boolean.FALSE);
                         Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(Boolean.FALSE)); // back to main thread
@@ -74,9 +74,9 @@ public class TNTKnockbackConfig extends AModulConfig<TNTKnockbackModul> {
 
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             synchronized (this) {
-                if (this.modul != null) {
+                if (getModul() != null) {
                     if (!Files.isRegularFile(configPath)) {
-                        plugin.saveResource(modul.getName() + "/" + configPath.getFileName().toString(), false);
+                        plugin.saveResource(getModul().getName() + "/" + configPath.getFileName().toString(), false);
                     }
 
                     try (BufferedReader bufferedReader = Files.newBufferedReader(configPath)) {
@@ -90,7 +90,7 @@ public class TNTKnockbackConfig extends AModulConfig<TNTKnockbackModul> {
 
                         Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(Boolean.TRUE)); // back to main thread
                     } catch (IOException e) {
-                        plugin.getComponentLogger().error("Could not load modul config for {} from file!", modul.getName(), e);
+                        plugin.getComponentLogger().error("Could not load modul config for {} from file!", getModul().getName(), e);
 
                         isEnabled.setValue(Boolean.FALSE);
                         Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(Boolean.TRUE)); // back to main thread

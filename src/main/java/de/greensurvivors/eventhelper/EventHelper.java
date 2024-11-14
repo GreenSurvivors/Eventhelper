@@ -47,7 +47,6 @@ public class EventHelper extends JavaPlugin {
         mainCmd = new MainCmd(this);
         // register modules
         modulRegistery = new ModulRegistery(this);
-        modulRegistery.registerDefault();
         modulRegistery.onEnable();
 
 
@@ -105,5 +104,10 @@ public class EventHelper extends JavaPlugin {
 
     public @NotNull DependencyManager getDependencyManager() {
         return dependencyManager;
+    }
+
+    public void reloadAll() {
+        sharedConfig.reload();
+        modulRegistery.reloadAll();
     }
 }

@@ -3,7 +3,7 @@ package de.greensurvivors.eventhelper.modules.ghost;
 import de.greensurvivors.eventhelper.messages.LangPath;
 import org.jetbrains.annotations.NotNull;
 
-public record GhostLangPath(@NotNull String path, @NotNull String defaultValue) implements LangPath { // todo
+public record GhostLangPath(@NotNull String path, @NotNull String defaultValue) implements LangPath {
     public static final GhostLangPath
         MESSAGE_PREFIX = new GhostLangPath("message-prefix", "[GhostGame]"),
         COMMAND_CREATE_ERROR_EXISTS = new GhostLangPath("command.create.game.error.exists"),

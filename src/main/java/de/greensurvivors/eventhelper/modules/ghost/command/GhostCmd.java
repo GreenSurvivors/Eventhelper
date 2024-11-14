@@ -52,11 +52,13 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
         PLAYER_TELEPORT_SPREAD_DISTANCE = "playerteleportspreaddistance";
     private final @NotNull GhostModul ghostModul;
 
-    public GhostCmd(final @NotNull EventHelper plugin, final @Nullable Permission parentpermission, @NotNull GhostModul ghostModul) {
+    public GhostCmd(final @NotNull EventHelper plugin, final @Nullable Iterable<@NotNull Permission> parentPermissions, @NotNull GhostModul ghostModul) {
         super(plugin, new Permission("eventhelper.ghost.command", "GhostCmd Command", PermissionDefault.OP));
 
-        if (parentpermission != null) {
-            super.permission.addParent(parentpermission, true);
+        if (parentPermissions != null) {
+            for (Permission parentPermission : parentPermissions) {
+                super.permission.addParent(parentPermission, true);
+            }
         }
 
         this.ghostModul = ghostModul;

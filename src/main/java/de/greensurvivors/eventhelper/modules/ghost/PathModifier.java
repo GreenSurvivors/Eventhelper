@@ -8,6 +8,10 @@ import org.jetbrains.annotations.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * The ghost may move with a different speed, when following or being idle as well as having a different tracking range,
+ * depending on the block the underworld ghost is walking on
+ */
 public class PathModifier implements ConfigurationSerializable {
     private final static String
         FOLLOW_RANGE_KEY = "follow.range",
@@ -63,9 +67,9 @@ public class PathModifier implements ConfigurationSerializable {
     @Override
     public @NotNull String toString() {
         return "PathModifier [" +
-            followRange.getPath() + "-> " + followRange.getValueOrFallback() + ", " +
-            idleVelocity.getPath() + "-> " + idleVelocity.getValueOrFallback() + ", " +
-            followVelocity.getPath() + "-> " + followVelocity.getValueOrFallback() +
+            followRange.getPath() + ":" + followRange.getValueOrFallback() + ", " +
+            idleVelocity.getPath() + ":" + idleVelocity.getValueOrFallback() + ", " +
+            followVelocity.getPath() + ":" + followVelocity.getValueOrFallback() +
             "]";
     }
 }

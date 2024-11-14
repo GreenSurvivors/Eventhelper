@@ -27,6 +27,7 @@ public class MainCmd extends Command {
         plugin.getServer().getCommandMap().register(MainCmd.label, plugin.getName().toLowerCase(Locale.ENGLISH), this);
 
         registerSubCommand(new HelpSubCommand(plugin, permission, this));
+        registerSubCommand(new ReloadCommand(plugin, permission));
     }
 
     public static @NotNull Permission getParentPermission() {

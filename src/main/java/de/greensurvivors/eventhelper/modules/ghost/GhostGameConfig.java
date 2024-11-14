@@ -1,6 +1,7 @@
 package de.greensurvivors.eventhelper.modules.ghost;
 
 import de.greensurvivors.eventhelper.EventHelper;
+import de.greensurvivors.eventhelper.Utils;
 import de.greensurvivors.eventhelper.config.ConfigOption;
 import de.greensurvivors.eventhelper.modules.AModulConfig;
 import io.papermc.paper.math.Position;
@@ -95,10 +96,10 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
 
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             synchronized (this) {
-                if (this.modul != null) {
+                if (getModul() != null) {
 
                     if (!Files.isRegularFile(configPath)) {
-                        try (final InputStream inputStream = plugin.getResource(modul.getName() + "/defaultGhostGame.yaml")) {
+                        try (final InputStream inputStream = plugin.getResource(getModul().getName() + "/defaultGhostGame.yaml")) {
                             if (inputStream != null) {
                                 Files.createDirectories(configPath.getParent());
                                 //Files.createFile(configPath);
@@ -213,7 +214,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                         final @NotNull ArrayList<@NotNull Position> newIdlePositions = new ArrayList<>(idleObjectList.size());
                         for (Object object : idleObjectList) {
                             if (object instanceof Map<?, ?> map) {
-                                Position position = deserializePosition((Map<String, Object>) map);
+                                Position position = Utils.deserializePosition((Map<String, Object>) map);
 
                                 newIdlePositions.add(position);
                             } else if (object instanceof ConfigurationSection section) {
@@ -225,7 +226,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                                     map.put(key, section.get(key));
                                 }
 
-                                Position position = deserializePosition(map);
+                                Position position = Utils.deserializePosition(map);
                                 newIdlePositions.add(position);
                             } else {
                                 plugin.getComponentLogger().warn("unknown idle position config: {}", object);
@@ -301,7 +302,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                             if (rawQuestModifier instanceof QuestModifier questModifier) {
                                 questModifierMap.put(questModifier.getQuestIdentifier(), questModifier);
                             } else {
-                                plugin.getComponentLogger().warn("Object in config of module {}, found with key {}  {} is not a valid QuestModifier", modul.getName(), quests.getPath(), rawQuestModifier);
+                                plugin.getComponentLogger().warn("Object in config of module {}, found with key {}  {} is not a valid QuestModifier", getModul().getName(), quests.getPath(), rawQuestModifier);
                             }
                         }
                         quests.setValue(questModifierMap);
@@ -321,7 +322,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
 
                         Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(isEnabled.getValueOrFallback())); // back to main thread
                     } catch (IOException e) {
-                        plugin.getComponentLogger().error("Could not load modul config for {} from file!", modul.getName(), e);
+                        plugin.getComponentLogger().error("Could not load modul config for {} from file!", getModul().getName(), e);
 
                         isEnabled.setValue(Boolean.FALSE);
                         Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(Boolean.FALSE)); // back to main thread
@@ -344,9 +345,9 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
 
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             synchronized (this) {
-                if (this.modul != null) {
+                if (getModul() != null) {
                     if (!Files.isRegularFile(configPath)) {
-                        try (final InputStream inputStream = plugin.getResource(modul.getName() + "/defaultGhostGame.yaml")) {
+                        try (final InputStream inputStream = plugin.getResource(getModul().getName() + "/defaultGhostGame.yaml")) {
                             if (inputStream != null) {
                                 Files.createDirectories(configPath.getParent());
                                 //Files.createFile(configPath);
@@ -376,7 +377,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                         config.set(idleVelocity.getPath(), idleVelocity.getValueOrFallback());
                         config.set(followVelocity.getPath(), followVelocity.getValueOrFallback());
                         config.set(ghostSpawnLocations.getPath(), ghostSpawnLocations.getValueOrFallback());
-                        config.set(ghostIdlePositions.getPath(), ghostIdlePositions.getValueOrFallback().stream().map(AModulConfig::serializePosition).toList());
+                        config.set(ghostIdlePositions.getPath(), ghostIdlePositions.getValueOrFallback().stream().map(Utils::serializePosition).toList());
                         config.set(ghostAmount.getPath(), ghostAmount.getValueOrFallback());
 
                         config.set(vexSpawnLocations.getPath(), vexSpawnLocations.getValueOrFallback());
@@ -417,7 +418,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
 
                         Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(Boolean.TRUE)); // back to main thread
                     } catch (IOException e) {
-                        plugin.getComponentLogger().error("Could not load modul config for {} from file!", modul.getName(), e);
+                        plugin.getComponentLogger().error("Could not load modul config for {} from file!", getModul().getName(), e);
 
                         isEnabled.setValue(Boolean.FALSE);
                         Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(Boolean.FALSE)); // back to main thread

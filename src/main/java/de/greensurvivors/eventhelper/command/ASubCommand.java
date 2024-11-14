@@ -26,15 +26,39 @@ public abstract class ASubCommand {
         }
     }
 
-    public abstract @NotNull Set<@NotNull String> getAliases(); // SequencedSet
+    /**
+     * @return an ordered set of all aliases (including the main one!) this subcommand can get called by
+     */
+    public abstract @NotNull Set<@NotNull String> getAliases(); // todo SequencedSet
 
+    /**
+     * @return a help text, to be displayed by /eventhelper help
+     */
     public abstract @NotNull LangPath getHelpTextPath();
 
+    /**
+     * checks if the Permissible is allowed to run this command
+     */
     public boolean hasPermission(final @NotNull Permissible permissible) {
         return permission == null || permissible.hasPermission(permission);
     }
 
+    /**
+     * Executes the subcommand, returning its success
+     *
+     * @param args the list of arguments, not including the subcommand or anything before
+     * @return true if the command was successful, otherwise false
+     */
     public abstract boolean execute(@NotNull CommandSender sender, @NotNull LinkedList<@NotNull String> args);
 
+    /**
+     * Executed on tab completion for this subcommand, returning a list of
+     * options the player can tab through.
+     *
+     * @param sender Source object which is executing this command
+     * @param args   the list of arguments, not including the subcommand or anything before
+     * @return a list of tab-completions for the specified arguments. This
+     * will never be null. List may be immutable.
+     */
     public abstract @NotNull List<@NotNull String> tabComplete(@NotNull CommandSender sender, @NotNull LinkedList<@NotNull String> args);
 }

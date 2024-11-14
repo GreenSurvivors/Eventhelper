@@ -15,6 +15,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Collection;
 import java.util.UUID;
 
+/// temporary store all important data about a player to restore it later
 public class PlayerData { // todo share this class with InventoryRegions
     private final @NotNull EventHelper plugin;
     private final @NotNull UUID uuid;

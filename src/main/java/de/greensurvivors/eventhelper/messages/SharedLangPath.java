@@ -28,7 +28,8 @@ public enum SharedLangPath implements LangPath {
     NOT_ENOUGH_ARGS("cmd.error.arg.not-enough-args"),
     UNKNOWN_ARG("cmd.error.arg.unknown"),
     NO_PERMISSION("no-permission"),
-    HELP_HELP_TEXT("cmd.help.help-text");
+    HELP_HELP_TEXT("cmd.help.help-text"),
+    RELOAD_HELP_TEXT("cmd.reload.help-text");
 
     private final @NotNull String path;
     private final @NotNull String defaultValue;
