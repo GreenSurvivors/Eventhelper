@@ -117,13 +117,14 @@ public class GhostModul extends AModul<GeneralGhostConfig> implements Listener {
                     forEach(game -> {
                     // register game
                     games.put(game.getName_id().toLowerCase(Locale.ENGLISH), game);
-                    pluginManager.registerEvents(game, plugin);
 
                     // reload game
-                    game.getConfig().reload();
-
-                    // enable all now loaded mouseTraps
-                    game.getMouseTraps().forEach(MouseTrap::onEnable);
+                    game.getConfig().reload().thenAccept(result -> {
+                        // enable game and start event handlers
+                        if (result && game.getConfig().isEnabled()) {
+                            game.onEnable();
+                        }
+                    });
                 });
             } catch (IOException e) {
                 plugin.getComponentLogger().error("could open ghost game directories.", e);
@@ -137,9 +138,7 @@ public class GhostModul extends AModul<GeneralGhostConfig> implements Listener {
     public void onDisable() {
         for (GhostGame ghostGame : games.values()) {
             ghostGame.resetGame();
-            HandlerList.unregisterAll(ghostGame);
-
-            ghostGame.getMouseTraps().forEach(MouseTrap::onDisable);
+            ghostGame.onDisable();
         }
 
         HandlerList.unregisterAll(this);
@@ -170,7 +169,7 @@ public class GhostModul extends AModul<GeneralGhostConfig> implements Listener {
 
         if (game != null) {
             if (game.getGameState() != GhostGame.GameState.IDLE) {
-                game.disableGame();
+                game.onDisable();
             }
 
             return true;

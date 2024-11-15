@@ -152,7 +152,7 @@ public class GhostCmd extends ASubCommand { // todo make toplevel command; check
                             }
                             case RELOAD -> {
                                 if (sender.hasPermission(RELOAD_PERM)) {
-                                    game.reload();
+                                    game.getConfig().reload();
 
                                     plugin.getMessageManager().sendPrefixedLang(sender,
                                         GhostLangPath.MESSAGE_PREFIX, GhostLangPath.COMMAND_RELOAD_GAME_SUCCESS,

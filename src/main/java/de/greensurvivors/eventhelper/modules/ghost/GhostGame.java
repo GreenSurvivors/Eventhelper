@@ -46,7 +46,6 @@ import java.io.Serial;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Pattern;
@@ -78,7 +77,7 @@ public class GhostGame implements Listener {
         this.name_id = name_id;
 
         this.gameState = GameState.IDLE;
-        this.config = new GhostGameConfig(plugin, name_id, modul);
+        this.config = new GhostGameConfig(plugin, modul, this);
 
         scoreboard = plugin.getServer().getScoreboardManager().getNewScoreboard();
 
@@ -267,6 +266,11 @@ public class GhostGame implements Listener {
 
     /// do countdown before the game starts
     protected void doCountdown(int secondsRemain) {
+        // sanity check: the game ended before the countdown did
+        if (gameState != GameState.COUNTDOWN) {
+            return;
+        }
+
         if (secondsRemain > 0) {
             for (Iterator<Map.Entry<UUID, AGhostGamePlayer>> iterator = players.entrySet().iterator(); iterator.hasNext(); ) {
                 Map.Entry<UUID, AGhostGamePlayer> entry = iterator.next();
@@ -329,7 +333,9 @@ public class GhostGame implements Listener {
         }
 
         if (tickTask != null) {
+            plugin.getComponentLogger().warn("starting a new round of {} but the tick task was still running.", getName_id());
             tickTask.cancel();
+            tickTask = null;
         }
 
         for (Iterator<Map.Entry<UUID, AGhostGamePlayer>> iterator = players.entrySet().iterator(); iterator.hasNext(); ) {
@@ -371,6 +377,13 @@ public class GhostGame implements Listener {
     /// heartbeat of the game
     @SuppressWarnings("UnstableApiUsage") // tick manager
     protected void tick() {
+        // sanity check: the game somehow changed state
+        if (gameState != GameState.RUNNING) {
+            tickTask.cancel();
+            tickTask = null;
+            return;
+        }
+
         amountOfTicksRun++;
 
         long gameDurationInTicks = config.getGameDuration().toMillis() / 50;
@@ -527,12 +540,20 @@ public class GhostGame implements Listener {
         }
     }
 
-    public void disableGame() {
+    public void onEnable() {
+        plugin.getServer().getPluginManager().registerEvents(this, plugin);
+
+        getMouseTraps().forEach(MouseTrap::onEnable);
+    }
+
+    public void onDisable() {
         endGame(GhostGame.EndReason.EXTERN);
 
         for (SpectatingPlayer spectatingPlayer : spectators.values()) {
             playerQuit(spectatingPlayer.getBukkitPlayer(), true);
         }
+
+        getMouseTraps().forEach(MouseTrap::onDisable);
 
         HandlerList.unregisterAll(this);
     }
@@ -540,9 +561,7 @@ public class GhostGame implements Listener {
     /// ends and resets the game
     public void endGame(final @NotNull EndReason reason) {
         switch (reason) {
-            case EXTERN -> { // Command
-
-            }
+            case EXTERN -> broadcastAll(GhostLangPath.GAME_EXTERN_END_BROADCAST);
             case TIME -> broadcastAll(GhostLangPath.GAME_LOOSE_TIME_BROADCAST);
             case ALL_DEAD -> broadcastAll(GhostLangPath.GAME_LOOSE_DEATH_BROADCAST);
             case WIN -> broadcastAll(GhostLangPath.GAME_WIN_BROADCAST);
@@ -597,6 +616,7 @@ public class GhostGame implements Listener {
 
         if (tickTask != null) {
             tickTask.cancel();
+            tickTask = null;
         }
         gainedPoints = 0;
         amountOfTicksRun = 0;
@@ -1036,15 +1056,17 @@ public class GhostGame implements Listener {
         broadcastExcept(langPath, null);
     }
 
-    /// reloads the config. Will end the game
-    public @NotNull CompletableFuture<@NotNull Boolean> reload() {
-        endGame(EndReason.EXTERN);
-        gameState = GameState.RESETTING; // lock from joining while we wait for config
+    /**
+     * sets the state this game is in. Will end the game, if it's not resetting right now
+     * Dangerous method! Only used by the config to reload.
+     */
+    protected void setGameState(final @NotNull GameState newState) {
+        // don't reset twice
+        if (gameState != GameState.RESETTING) {
+            endGame(EndReason.EXTERN);
+        }
 
-        return config.reload().thenApply(result -> {
-            gameState = GameState.IDLE;
-            return result;
-        });
+        gameState = newState;
     }
 
     /// intern used game unique name

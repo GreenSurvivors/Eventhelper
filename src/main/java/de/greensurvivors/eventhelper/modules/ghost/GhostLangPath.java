@@ -49,6 +49,7 @@ public record GhostLangPath(@NotNull String path, @NotNull String defaultValue) 
         PLAYER_PERISHED_TASK_DONE_SELF = new GhostLangPath("game.player.perished.tasks-done.self"),
         PLAYER_UNSAFE_AREA_WARNING = new GhostLangPath("game.player.unsafe-area.warning"),
         PLAYER_START_SPECTATING = new GhostLangPath("game.player.start-spectating"),
+        GAME_EXTERN_END_BROADCAST = new GhostLangPath("game.end_extern.broadcast"), // todo per game override
         GAME_WIN_BROADCAST = new GhostLangPath("game.win.broadcast"), // todo per game override
         GAME_LOOSE_TIME_BROADCAST = new GhostLangPath("game.loose.time.broadcast"), // todo per game override
         GAME_LOOSE_DEATH_BROADCAST = new GhostLangPath("game.loose.death.broadcast"), // todo per game override

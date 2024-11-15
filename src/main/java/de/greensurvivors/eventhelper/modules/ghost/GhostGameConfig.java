@@ -52,7 +52,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     private final @NotNull ConfigOption<@NotNull List<@NotNull Location>> vexSpawnLocations = new ConfigOption<>("vex.spawnLocations", List.of()); // we need fast random access. But the locations should be unique! // todo check for very close together locations!
     private final @NotNull ConfigOption<@NotNull @Range(from = 1, to = Integer.MAX_VALUE) Integer> vexAmount = new ConfigOption<>("vex.amount", 1);
     // general
-    private final @NotNull String name_id;
+    private final @NotNull GhostGame ghostGame;
     private final @NotNull ConfigOption<@NotNull Component> displayName;
     private final @NotNull ConfigOption<@NotNull List<@NotNull MouseTrap>> mouseTraps = new ConfigOption<>("game.mouseTraps", List.of()); // we need fast random access. But the MouseTraps should be unique!
     private final @NotNull ConfigOption<@NotNull List<@NotNull String>> gameInitCommands = new ConfigOption<>("game.commands.gameInit", List.of());
@@ -82,18 +82,19 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = Integer.MAX_VALUE) Integer> feedAmount = new ConfigOption<>("game.food.feeding.tick", 1);
     private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = Integer.MAX_VALUE) Integer> maxFeedAmount = new ConfigOption<>("game.food.feeding.max", 6);
 
-    public GhostGameConfig(final @NotNull EventHelper plugin, final @NotNull String name_id, final @NotNull GhostModul modul) {
-        super(plugin, Path.of("games", name_id + ".yaml"));
+    public GhostGameConfig(final @NotNull EventHelper plugin, final @NotNull GhostModul modul, final @NotNull GhostGame ghostGame) {
+        super(plugin, Path.of("games", ghostGame.getName_id() + ".yaml"));
         super.setModul(modul);
 
-        this.name_id = name_id;
-        this.displayName = new ConfigOption<>("game.displayName", Component.text(name_id));
+        this.ghostGame = ghostGame;
+        this.displayName = new ConfigOption<>("game.displayName", Component.text(ghostGame.getName_id()));
     }
 
     @Override
     public @NotNull CompletableFuture<@NotNull Boolean> reload() {
         final CompletableFuture<Boolean> runAfter = new CompletableFuture<>();
 
+        ghostGame.setGameState(GhostGame.GameState.RESETTING); // lock from joining while we wait for config
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             synchronized (this) {
                 if (getModul() != null) {
@@ -106,6 +107,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                                 Files.copy(inputStream, configPath);
                             } else {
                                 plugin.getComponentLogger().error("Could not find defaultGhostGame.yaml");
+                                ghostGame.setGameState(GhostGame.GameState.IDLE);
                                 runAfter.complete(false);
                                 return;
                             }
@@ -122,12 +124,12 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                             ComparableVersion lastVersion = new ComparableVersion(dataVersionStr);
 
                             if (dataVersion.compareTo(lastVersion) < 0) {
-                                plugin.getLogger().warning("Found ghost game config for \"" + name_id + "\" was saved in a newer data version " +
+                                plugin.getLogger().warning("Found ghost game config for \"" + ghostGame.getName_id() + "\" was saved in a newer data version " +
                                     "(" + lastVersion + "), expected: " + dataVersion + ". " +
                                     "Trying to load anyway but some this most definitely will be broken!");
                             }
                         } else {
-                            plugin.getLogger().warning("The data version for ghost game \"" + name_id + "\" was missing." +
+                            plugin.getLogger().warning("The data version for ghost game \"" + ghostGame.getName_id() + "\" was missing." +
                                 "proceed with care!");
                         }
 
@@ -320,18 +322,27 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                         feedAmount.setValue(config.getInt(feedAmount.getPath(), feedAmount.getFallback()));
                         maxFeedAmount.setValue(config.getInt(maxFeedAmount.getPath(), maxFeedAmount.getFallback()));
 
-                        Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(isEnabled.getValueOrFallback())); // back to main thread
+                        Bukkit.getScheduler().runTask(plugin, () -> { // back to main thread
+                            ghostGame.setGameState(GhostGame.GameState.IDLE);
+                            runAfter.complete(isEnabled.getValueOrFallback());
+                        });
                     } catch (IOException e) {
                         plugin.getComponentLogger().error("Could not load modul config for {} from file!", getModul().getName(), e);
 
                         isEnabled.setValue(Boolean.FALSE);
-                        Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(Boolean.FALSE)); // back to main thread
+                        Bukkit.getScheduler().runTask(plugin, () -> { // back to main thread
+                            ghostGame.setGameState(GhostGame.GameState.IDLE);
+                            runAfter.complete(Boolean.FALSE);
+                        });
                     }
                 } else {
                     plugin.getComponentLogger().error("Could not load modul config, since the module of {} was not set!", this.getClass().getName());
 
                     isEnabled.setValue(Boolean.FALSE);
-                    Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(Boolean.FALSE)); // back to main thread
+                    Bukkit.getScheduler().runTask(plugin, () -> { // back to main thread
+                        ghostGame.setGameState(GhostGame.GameState.IDLE);
+                        runAfter.complete(Boolean.FALSE);
+                    });
                 }
             }
         });
@@ -435,6 +446,26 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
         return runAfter;
     }
 
+    /// saves the config, reloads it if finished successfully and handles new enabled state
+    private void saveAndReload() {
+        final boolean wasEnabled = isEnabled();
+        save().thenAccept(result -> {
+            if (result) {
+                reload().thenRun(() -> {
+                    if (wasEnabled) {
+                        if (!isEnabled()) {
+                            ghostGame.onDisable();
+                        }
+                    } else if (isEnabled()) {
+                        ghostGame.onEnable();
+                    }
+                });
+            } else if (wasEnabled) {
+                ghostGame.onDisable();
+            }
+        });
+    }
+
     public double getPathfindOffset() {
         return pathFindOffset.getValueOrFallback();
     }
@@ -442,11 +473,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     public void setPathfindOffset(double newOffset) {
         pathFindOffset.setValue(newOffset);
 
-        save().thenAccept(result -> {
-            if (result) {
-                reload();
-            }
-        });
+        saveAndReload();
     }
 
     public int getFollowRangeAt(final @NotNull Material material) { // todo setter
@@ -508,22 +535,14 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
             ghostSpawnLocations.setValue(locations);
         }
 
-        save().thenAccept(result -> {
-            if (result) {
-                reload();
-            }
-        });
+        saveAndReload();
     }
 
     public void removeGhostSpawnLocation(final @NotNull Location location) {
         if (ghostSpawnLocations.hasValue()) {
 
             if (ghostSpawnLocations.getValueOrFallback().remove(location)) {
-                save().thenAccept(result -> {
-                    if (result) {
-                        reload();
-                    }
-                });
+                saveAndReload();
             }
         }
     }
@@ -532,11 +551,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
         if (ghostSpawnLocations.hasValue()) {
             ghostSpawnLocations.getValueOrFallback().clear();
 
-            save().thenAccept(result -> {
-                if (result) {
-                    reload();
-                }
-            });
+            saveAndReload();
         }
     }
 
@@ -557,22 +572,14 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
             vexSpawnLocations.setValue(locations);
         }
 
-        save().thenAccept(result -> {
-            if (result) {
-                reload();
-            }
-        });
+        saveAndReload();
     }
 
     public void removeVexSpawnLocation(final @NotNull Location location) {
         if (vexSpawnLocations.hasValue()) {
 
             if (vexSpawnLocations.getValueOrFallback().remove(location)) {
-                save().thenAccept(result -> {
-                    if (result) {
-                        reload();
-                    }
-                });
+                saveAndReload();
             }
         }
     }
@@ -580,12 +587,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     public void removeAllVexSpawnLocations() {
         if (vexSpawnLocations.hasValue()) {
             vexSpawnLocations.getValueOrFallback().clear();
-
-            save().thenAccept(result -> {
-                if (result) {
-                    reload();
-                }
-            });
+            saveAndReload();
         }
     }
 
@@ -606,22 +608,14 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
             ghostIdlePositions.setValue(positions);
         }
 
-        save().thenAccept(result -> {
-            if (result) {
-                reload();
-            }
-        });
+        saveAndReload();
     }
 
     public void removeGhostIdlePosition(final @NotNull Position position) {
         if (ghostIdlePositions.hasValue()) {
 
             if (ghostIdlePositions.getValueOrFallback().remove(position)) {
-                save().thenAccept(result -> {
-                    if (result) {
-                        reload();
-                    }
-                });
+                saveAndReload();
             }
         }
     }
@@ -630,11 +624,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
         if (ghostIdlePositions.hasValue()) {
             ghostIdlePositions.getValueOrFallback().clear();
 
-            save().thenAccept(result -> {
-                if (result) {
-                    reload();
-                }
-            });
+            saveAndReload();
         }
     }
 
@@ -645,11 +635,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     public void setAmountOfGhosts(@Range(from = 1, to = Integer.MAX_VALUE) int newAmount) {
         ghostAmount.setValue(newAmount);
 
-        save().thenAccept(result -> {
-            if (result) {
-                reload();
-            }
-        });
+        saveAndReload();
     }
 
     public int getAmountOfVexes() {
@@ -659,11 +645,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     public void setAmountOfVexes(@Range(from = 1, to = Integer.MAX_VALUE) int newAmount) {
         vexAmount.setValue(newAmount);
 
-        save().thenAccept(result -> {
-            if (result) {
-                reload();
-            }
-        });
+        saveAndReload();
     }
 
     public @NotNull Component getDisplayName() {
@@ -685,11 +667,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     public void setLobbyLocation(final @NotNull Location newLobbyLocation) {
         lobbyLocation.setValue(newLobbyLocation);
 
-        save().thenAccept(result -> {
-            if (result) {
-                reload();
-            }
-        });
+        saveAndReload();
     }
 
     public @NotNull List<String> getGameStartCommands() { // todo use and make editable
@@ -703,11 +681,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     public void setPlayerStartLocation(final @NotNull Location newStartingLocation) {
         playerStartLocation.setValue(newStartingLocation);
 
-        save().thenAccept(result -> {
-            if (result) {
-                reload();
-            }
-        });
+        saveAndReload();
     }
 
     public @NotNull Location getSpectatorStartLocation() { // todo
@@ -729,11 +703,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     public void setEndLocation(final @NotNull Location newEndLocation) {
         endLocation.setValue(newEndLocation);
 
-        save().thenAccept(result -> {
-            if (result) {
-                reload();
-            }
-        });
+        saveAndReload();
     }
 
     public @NotNull Duration getGameDuration() {
@@ -743,11 +713,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     public void setGameDuration(final @NotNull Duration newGameDuration) { // todo maybe make all the setters nullable to reset to default?
         gameDuration.setValue(newGameDuration);
 
-        save().thenAccept(result -> {
-            if (result) {
-                reload();
-            }
-        });
+        saveAndReload();
     }
 
     public long getStartPlayerTime() {
@@ -757,11 +723,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     public void setStartPlayerTime(@Range(from = 0, to = 24000) long newStartPlayerTime) {
         startPlayerTime.setValue(newStartPlayerTime);
 
-        save().thenAccept(result -> {
-            if (result) {
-                reload();
-            }
-        });
+        saveAndReload();
     }
 
     public long getEndPlayerTime() {
@@ -771,11 +733,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     public void setEndPlayerTime(@Range(from = 0, to = 24000) long newEndPlayerTime) {
         endPlayerTime.setValue(newEndPlayerTime);
 
-        save().thenAccept(result -> {
-            if (result) {
-                reload();
-            }
-        });
+        saveAndReload();
     }
 
     public boolean isLateJoinAllowed() {
@@ -785,11 +743,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     public void setIsLateJoinAllowed(boolean isAllowed) {
         allowLateJoin.setValue(isAllowed);
 
-        save().thenAccept(result -> {
-            if (result) {
-                reload();
-            }
-        });
+        saveAndReload();
     }
 
     public boolean isRejoinAllowed() {
@@ -799,11 +753,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     public void setIsRejoinAllowed(boolean isAllowed) { // todo
         allowRejoin.setValue(isAllowed);
 
-        save().thenAccept(result -> {
-            if (result) {
-                reload();
-            }
-        });
+        saveAndReload();
     }
 
     public double getMinAmountPlayers() { // todo use
@@ -813,11 +763,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     public void setMinAmountPlayers(@Range(from = -1, to = Integer.MAX_VALUE) int newMaxAmount) {
         minAmountPlayers.setValue(newMaxAmount);
 
-        save().thenAccept(result -> {
-            if (result) {
-                reload();
-            }
-        });
+        saveAndReload();
     }
 
     public @Range(from = -1, to = Integer.MAX_VALUE) int getMaxAmountPlayers() {
@@ -827,11 +773,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     public void setMaxAmountPlayers(@Range(from = -1, to = Integer.MAX_VALUE) int newMaxAmount) {
         maxAmountPlayers.setValue(newMaxAmount);
 
-        save().thenAccept(result -> {
-            if (result) {
-                reload();
-            }
-        });
+        saveAndReload();
     }
 
     public double getMaxPlayerSpreadTeleport() { // todo use
@@ -841,11 +783,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     public void setPlayerSpreadDistanceTeleport(double newDistance) {
         playerSpreadDistance.setValue(newDistance);
 
-        save().thenAccept(result -> {
-            if (result) {
-                reload();
-            }
-        });
+        saveAndReload();
     }
 
     public @Nullable Double getPointsOfTask(final @NotNull String questIdentifier) { // todo setter
