@@ -9,6 +9,9 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
+/**
+ * An unsafe area is an area, where the player dies if they stay too long
+ */
 public class UnsafeArea implements ConfigurationSerializable {
     private final static @NotNull String
         CENTER_LOCATION_KEY = "centerLocation",

@@ -124,6 +124,10 @@ public class AlivePlayer extends AGhostGamePlayer {
         return result;
     }
 
+    /**
+     * The player keeps track of the unsafe areas they are in. If they stay long enough they will get an effect,
+     * a message and may even die == get trapped
+     */
     public void tickUnsafeAreas(final double millisSinceLastTick) {
         if (this.getMouseTrapTrappedIn() == null) {
             final Player bukkitPlayer = getBukkitPlayer();

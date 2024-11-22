@@ -9,11 +9,14 @@ import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.messages.LangPath;
 import de.greensurvivors.eventhelper.messages.MessageManager;
 import de.greensurvivors.eventhelper.messages.SharedPlaceHolder;
+import de.greensurvivors.eventhelper.modules.StateChangeEvent;
 import de.greensurvivors.eventhelper.modules.ghost.ghostentity.IGhost;
 import de.greensurvivors.eventhelper.modules.ghost.player.*;
 import de.greensurvivors.eventhelper.modules.ghost.vex.IVex;
 import de.greensurvivors.simplequests.SimpleQuests;
 import de.greensurvivors.simplequests.events.QuestCompleatedEvent;
+import net.kyori.adventure.key.Key;
+import net.kyori.adventure.key.KeyPattern;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.JoinConfiguration;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
@@ -46,7 +49,6 @@ import java.io.Serial;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Pattern;
@@ -58,7 +60,8 @@ public class GhostGame implements Listener {
     private final @NotNull EventHelper plugin;
     private final @NotNull GhostModul ghostModul;
     private final @NotNull GhostGameConfig config;
-    private final @NotNull String name_id;
+    private final @NotNull
+    @KeyPattern.Value String nameID;
 
     private final @NotNull Map<@NotNull UUID, @NotNull AGhostGamePlayer> offlinePlayers = new ConcurrentHashMap<>();
     private final @NotNull Map<@NotNull UUID, @NotNull AGhostGamePlayer> players = new ConcurrentHashMap<>();
@@ -72,13 +75,13 @@ public class GhostGame implements Listener {
     private @Nullable BukkitTask tickTask = null; // this has to be sync!
     private double gainedPoints = 0;
 
-    public GhostGame(final @NotNull EventHelper plugin, final @NotNull GhostModul modul, final @NotNull String name_id) {
+    public GhostGame(final @NotNull EventHelper plugin, final @NotNull GhostModul modul, final @NotNull @KeyPattern.Value String nameID) {
         this.plugin = plugin;
         this.ghostModul = modul;
-        this.name_id = name_id;
+        this.nameID = nameID;
 
         this.gameState = GameState.IDLE;
-        this.config = new GhostGameConfig(plugin, name_id, modul);
+        this.config = new GhostGameConfig(plugin, modul.getName(), nameID);
 
         scoreboard = plugin.getServer().getScoreboardManager().getNewScoreboard();
 
@@ -127,7 +130,7 @@ public class GhostGame implements Listener {
 
                 if (newQuestModifier != null) { // enable new quest
                     SimpleQuests.getInstance().getDatabaseManager().setTimesQuestFinished(event.getPlayer(), newQuestModifier.getRequiredQuestIdentifier(), 1);
-                } else if (ghostGamePlayer instanceof DeadPlayer) {
+                } else if (ghostGamePlayer instanceof PerishedPlayer) {
                     makePlayerSpectator(ghostGamePlayer.getBukkitPlayer());
 
                     broadcastExcept(GhostLangPath.PLAYER_PERISHED_TASK_DONE_BROADCAST, ghostGamePlayer.getUuid(),
@@ -159,7 +162,7 @@ public class GhostGame implements Listener {
             }
 
             event.setCancelled(true);
-        } else if (ghostGamePlayer instanceof DeadPlayer deadPlayer) {
+        } else if (ghostGamePlayer instanceof PerishedPlayer deadPlayer) {
             event.getPlayer().teleportAsync(getConfig().getPlayerStartLocation());
             makePlayerSpectator(deadPlayer.getBukkitPlayer());
             event.setCancelled(true);
@@ -183,7 +186,7 @@ public class GhostGame implements Listener {
 
                     for (MouseTrap mouseTrap : getMouseTraps()) {
                         if (mouseTrap.isReleaseBlockLocation(clickedBlock.getLocation())) {
-                            // don't allow dead or spectating players to free anyone
+                            // don't allow perished or spectating players to free anyone
                             if (!(ghostGamePlayer instanceof AlivePlayer)) {
                                 plugin.getMessageManager().sendLang(event.getPlayer(), GhostLangPath.PLAYER_TRAP_ONLY_ALIVE_CAN_RELEASE);
 
@@ -255,16 +258,45 @@ public class GhostGame implements Listener {
         }
     }
 
+    @EventHandler
+    private void onConfigEnabledChange(final @NotNull StateChangeEvent<?> event) {
+        Key eventKey = event.getKey();
+
+        if (eventKey.namespace().equals(ghostModul.getName()) && eventKey.value().equals(nameID)) {
+            if (event.getNewState() instanceof Boolean enabledState) {
+                if (enabledState) {
+                    onEnable();
+                } else {
+                    onDisable();
+                }
+            } else if (event.getNewState() instanceof GameState newState) {
+                // don't reset twice
+                if (gameState != GameState.RESETTING && gameState != GameState.RELOADING_CONFIG) {
+                    endGame(EndReason.EXTERN);
+                }
+
+                gameState = newState;
+            }
+        }
+    }
+
+    /// start countdown before the game starts
     public void startStartingCountdown() {
         gameState = GameState.COUNTDOWN;
         doCountdown(10);
 
         for (String cmd : getConfig().getGameInitCommands()) {
-            plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), gameNamePattern.matcher(cmd).replaceAll(getName_id()));
+            plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), gameNamePattern.matcher(cmd).replaceAll(getNameID()));
         }
     }
 
+    /// do countdown before the game starts
     protected void doCountdown(int secondsRemain) {
+        // sanity check: the game ended before the countdown did
+        if (gameState != GameState.COUNTDOWN) {
+            return;
+        }
+
         if (secondsRemain > 0) {
             for (Iterator<Map.Entry<UUID, AGhostGamePlayer>> iterator = players.entrySet().iterator(); iterator.hasNext(); ) {
                 Map.Entry<UUID, AGhostGamePlayer> entry = iterator.next();
@@ -293,6 +325,7 @@ public class GhostGame implements Listener {
         }
     }
 
+    /// start the actual game
     protected void startGame() {
         gameState = GameState.STARTING;
         Random random = ThreadLocalRandom.current();
@@ -326,7 +359,9 @@ public class GhostGame implements Listener {
         }
 
         if (tickTask != null) {
+            plugin.getComponentLogger().warn("starting a new round of {} but the tick task was still running.", getNameID());
             tickTask.cancel();
+            tickTask = null;
         }
 
         for (Iterator<Map.Entry<UUID, AGhostGamePlayer>> iterator = players.entrySet().iterator(); iterator.hasNext(); ) {
@@ -358,22 +393,30 @@ public class GhostGame implements Listener {
         }
 
         for (String cmd : getConfig().getGameStartCommands()) {
-            plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), gameNamePattern.matcher(cmd).replaceAll(getName_id()));
+            plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), gameNamePattern.matcher(cmd).replaceAll(getNameID()));
         }
 
         tickTask = plugin.getServer().getScheduler().runTaskTimer(plugin, this::tick, 0, 1);
         gameState = GameState.RUNNING;
     }
 
+    /// heartbeat of the game
     @SuppressWarnings("UnstableApiUsage") // tick manager
     protected void tick() {
+        // sanity check: the game somehow changed state
+        if (gameState != GameState.RUNNING) {
+            tickTask.cancel();
+            tickTask = null;
+            return;
+        }
+
         amountOfTicksRun++;
 
-        long gameDurationInTicks = config.getGameDuration().toMillis() / 50;
+        final float tickRate = plugin.getServer().getServerTickManager().getTickRate();
+        final double millisPerTick = 1000D / tickRate;
+        final long gameDurationInTicks = (long) (config.getGameDuration().toMillis() / millisPerTick);
 
-        if (amountOfTicksRun <= gameDurationInTicks) {
-            float tickRate = plugin.getServer().getServerTickManager().getTickRate();
-            double millisPerTick = 1000D / tickRate;
+        if (amountOfTicksRun <= gameDurationInTicks) { // check if game has run out of time
 
             // tick player time
             if (config.getStartPlayerTime() >= 0 && config.getEndPlayerTime() >= 0) {
@@ -523,21 +566,28 @@ public class GhostGame implements Listener {
         }
     }
 
-    public void disableGame() {
+    public void onEnable() {
+        plugin.getServer().getPluginManager().registerEvents(this, plugin);
+
+        getMouseTraps().forEach(MouseTrap::onEnable);
+    }
+
+    public void onDisable() {
         endGame(GhostGame.EndReason.EXTERN);
 
         for (SpectatingPlayer spectatingPlayer : spectators.values()) {
             playerQuit(spectatingPlayer.getBukkitPlayer(), true);
         }
 
+        getMouseTraps().forEach(MouseTrap::onDisable);
+
         HandlerList.unregisterAll(this);
     }
 
+    /// ends and resets the game
     public void endGame(final @NotNull EndReason reason) {
         switch (reason) {
-            case EXTERN -> { // Command
-
-            }
+            case EXTERN -> broadcastAll(GhostLangPath.GAME_EXTERN_END_BROADCAST);
             case TIME -> broadcastAll(GhostLangPath.GAME_LOOSE_TIME_BROADCAST);
             case ALL_DEAD -> broadcastAll(GhostLangPath.GAME_LOOSE_DEATH_BROADCAST);
             case WIN -> broadcastAll(GhostLangPath.GAME_WIN_BROADCAST);
@@ -546,7 +596,7 @@ public class GhostGame implements Listener {
         }
 
         for (String cmd : getConfig().getGameEndCommands()) {
-            plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), gameNamePattern.matcher(cmd).replaceAll(getName_id()));
+            plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), gameNamePattern.matcher(cmd).replaceAll(getNameID()));
         }
 
         resetGame();
@@ -592,6 +642,7 @@ public class GhostGame implements Listener {
 
         if (tickTask != null) {
             tickTask.cancel();
+            tickTask = null;
         }
         gainedPoints = 0;
         amountOfTicksRun = 0;
@@ -610,7 +661,8 @@ public class GhostGame implements Listener {
         }
     }
 
-    public void playerJoin(final @NotNull Player player) { // todo permission
+    /// does not perform a permission check
+    public void playerJoin(final @NotNull Player player) {
         if (ghostModul.getGameParticipatingIn(player) == null) {
             switch (gameState) {
                 case IDLE -> {
@@ -631,7 +683,7 @@ public class GhostGame implements Listener {
                                     // now sort them to what and where they were before quitting
                                     if (offlinePlayer instanceof AlivePlayer alivePlayer) {
                                         makeAlivePlayerAgain(alivePlayer);
-                                    } else if (offlinePlayer instanceof DeadPlayer deadPlayer) {
+                                    } else if (offlinePlayer instanceof PerishedPlayer deadPlayer) {
                                         rePerishPlayer(deadPlayer);
                                     }
                                 } else {
@@ -648,7 +700,7 @@ public class GhostGame implements Listener {
                         plugin.getMessageManager().sendLang(player, GhostLangPath.ERROR_NO_LATE_JOIN);
                     }
                 }
-                case COUNTDOWN, STARTING, RESETTING ->
+                case COUNTDOWN, STARTING, RESETTING, RELOADING_CONFIG ->
                     plugin.getMessageManager().sendLang(player, GhostLangPath.ERROR_JOIN_GAME_STATE);
             }
         } else {
@@ -656,13 +708,14 @@ public class GhostGame implements Listener {
         }
     }
 
+    /// when a player joins a game
     protected void makeAlivePlayer(final @NotNull Player player) {
         final AlivePlayer alivePlayer = new AlivePlayer(plugin, this, player.getUniqueId());
         players.put(player.getUniqueId(), alivePlayer);
 
         // hide players
         for (AGhostGamePlayer otherPlayer : players.values()) {
-            if (otherPlayer instanceof DeadPlayer) {
+            if (otherPlayer instanceof PerishedPlayer) {
                 player.hidePlayer(plugin, otherPlayer.getBukkitPlayer());
             }
         }
@@ -696,7 +749,7 @@ public class GhostGame implements Listener {
             Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), player.displayName()));
     }
 
-    // used for rejoining a game
+    /// used for rejoining a game
     protected void makeAlivePlayerAgain(final @NotNull AlivePlayer oldAlivePlayer) {
         final @Nullable Player player = oldAlivePlayer.getBukkitPlayer();
         if (player == null) {
@@ -714,7 +767,7 @@ public class GhostGame implements Listener {
 
         // hide players
         for (AGhostGamePlayer otherPlayer : players.values()) {
-            if (otherPlayer instanceof DeadPlayer) {
+            if (otherPlayer instanceof PerishedPlayer) {
                 player.hidePlayer(plugin, otherPlayer.getBukkitPlayer());
             }
         }
@@ -764,7 +817,7 @@ public class GhostGame implements Listener {
      * Instead, use {@link #makePlayerSpectator(Player)} even if you have easy access to the player data!
      * using this method means you are missing out of a potential check on game end!
      **/
-    protected void makePlayerSpectator(final @NotNull Player player, final @NotNull PlayerData playerData) {
+    private void makePlayerSpectator(final @NotNull Player player, final @NotNull PlayerData playerData) {
         players.remove(player.getUniqueId());
         spectators.put(player.getUniqueId(), new SpectatingPlayer(plugin, this, player.getUniqueId(), playerData));
 
@@ -798,12 +851,13 @@ public class GhostGame implements Listener {
         plugin.getMessageManager().sendLang(player, GhostLangPath.PLAYER_START_SPECTATING);
     }
 
+    /// called when a player runs out of time while trapped
     protected void makePerishedPlayer(final @NotNull UUID uuid) throws PlayerNotAliveException {
         final @Nullable AGhostGamePlayer ghostGamePlayer = players.get(uuid);
 
         if (ghostGamePlayer instanceof AlivePlayer alivePlayer) {
             final @Nullable Player player = ghostGamePlayer.getBukkitPlayer();
-            players.put(uuid, new DeadPlayer(plugin, this, uuid, alivePlayer.getPlayerData(), alivePlayer.generatePerishedTasks()));
+            players.put(uuid, new PerishedPlayer(plugin, this, uuid, alivePlayer.getPlayerData(), alivePlayer.generatePerishedTasks()));
 
             perishedTeam.addPlayer(player);
             player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, -1, 0, false, false, false));
@@ -815,9 +869,10 @@ public class GhostGame implements Listener {
         }
     }
 
-    protected void rePerishPlayer(final @NotNull DeadPlayer deadPlayer) { // damn necromancers!
+    /// called when a player who perished the last time rejoins the game
+    protected void rePerishPlayer(final @NotNull PerishedPlayer deadPlayer) { // damn necromancers!
         final @Nullable Player player = deadPlayer.getBukkitPlayer();
-        players.put(deadPlayer.getUuid(), new DeadPlayer(plugin, this, deadPlayer.getUuid(), new PlayerData(plugin, player), deadPlayer.getGhostTasks()));
+        players.put(deadPlayer.getUuid(), new PerishedPlayer(plugin, this, deadPlayer.getUuid(), new PlayerData(plugin, player), deadPlayer.getGhostTasks()));
         player.teleportAsync(config.getPlayerStartLocation());
         player.setGameMode(GameMode.SURVIVAL);
 
@@ -846,6 +901,11 @@ public class GhostGame implements Listener {
             Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), player.displayName()));
     }
 
+    /**
+     * reset the player and end the game if they were the last one alive and free
+     *
+     * @param teleport if the player should be teleported to the end location of the game
+     */
     public void playerQuit(final @NotNull Player player, boolean teleport) {
         final @Nullable AGhostGamePlayer ghostGamePlayer = players.get(player.getUniqueId());
         if (ghostGamePlayer != null) {
@@ -860,7 +920,7 @@ public class GhostGame implements Listener {
 
             // reset Scoreboard
             perishedTeam.removePlayer(player);
-            // player will get potion effects removed and dead players will be visible again, after the player data was restored
+            // player will get potion effects removed and perished players will be visible again, after the player data was restored
             ghostGamePlayer.restorePlayer();
 
             if (ghostGamePlayer instanceof AlivePlayer alivePlayer) {
@@ -870,7 +930,7 @@ public class GhostGame implements Listener {
                     trap.removePlayer(alivePlayer);
                     alivePlayer.releaseFromTrap();
                 }
-            } else if (ghostGamePlayer instanceof DeadPlayer) {
+            } else if (ghostGamePlayer instanceof PerishedPlayer) {
                 for (Iterator<AGhostGamePlayer> iterator = players.values().iterator(); iterator.hasNext(); ) {
                     AGhostGamePlayer otherGhostGamePlayer = iterator.next();
                     Player otherPlayer = otherGhostGamePlayer.getBukkitPlayer();
@@ -904,7 +964,7 @@ public class GhostGame implements Listener {
                     endGame(EndReason.ALL_DEAD);
                 }
 
-                plugin.getMessageManager().sendLang(player, GhostLangPath.PLAYER_GAME_QUIT);
+                plugin.getMessageManager().sendLang(player, GhostLangPath.PLAYER_QUIT_GAME);
                 broadcastExcept(GhostLangPath.PLAYER_GAME_QUIT_BROADCAST, player.getUniqueId(),
                     Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), player.displayName()));
             }
@@ -939,6 +999,7 @@ public class GhostGame implements Listener {
         }
     }
 
+    /// broadcast to all game participants except the one with the given uuid, if not null
     public void broadcastExcept(final @NotNull LangPath langPath,
                                 final @Nullable UUID exception,
                                 final @NotNull TagResolver... resolvers) {
@@ -969,10 +1030,12 @@ public class GhostGame implements Listener {
         }
     }
 
+    /// broadcast to all game participants
     public void broadcastAll(final @NotNull LangPath langPath, final @NotNull TagResolver... resolvers) {
         broadcastExcept(langPath, null, resolvers);
     }
 
+    /// broadcast to all game participants except the one with the given uuid, if not null
     public void broadcastExcept(@NotNull LangPath langPath, final @Nullable UUID exception) {
         for (Iterator<Map.Entry<UUID, AGhostGamePlayer>> iterator = players.entrySet().iterator(); iterator.hasNext(); ) {
             Map.Entry<UUID, AGhostGamePlayer> entry = iterator.next();
@@ -1014,22 +1077,14 @@ public class GhostGame implements Listener {
         }
     }
 
+    /// broadcast to all game participants
     public void broadcastAll(@NotNull LangPath langPath) {
         broadcastExcept(langPath, null);
     }
 
-    public @NotNull CompletableFuture<@NotNull Boolean> reload() {
-        endGame(EndReason.EXTERN);
-        gameState = GameState.RESETTING; // lock from joining while we wait for config
-
-        return config.reload().thenApply(result -> {
-            gameState = GameState.IDLE;
-            return result;
-        });
-    }
-
-    public @NotNull String getName_id() {
-        return name_id;
+    /// intern used game unique name
+    public @NotNull @KeyPattern.Value String getNameID() {
+        return nameID;
     }
 
     public @NotNull GameState getGameState() {
@@ -1040,6 +1095,7 @@ public class GhostGame implements Listener {
         return config;
     }
 
+    /// returns true, if all players would be perished or trapped if this player would also die / get trapped
     protected boolean wouldAllPlayersBeDead(final @NotNull AlivePlayer alivePlayer) {
         for (AGhostGamePlayer ghostGamePlayer : players.values()) {
             if (ghostGamePlayer instanceof AlivePlayer otherAlivePlayer &&
@@ -1052,6 +1108,7 @@ public class GhostGame implements Listener {
         return true;
     }
 
+    /// returns true, if all players would are perished or trapped
     protected boolean areAllPlayersDead() {
         for (AGhostGamePlayer ghostGamePlayer : players.values()) {
             if (ghostGamePlayer instanceof AlivePlayer alivePlayer &&
@@ -1101,7 +1158,7 @@ public class GhostGame implements Listener {
                         }
                     }
 
-                    plugin.getComponentLogger().warn("removed player with uuid {} from the ghost game {}, because they where missing on the server (sync points xp)", entry.getKey(), getName_id());
+                    plugin.getComponentLogger().warn("removed player with uuid {} from the ghost game {}, because they where missing on the server (sync points xp)", entry.getKey(), getNameID());
                     iterator.remove();
                 } else {
                     playerInGame.setExp(percent);
@@ -1121,7 +1178,7 @@ public class GhostGame implements Listener {
                 Player playerInGame = plugin.getServer().getPlayer(entry.getKey());
 
                 if (playerInGame == null) {
-                    plugin.getComponentLogger().warn("removed spectator with uuid {} from the ghost game {}, because they where missing on the server (sync points xp)", entry.getKey(), getName_id());
+                    plugin.getComponentLogger().warn("removed spectator with uuid {} from the ghost game {}, because they where missing on the server (sync points xp)", entry.getKey(), getNameID());
                     iterator.remove();
                 } else {
                     playerInGame.setExp(percent);
@@ -1160,6 +1217,60 @@ public class GhostGame implements Listener {
         return getConfig().getMouseTraps();
     }
 
+    /// will return null if the game is not running.
+    public @Nullable Duration getRemainingDuration() {
+        if (amountOfTicksRun > 0) {
+            final double millisPerTick = 1000D / plugin.getServer().getServerTickManager().getTickRate();
+            return Duration.ofMillis((long) (config.getGameDuration().toMillis() - amountOfTicksRun * millisPerTick));
+        } else {
+            return null;
+        }
+    }
+
+    public double getGainedPointAmount() {
+        return gainedPoints;
+    }
+
+    public int getAliveFreePlayerAmount() {
+        int result = 0;
+
+        for (AGhostGamePlayer ghostGamePlayer : players.values()) {
+            if (ghostGamePlayer instanceof AlivePlayer alivePlayer &&
+                alivePlayer.getMouseTrapTrappedIn() == null) {
+
+                result++;
+            }
+        }
+
+        return result;
+    }
+
+    public int getTrappedPlayerAmount() {
+        int result = 0;
+
+        for (AGhostGamePlayer ghostGamePlayer : players.values()) {
+            if (ghostGamePlayer instanceof AlivePlayer alivePlayer &&
+                alivePlayer.getMouseTrapTrappedIn() != null) {
+
+                result++;
+            }
+        }
+
+        return result;
+    }
+
+    public int getPerishedPlayersAmount() {
+        int result = 0;
+
+        for (AGhostGamePlayer ghostGamePlayer : players.values()) {
+            if (ghostGamePlayer instanceof PerishedPlayer) {
+                result++;
+            }
+        }
+
+        return result;
+    }
+
     public enum EndReason {
         EXTERN,
         TIME,
@@ -1173,7 +1284,8 @@ public class GhostGame implements Listener {
         COUNTDOWN,
         STARTING,
         RUNNING,
-        RESETTING
+        RESETTING,
+        RELOADING_CONFIG
     }
 
     public static class PlayerNotAliveException extends IllegalArgumentException {

@@ -24,11 +24,13 @@ public enum SharedLangPath implements LangPath {
     ARG_NOT_A_NUMBER("cmd.error.arg.not-a-number"),
     ARG_NOT_A_SUBCMD("cmd.error.arg.not-a-subcommand"),
     ARG_NOT_A_PLAYER("cmd.error.arg.not-a-player"),
+    ARG_NOT_A_TIME("cmd.error.arg.not-a-time"),
     ARG_NUMBER_OUT_OF_BOUNDS("cmd.error.arg.number-out-of-bounds"),
     NOT_ENOUGH_ARGS("cmd.error.arg.not-enough-args"),
     UNKNOWN_ARG("cmd.error.arg.unknown"),
     NO_PERMISSION("no-permission"),
-    HELP_HELP_TEXT("cmd.help.help-text");
+    HELP_HELP_TEXT("cmd.help.help-text"),
+    RELOAD_HELP_TEXT("cmd.reload.help-text");
 
     private final @NotNull String path;
     private final @NotNull String defaultValue;

@@ -23,21 +23,30 @@ public class ConfigOption<T> {
         this.fallbackValue = fallbackValue;
     }
 
+    /**
+     * @return the path where the value should be located in the config
+     */
     public @NotNull String getPath() {
         return path;
     }
 
+    /**
+     * @return the fallback value
+     */
     public @NotNull T getFallback() {
         return fallbackValue;
     }
 
     /**
-     * returns the value if not null, else the fallback
+     * @return the value if not null, else the fallback
      */
     public @NotNull T getValueOrFallback() {
         return Objects.requireNonNullElse(this.value.get(), fallbackValue);
     }
 
+    /**
+     * @return if the value is not null
+     */
     public boolean hasValue() {
         return this.value.get() != null;
     }

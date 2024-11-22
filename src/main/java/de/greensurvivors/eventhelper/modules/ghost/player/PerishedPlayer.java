@@ -9,14 +9,15 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 import java.util.UUID;
 
-public class DeadPlayer extends AGhostGamePlayer {
+/// A perished player can't interact with all parts of the game anymore and potentially has a limited amount of quest they still can finish.
+public class PerishedPlayer extends AGhostGamePlayer {
     private final @NotNull List<@NotNull QuestModifier> stillPossibleTasks;
 
-    public DeadPlayer(final @NotNull EventHelper plugin,
-                      final @NotNull GhostGame game,
-                      final @NotNull UUID uuid,
-                      final @NotNull PlayerData playerData,
-                      final @NotNull List<@NotNull QuestModifier> perishedTasks) {
+    public PerishedPlayer(final @NotNull EventHelper plugin,
+                          final @NotNull GhostGame game,
+                          final @NotNull UUID uuid,
+                          final @NotNull PlayerData playerData,
+                          final @NotNull List<@NotNull QuestModifier> perishedTasks) {
         super(plugin, game, uuid, playerData);
         this.stillPossibleTasks = perishedTasks;
     }

@@ -10,6 +10,9 @@ import com.sk89q.worldguard.protection.flags.registry.FlagRegistry;
 import com.sk89q.worldguard.protection.regions.RegionQuery;
 import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.modules.AModul;
+import de.greensurvivors.eventhelper.modules.StateChangeEvent;
+import net.kyori.adventure.key.Key;
+import net.kyori.adventure.key.KeyPattern;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Sound;
@@ -35,6 +38,8 @@ import java.util.UUID;
 import java.util.logging.Level;
 
 public class TNTKnockbackModul extends AModul<TNTKnockbackConfig> implements Listener {
+    private static final @NotNull
+    @KeyPattern.Namespace String MODUL_ID = "tnt_knockback";
     private final HashMap<UUID, TntAndTasks> interactionMap = new HashMap<>();
     private StateFlag tntFlag;
 
@@ -44,8 +49,7 @@ public class TNTKnockbackModul extends AModul<TNTKnockbackConfig> implements Lis
      * we can't check if it was successfully loaded here.
      */
     public TNTKnockbackModul(final @NotNull EventHelper plugin) {
-        super(plugin, new TNTKnockbackConfig(plugin));
-        this.getConfig().setModul(this);
+        super(plugin, new TNTKnockbackConfig(plugin, MODUL_ID));
 
         if (plugin.getDependencyManager().isWorldGuardInstanceSafe()) {
             FlagRegistry registry = WorldGuard.getInstance().getFlagRegistry();
@@ -242,34 +246,37 @@ public class TNTKnockbackModul extends AModul<TNTKnockbackConfig> implements Lis
     }
 
     @Override
-    public @NotNull String getName() {
-        return "TNTKnockback";
+    public @NotNull @KeyPattern.Namespace String getName() {
+        return MODUL_ID;
     }
 
     @Override
-    public void onEnable() {
-        if (plugin.getDependencyManager().isWorldGuardEnabled()) {
-            Bukkit.getPluginManager().registerEvents(this, plugin);
-        }
-    }
+    @EventHandler(ignoreCancelled = true)
+    protected void onConfigEnabledChange(@NotNull StateChangeEvent<?> event) {
+        Key eventKey = event.getKey();
 
-    /**
-     * clears all interact entities and internal data
-     */
-    @Override
-    public void onDisable() {
-        HandlerList.unregisterAll(this);
+        if (eventKey.namespace().equals(getName()) && eventKey.value().equals(getName())) {
+            if (event.getNewState() instanceof Boolean enabledState) {
+                if (enabledState) {
+                    if (plugin.getDependencyManager().isWorldGuardEnabled()) {
+                        Bukkit.getPluginManager().registerEvents(this, plugin);
+                    }
+                } else { // clears all interact entities and internal data
+                    HandlerList.unregisterAll(this);
 
-        for (Map.Entry<UUID, TntAndTasks> entry : interactionMap.entrySet()) {
-            entry.getValue().task.cancel();
+                    for (Map.Entry<UUID, TntAndTasks> entry : interactionMap.entrySet()) {
+                        entry.getValue().task.cancel();
 
-            Entity entity = Bukkit.getEntity(entry.getKey());
-            if (entity != null) {
-                entity.remove();
+                        Entity entity = Bukkit.getEntity(entry.getKey());
+                        if (entity != null) {
+                            entity.remove();
+                        }
+                    }
+
+                    interactionMap.clear();
+                }
             }
         }
-
-        interactionMap.clear();
     }
 
     /**

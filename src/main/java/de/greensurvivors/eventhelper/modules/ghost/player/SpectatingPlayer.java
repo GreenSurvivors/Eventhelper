@@ -6,6 +6,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.UUID;
 
+/// A spectator can only spectate, but not influence the game in any shape or form
 public class SpectatingPlayer extends AGhostGameParticipant {
 
     public SpectatingPlayer(final @NotNull EventHelper plugin,

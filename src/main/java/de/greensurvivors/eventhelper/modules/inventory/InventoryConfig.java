@@ -4,10 +4,10 @@ import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.modules.AModulConfig;
 import org.apache.maven.artifact.versioning.ComparableVersion;
 import org.bukkit.Bukkit;
+import org.bukkit.attribute.Attribute;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
-import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -17,12 +17,11 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
 
-public class InventoryConfig extends AModulConfig<InventoryRegionModul> {
+public class InventoryConfig extends AModulConfig {
     private final static String
         INVENTORY = "inventory",
         ENDERCHEST = "enderchest",
@@ -37,16 +36,10 @@ public class InventoryConfig extends AModulConfig<InventoryRegionModul> {
         ATTRIBUTE_TYPE = "type",
         ACTIVE_INVENTORY = "activeInventory";
 
-    private final ItemStack[] defaultInventory = new ItemStack[InventoryType.PLAYER.getDefaultSize()]; // todo
-    private final ItemStack[] defaultEnderInv = new ItemStack[InventoryType.ENDER_CHEST.getDefaultSize()];
-    private float defaultExp = 0.0f;
-    private int defaultLevel = 0;
-    private float defaultHealth = 20.0f;
-    private int defaultFood = 20;
-    private String defaultIdentifier = "default";
+    private final String defaultIdentifier = "default";
 
-    public InventoryConfig(final @NotNull EventHelper plugin) {
-        super(plugin);
+    public InventoryConfig(final @NotNull EventHelper plugin, final @NotNull String modulID) {
+        super(plugin, modulID);
     }
 
     @Override
@@ -55,38 +48,31 @@ public class InventoryConfig extends AModulConfig<InventoryRegionModul> {
 
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             synchronized (this) {
-                if (this.modul != null) {
-                    if (!Files.isRegularFile(configPath)) {
-                        plugin.saveResource(modul.getName() + "/" + configPath.getFileName().toString(), false);
-                    }
+                if (!Files.isRegularFile(getConfigPath())) {
+                    plugin.saveResource(getModulID() + "/" + getConfigPath().getFileName().toString(), false);
+                }
 
-                    try (BufferedReader bufferedReader = Files.newBufferedReader(configPath)) {
-                        @NotNull YamlConfiguration config = YamlConfiguration.loadConfiguration(bufferedReader);
+                try (BufferedReader bufferedReader = Files.newBufferedReader(getConfigPath())) {
+                    @NotNull YamlConfiguration config = YamlConfiguration.loadConfiguration(bufferedReader);
 
-                        @Nullable String dataVersionStr = config.getString(VERSION_PATH);
-                        if (dataVersionStr != null) {
-                            ComparableVersion lastVersion = new ComparableVersion(dataVersionStr);
+                    @Nullable String dataVersionStr = config.getString(VERSION_PATH);
+                    if (dataVersionStr != null) {
+                        ComparableVersion lastVersion = new ComparableVersion(dataVersionStr);
 
-                            if (dataVersion.compareTo(lastVersion) < 0) {
-                                plugin.getComponentLogger().warn("Found modul config for \"{}\" was saved in a newer data " +
-                                    "version ({}), expected: {}. Trying to load anyway but some this most definitely " +
-                                    "will be broken!", modul.getName(), lastVersion, dataVersion);
-                            }
-                        } else {
-                            plugin.getComponentLogger().warn("The data version for modul config for \"{}\" was missing." +
-                                " Proceed with care!", modul.getName());
+                        if (dataVersion.compareTo(lastVersion) < 0) {
+                            plugin.getComponentLogger().warn("Found modul config for \"{}\" was saved in a newer data " +
+                                "version ({}), expected: {}. Trying to load anyway but some this most definitely " +
+                                "will be broken!", getModulID(), lastVersion, dataVersion);
                         }
-
-                        isEnabled.setValue(config.getBoolean(isEnabled.getPath()));
-                        Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(isEnabled.getValueOrFallback())); // back to main thread
-                    } catch (IOException e) {
-                        plugin.getComponentLogger().error("Could not load modul config for {} from file!", modul.getName(), e);
-
-                        isEnabled.setValue(Boolean.FALSE);
-                        Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(Boolean.FALSE)); // back to main thread
+                    } else {
+                        plugin.getComponentLogger().warn("The data version for modul config for \"{}\" was missing." +
+                            " Proceed with care!", getModulID());
                     }
-                } else {
-                    plugin.getComponentLogger().error("Could not load modul config, since the module of {} was not set!", this.getClass().getName());
+
+                    isEnabled.setValue(config.getBoolean(isEnabled.getPath()));
+                    Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(isEnabled.getValueOrFallback())); // back to main thread
+                } catch (IOException e) {
+                    plugin.getComponentLogger().error("Could not load modul config for {} from file!", getModulID(), e);
 
                     isEnabled.setValue(Boolean.FALSE);
                     Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(Boolean.FALSE)); // back to main thread
@@ -103,29 +89,22 @@ public class InventoryConfig extends AModulConfig<InventoryRegionModul> {
 
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             synchronized (this) {
-                if (this.modul != null) {
-                    if (!Files.isRegularFile(configPath)) {
-                        plugin.saveResource(modul.getName() + "/" + configPath.getFileName().toString(), false);
-                    }
+                if (!Files.isRegularFile(getConfigPath())) {
+                    plugin.saveResource(getModulID() + "/" + getConfigPath().getFileName().toString(), false);
+                }
 
-                    try (BufferedReader bufferedReader = Files.newBufferedReader(configPath)) {
-                        @NotNull YamlConfiguration config = YamlConfiguration.loadConfiguration(bufferedReader);
+                try (BufferedReader bufferedReader = Files.newBufferedReader(getConfigPath())) {
+                    @NotNull YamlConfiguration config = YamlConfiguration.loadConfiguration(bufferedReader);
 
-                        config.set(VERSION_PATH, dataVersion.toString());
-                        config.set(isEnabled.getPath(), isEnabled.getValueOrFallback());
+                    config.set(VERSION_PATH, dataVersion.toString());
+                    config.set(isEnabled.getPath(), isEnabled.getValueOrFallback());
 
-                        config.options().parseComments(true);
-                        config.save(configPath.toFile());
+                    config.options().parseComments(true);
+                    config.save(getConfigPath().toFile());
 
-                        Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(Boolean.TRUE)); // back to main thread
-                    } catch (IOException e) {
-                        plugin.getComponentLogger().error("Could not load modul config for {} from file!", modul.getName(), e);
-
-                        isEnabled.setValue(Boolean.FALSE);
-                        Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(Boolean.TRUE)); // back to main thread
-                    }
-                } else {
-                    plugin.getComponentLogger().error("Could not save modul config, since the module of {} was not set!", this.getClass().getName());
+                    Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(Boolean.TRUE)); // back to main thread
+                } catch (IOException e) {
+                    plugin.getComponentLogger().error("Could not load modul config for {} from file!", getModulID(), e);
 
                     isEnabled.setValue(Boolean.FALSE);
                     Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(Boolean.TRUE)); // back to main thread
@@ -134,18 +113,6 @@ public class InventoryConfig extends AModulConfig<InventoryRegionModul> {
         });
 
         return runAfter;
-    }
-
-    public void setDefaults(final @NotNull ItemStack inventoryContent, float exp, int level, float health, int food, final @NotNull String identifier) {
-        Arrays.fill(defaultInventory, inventoryContent);
-        Arrays.fill(defaultEnderInv, inventoryContent);
-
-        this.defaultExp = exp;
-        this.defaultLevel = level;
-
-        this.defaultHealth = health;
-        this.defaultFood = food;
-        this.defaultIdentifier = identifier;
     }
 
     public String getDefaultIdentifier() {
@@ -204,14 +171,11 @@ public class InventoryConfig extends AModulConfig<InventoryRegionModul> {
             plugin.getLogger().log(Level.SEVERE, "Could not save " + file.getName() + " inventory file.", e);
         }
 
-//		ItemStack[] content = ((List<ItemStack>) c.get(mode + ".inventory.armor")).toArray(new ItemStack[0]);
-//		player.getInventory().setArmorContents(content);
-
         List<?> inventoryListLoaded = cfg.getList(buildKey(identifier, INVENTORY));
         List<?> enderListLoaded = cfg.getList(buildKey(identifier, ENDERCHEST));
 
         if (inventoryListLoaded == null) {
-            player.getInventory().setContents(defaultInventory);
+            player.getInventory().clear();
         } else {
             List<ItemStack> inventoryList = new ArrayList<>();
 
@@ -225,7 +189,7 @@ public class InventoryConfig extends AModulConfig<InventoryRegionModul> {
         }
 
         if (enderListLoaded == null) {
-            player.getEnderChest().setContents(defaultEnderInv);
+            player.getEnderChest().clear();
         } else {
             List<ItemStack> enderList = new ArrayList<>();
 
@@ -240,10 +204,11 @@ public class InventoryConfig extends AModulConfig<InventoryRegionModul> {
 
         player.updateInventory();
 
-        player.setExp(Math.max(0, (float) cfg.getDouble(buildKey(identifier, STATS, EXP), defaultExp)));
-        player.setLevel(Math.max(0, cfg.getInt(buildKey(identifier, STATS, LEVEL), defaultLevel)));
-        player.setHealth(Math.max(0, Math.min(defaultHealth, cfg.getDouble(buildKey(identifier, STATS, HEALTH), defaultHealth))));
-        player.setFoodLevel(Math.max(0, Math.min(defaultFood, cfg.getInt(buildKey(identifier, STATS, HUNGER), defaultFood))));
+        player.setExp(Math.max(0, (float) cfg.getDouble(buildKey(identifier, STATS, EXP), 0.0)));
+        player.setLevel(Math.max(0, cfg.getInt(buildKey(identifier, STATS, LEVEL), 0)));
+        final double maxHealth = player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue();
+        player.setHealth(Math.max(0, Math.min(maxHealth, cfg.getDouble(buildKey(identifier, STATS, HEALTH), maxHealth))));
+        player.setFoodLevel(Math.max(0, Math.min(20, cfg.getInt(buildKey(identifier, STATS, HUNGER), 20))));
     }
 
     /**

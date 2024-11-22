@@ -9,6 +9,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
 
+/// everybody that's part of a game, spectating or playing it
 public abstract class AGhostGameParticipant {
     protected final @NotNull EventHelper plugin;
     private final @NotNull UUID uuid;

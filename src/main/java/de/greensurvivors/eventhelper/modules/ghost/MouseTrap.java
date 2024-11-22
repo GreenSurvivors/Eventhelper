@@ -94,6 +94,7 @@ public class MouseTrap implements ConfigurationSerializable, Listener {
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
     }
 
+    /// will stop keeping track on all trapped players but will not release them!
     public void onDisable() {
         HandlerList.unregisterAll(this);
         trappedPlayers.clear();
@@ -112,7 +113,7 @@ public class MouseTrap implements ConfigurationSerializable, Listener {
 
     /**
      * important: use AlivePlayer.trapInMouseTrap instead of this one!
-     * the AlivePlayer will call this method. But if you skip that part it will not now it was trapped!
+     * the AlivePlayer will call this method. But if you skip that part they will not know they are trapped!
      */
     public boolean trapPlayer(final @NotNull AlivePlayer alivePlayer) {
         final @Nullable World world = Bukkit.getWorld(worldName);
@@ -164,6 +165,7 @@ public class MouseTrap implements ConfigurationSerializable, Listener {
         return trappedPlayers;
     }
 
+    /// the location of the block an alive player have to interact with in order to release all trapped players of this trap
     public boolean isReleaseBlockLocation(final @NotNull Location location) {
         return worldName.equals(location.getWorld().getName()) &&
             (Math.sqrt(releaseButtonPosition.x() - location.x()) +
@@ -171,6 +173,7 @@ public class MouseTrap implements ConfigurationSerializable, Listener {
                 Math.sqrt(releaseButtonPosition.z() - location.z())) <= 0.25;
     }
 
+    /// to avoid players camping at the {@link #isReleaseBlockLocation(Location)}
     public @Nullable UnsafeArea getUnsafeArea() {
         return unsafeArea;
     }

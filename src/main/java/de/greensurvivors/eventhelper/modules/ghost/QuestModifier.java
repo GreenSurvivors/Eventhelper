@@ -32,6 +32,7 @@ public class QuestModifier implements ConfigurationSerializable {
         return pointsRewarded;
     }
 
+    /// two QuestModifier are considered to be equal, if they modify the same quest, specified by questIdentifier
     @Override
     public boolean equals(Object obj) {
         if (this == obj) {
