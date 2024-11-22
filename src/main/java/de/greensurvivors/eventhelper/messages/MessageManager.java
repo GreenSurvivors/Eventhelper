@@ -23,13 +23,17 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.CodeSource;
 import java.time.Duration;
+import java.time.Period;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.logging.Level;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class MessageManager {
+    private static final @NotNull Pattern DURATION_PATTERN = Pattern.compile("(-?[0-9]+)([tTsSmhHdDwWM])");
     private static final @NotNull String BUNDLE_FILE_PROTO_PATTERN = "(?:_.*)?.properties";
     private final @NotNull EventHelper plugin;
     private final @NotNull LoadingCache<@NotNull String, @NotNull ResourceBundle> resourceBundles = Caffeine.newBuilder().build(
@@ -93,6 +97,45 @@ public class MessageManager {
             timeStr.append(ticks).append("t");
         }
         return Component.text(timeStr.toString());
+    }
+
+    /**
+     * Try to get a time period of a string.
+     * First try ISO-8601 duration, and afterward our own implementation
+     * using the same time unit more than once is permitted.
+     * Ticks are counted as standard 20 t/s, not doing anything special with the tick manager
+     *
+     * @return the duration, or null if not possible
+     */
+    public @Nullable Duration parseDuration(@NotNull String period) {
+        try { //try Iso
+            return Duration.parse(period);
+        } catch (DateTimeParseException e) {
+            plugin.getComponentLogger().warn("Couldn't get time period \"{}\" as duration. Trying to parse manual next.", period, e);
+        }
+
+        Matcher matcher = DURATION_PATTERN.matcher(period);
+        Duration duration = Duration.ZERO;
+
+        while (matcher.find()) {
+            try {
+                long num = Long.parseLong(matcher.group(1));
+                String typ = matcher.group(2);
+                duration = switch (typ) { // from periodPattern
+                    case "t", "T" -> duration.plusMillis(50L * num); // ticks
+                    case "s", "S" -> duration.plusSeconds(num);
+                    case "m" -> duration.plusMinutes(num);
+                    case "h", "H" -> duration.plusHours(num);
+                    case "d", "D" -> duration.plusDays(num);
+                    case "w", "W" -> duration.plusDays(Period.ofWeeks((int) num).getDays());
+                    case "M" -> duration.plusDays(Period.ofMonths((int) num).getDays());
+                    default -> duration;
+                };
+            } catch (NumberFormatException e) {
+                plugin.getComponentLogger().warn("Couldn't get time period for {}", period, e);
+            }
+        }
+        return duration == Duration.ZERO ? null : duration;
     }
 
     /**

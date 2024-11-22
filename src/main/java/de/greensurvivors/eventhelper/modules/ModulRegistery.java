@@ -4,18 +4,24 @@ import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.modules.ghost.GhostModul;
 import de.greensurvivors.eventhelper.modules.inventory.InventoryRegionModul;
 import de.greensurvivors.eventhelper.modules.tnt.TNTKnockbackModul;
+import net.kyori.adventure.key.Key;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.server.PluginDisableEvent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public class ModulRegistery {
+public class ModulRegistery implements Listener {
     private final @NotNull Map<@NotNull String, @NotNull AModul<?>> registeredModules = new HashMap<>();
     private final @NotNull EventHelper plugin;
 
     public ModulRegistery(@NotNull EventHelper plugin) {
         this.plugin = plugin;
+
+        plugin.getServer().getPluginManager().registerEvents(this, plugin);
     }
 
     /**
@@ -63,7 +69,7 @@ public class ModulRegistery {
     public void disableAll() {
         for (final @NotNull AModul<?> modul : registeredModules.values()) {
             if (modul.getConfig().isEnabled()) {
-                modul.onDisable();
+                new StateChangeEvent<>(Key.key(modul.getName(), modul.getName()), false).callEvent();
             }
         }
     }
@@ -74,12 +80,24 @@ public class ModulRegistery {
             final boolean wasEnabled = modul.getConfig().isEnabled();
 
             modul.getConfig().reload().thenAccept(isEnabled -> {
+                final Key modulKey = Key.key(modul.getName(), modul.getName());
                 if (isEnabled) {
-                    modul.onEnable();
+                    new StateChangeEvent<>(modulKey, true).callEvent();
                 } else if (wasEnabled) {
-                    modul.onDisable();
+                    new StateChangeEvent<>(modulKey, false).callEvent();
                 }
             });
+        }
+    }
+
+    /**
+     * The onDisable Method of java plugin is after the plugin was marked as disabled by the server.
+     * If a plugin is marked as disabled all it's EventHandlers are dead.
+     */
+    @EventHandler(ignoreCancelled = true)
+    private void onPluginDisable(final @NotNull PluginDisableEvent event) {
+        if (event.getPlugin() == plugin) {
+            disableAll();
         }
     }
 }

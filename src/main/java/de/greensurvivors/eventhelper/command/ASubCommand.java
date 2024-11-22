@@ -34,7 +34,7 @@ public abstract class ASubCommand {
     /**
      * @return a help text, to be displayed by /eventhelper help
      */
-    public abstract @NotNull LangPath getHelpTextPath();
+    public abstract @NotNull LangPath getHelpTextPath(@NotNull List<String> arguments);
 
     /**
      * checks if the Permissible is allowed to run this command

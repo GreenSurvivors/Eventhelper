@@ -4,7 +4,10 @@ import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.Utils;
 import de.greensurvivors.eventhelper.config.ConfigOption;
 import de.greensurvivors.eventhelper.modules.AModulConfig;
+import de.greensurvivors.eventhelper.modules.StateChangeEvent;
 import io.papermc.paper.math.Position;
+import net.kyori.adventure.key.Key;
+import net.kyori.adventure.key.KeyPattern;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.apache.commons.collections4.list.SetUniqueList;
@@ -31,7 +34,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @SuppressWarnings("UnstableApiUsage") // Position
-public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create and call events
+public class GhostGameConfig extends AModulConfig {
     static {
         ConfigurationSerialization.registerClass(PathModifier.class);
         ConfigurationSerialization.registerClass(MouseTrap.class);
@@ -52,7 +55,9 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     private final @NotNull ConfigOption<@NotNull List<@NotNull Location>> vexSpawnLocations = new ConfigOption<>("vex.spawnLocations", List.of()); // we need fast random access. But the locations should be unique! // todo check for very close together locations!
     private final @NotNull ConfigOption<@NotNull @Range(from = 1, to = Integer.MAX_VALUE) Integer> vexAmount = new ConfigOption<>("vex.amount", 1);
     // general
-    private final @NotNull GhostGame ghostGame;
+    private final @NotNull
+    @KeyPattern.Value String ghostGameId;
+    private final @NotNull Key gameKey;
     private final @NotNull ConfigOption<@NotNull Component> displayName;
     private final @NotNull ConfigOption<@NotNull List<@NotNull MouseTrap>> mouseTraps = new ConfigOption<>("game.mouseTraps", List.of()); // we need fast random access. But the MouseTraps should be unique!
     private final @NotNull ConfigOption<@NotNull List<@NotNull String>> gameInitCommands = new ConfigOption<>("game.commands.gameInit", List.of());
@@ -69,7 +74,6 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     private final @NotNull ConfigOption<@NotNull Boolean> allowRejoin = new ConfigOption<>("game.allowRejoin", false);
     private final @NotNull ConfigOption<@NotNull @Range(from = -1, to = Integer.MAX_VALUE) Integer> minAmountPlayers = new ConfigOption<>("game.minAmountPlayers", -1);
     private final @NotNull ConfigOption<@NotNull @Range(from = -1, to = Integer.MAX_VALUE) Integer> maxAmountPlayers = new ConfigOption<>("game.maxAmountPlayers", -1);
-    private final @NotNull ConfigOption<@NotNull Double> playerSpreadDistance = new ConfigOption<>("game.teleport.playerSpread.distance", 0.5);
     private final @NotNull ConfigOption<@NotNull @Range(from = 1, to = Integer.MAX_VALUE) Integer> pointGoal = new ConfigOption<>("game.points.goal", 100);
     private final @NotNull ConfigOption<@NotNull Map<@NotNull String, @NotNull QuestModifier>> quests = new ConfigOption<>("game.tasks.points", Map.of());
     private final @NotNull ConfigOption<@NotNull Duration> durationInTrapUntilDeath = new ConfigOption<>("game.mouseTrap.secondsUntilDeath", Duration.ofSeconds(90));
@@ -82,265 +86,253 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = Integer.MAX_VALUE) Integer> feedAmount = new ConfigOption<>("game.food.feeding.tick", 1);
     private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = Integer.MAX_VALUE) Integer> maxFeedAmount = new ConfigOption<>("game.food.feeding.max", 6);
 
-    public GhostGameConfig(final @NotNull EventHelper plugin, final @NotNull GhostModul modul, final @NotNull GhostGame ghostGame) {
-        super(plugin, Path.of("games", ghostGame.getName_id() + ".yaml"));
-        super.setModul(modul);
+    public GhostGameConfig(final @NotNull EventHelper plugin, final @NotNull @KeyPattern.Namespace String modulName, final @NotNull @KeyPattern.Value String ghostGameId) {
+        super(plugin, modulName, Path.of("games", ghostGameId + ".yaml"));
 
-        this.ghostGame = ghostGame;
-        this.displayName = new ConfigOption<>("game.displayName", Component.text(ghostGame.getName_id()));
+        this.ghostGameId = ghostGameId;
+        this.gameKey = Key.key(getModulID(), ghostGameId);
+        this.displayName = new ConfigOption<>("game.displayName", Component.text(ghostGameId));
     }
 
     @Override
     public @NotNull CompletableFuture<@NotNull Boolean> reload() {
         final CompletableFuture<Boolean> runAfter = new CompletableFuture<>();
 
-        ghostGame.setGameState(GhostGame.GameState.RESETTING); // lock from joining while we wait for config
+        new StateChangeEvent<>(gameKey, GhostGame.GameState.RELOADING_CONFIG);// lock from joining while we wait for config
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             synchronized (this) {
-                if (getModul() != null) {
-
-                    if (!Files.isRegularFile(configPath)) {
-                        try (final InputStream inputStream = plugin.getResource(getModul().getName() + "/defaultGhostGame.yaml")) {
-                            if (inputStream != null) {
-                                Files.createDirectories(configPath.getParent());
-                                //Files.createFile(configPath);
-                                Files.copy(inputStream, configPath);
-                            } else {
-                                plugin.getComponentLogger().error("Could not find defaultGhostGame.yaml");
-                                ghostGame.setGameState(GhostGame.GameState.IDLE);
-                                runAfter.complete(false);
-                                return;
-                            }
-                        } catch (final @NotNull IOException e) {
-                            plugin.getComponentLogger().error("Exception was thrown when trying to save default ghost game config!", e);
+                if (!Files.isRegularFile(getConfigPath())) {
+                    try (final InputStream inputStream = plugin.getResource(getModulID() + "/defaultGhostGame.yaml")) {
+                        if (inputStream != null) {
+                            Files.createDirectories(getConfigPath().getParent());
+                            //Files.createFile(configPath);
+                            Files.copy(inputStream, getConfigPath());
+                        } else {
+                            plugin.getComponentLogger().error("Could not find defaultGhostGame.yaml");
+                            new StateChangeEvent<>(gameKey, GhostGame.GameState.IDLE);// lock from joining while we wait for config
+                            runAfter.complete(false);
+                            return;
                         }
+                    } catch (final @NotNull IOException e) {
+                        plugin.getComponentLogger().error("Exception was thrown when trying to save default ghost game config!", e);
+                    }
+                }
+
+                try (BufferedReader bufferedReader = Files.newBufferedReader(getConfigPath())) {
+                    final @NotNull YamlConfiguration config = YamlConfiguration.loadConfiguration(bufferedReader);
+
+                    @Nullable String dataVersionStr = config.getString(VERSION_PATH);
+                    if (dataVersionStr != null) {
+                        ComparableVersion lastVersion = new ComparableVersion(dataVersionStr);
+
+                        if (dataVersion.compareTo(lastVersion) < 0) {
+                            plugin.getLogger().warning("Found ghost game config for \"" + ghostGameId + "\" was saved in a newer data version " +
+                                "(" + lastVersion + "), expected: " + dataVersion + ". " +
+                                "Trying to load anyway but some this most definitely will be broken!");
+                        }
+                    } else {
+                        plugin.getLogger().warning("The data version for ghost game \"" + ghostGameId + "\" was missing." +
+                            "proceed with care!");
                     }
 
-                    try (BufferedReader bufferedReader = Files.newBufferedReader(configPath)) {
-                        final @NotNull YamlConfiguration config = YamlConfiguration.loadConfiguration(bufferedReader);
+                    isEnabled.setValue(config.getBoolean(isEnabled.getPath()));
 
-                        @Nullable String dataVersionStr = config.getString(VERSION_PATH);
-                        if (dataVersionStr != null) {
-                            ComparableVersion lastVersion = new ComparableVersion(dataVersionStr);
+                    Object pathFindableMatsObj = config.get(pathFindableMats.getPath());
+                    if (pathFindableMatsObj instanceof Map<?, ?> map) {
+                        final @NotNull Map<Material, PathModifier> result = new LinkedHashMap<>(map.size());
 
-                            if (dataVersion.compareTo(lastVersion) < 0) {
-                                plugin.getLogger().warning("Found ghost game config for \"" + ghostGame.getName_id() + "\" was saved in a newer data version " +
-                                    "(" + lastVersion + "), expected: " + dataVersion + ". " +
-                                    "Trying to load anyway but some this most definitely will be broken!");
-                            }
-                        } else {
-                            plugin.getLogger().warning("The data version for ghost game \"" + ghostGame.getName_id() + "\" was missing." +
-                                "proceed with care!");
-                        }
+                        for (Map.Entry<?, ?> entry : map.entrySet()) {
+                            if (entry.getKey() instanceof String key && entry.getValue() instanceof PathModifier pathModifier) {
+                                final @Nullable Material material = Material.matchMaterial(key);
 
-                        isEnabled.setValue(config.getBoolean(isEnabled.getPath()));
-
-                        Object pathFindableMatsObj = config.get(pathFindableMats.getPath());
-                        if (pathFindableMatsObj instanceof Map<?, ?> map) {
-                            final @NotNull Map<Material, PathModifier> result = new LinkedHashMap<>(map.size());
-
-                            for (Map.Entry<?, ?> entry : map.entrySet()) {
-                                if (entry.getKey() instanceof String key && entry.getValue() instanceof PathModifier pathModifier) {
-                                    final @Nullable Material material = Material.matchMaterial(key);
-
-                                    if (material != null) {
-                                        result.put(material, pathModifier);
-                                    }
-                                } else {
-                                    plugin.getLogger().warning("Could not read data \"" + entry + "\" for " + pathFindableMats.getPath() + " in ghost config!");
+                                if (material != null) {
+                                    result.put(material, pathModifier);
                                 }
-                            }
-
-                            pathFindableMats.setValue(result);
-                        } else if (pathFindableMatsObj instanceof ConfigurationSection pathFindableMatsSection) {
-                            Map<String, Object> map = pathFindableMatsSection.getValues(false);
-
-                            final @NotNull Map<Material, PathModifier> result = new LinkedHashMap<>(map.size());
-
-                            for (Map.Entry<?, ?> entry : map.entrySet()) {
-                                if (entry.getKey() instanceof String key && entry.getValue() instanceof PathModifier pathModifier) {
-                                    final @Nullable Material material = Material.matchMaterial(key);
-
-                                    if (material != null) {
-                                        result.put(material, pathModifier);
-                                    }
-                                } else {
-                                    plugin.getLogger().warning("Could not read data \"" + entry + "\" for " + pathFindableMats.getPath() + " in ghost config!");
-                                }
-                            }
-
-                            pathFindableMats.setValue(result);
-                        } else {
-                            pathFindableMats.setValue(null);
-                        }
-
-                        pathFindOffset.setValue(config.getDouble(pathFindOffset.getPath(), pathFindOffset.getFallback()));
-                        followRange.setValue(config.getInt(followRange.getPath(), followRange.getFallback()));
-                        followTimeOut.setValue(config.getLong(followTimeOut.getPath(), followTimeOut.getFallback()));
-                        idleVelocity.setValue(config.getDouble(idleVelocity.getPath(), idleVelocity.getFallback()));
-                        followVelocity.setValue(config.getDouble(followVelocity.getPath(), followVelocity.getFallback()));
-
-                        final @NotNull List<?> ghostSpawnObjectList = config.getList(ghostSpawnLocations.getPath(), List.of());
-                        final @NotNull ArrayList<@NotNull Location> newGhostSpawnLocations = new ArrayList<>(ghostSpawnObjectList.size());
-
-                        for (Object object : ghostSpawnObjectList) {
-                            if (object instanceof Location location) {
-                                if (!newGhostSpawnLocations.contains(location)) {
-                                    newGhostSpawnLocations.add(location);
-                                }
-                            } else if (object instanceof Map<?, ?> map) {
-                                Location location = Location.deserialize((Map<String, Object>) map);
-
-                                if (!newGhostSpawnLocations.contains(location)) {
-                                    newGhostSpawnLocations.add(location);
-                                }
-                            } else if (object instanceof ConfigurationSection section) {
-                                Map<String, Object> map = new HashMap<>();
-
-                                Set<String> keys = section.getKeys(false);
-
-                                for (String key : keys) {
-                                    map.put(key, section.get(key));
-                                }
-
-                                Location location = Location.deserialize(map);
-
-                                if (!newGhostSpawnLocations.contains(location)) {
-                                    newGhostSpawnLocations.add(location);
-                                }
-                            }
-                        }
-                        ghostSpawnLocations.setValue(newGhostSpawnLocations);
-
-                        final @NotNull List<?> idleObjectList = config.getList(ghostIdlePositions.getPath(), List.of());
-                        final @NotNull ArrayList<@NotNull Position> newIdlePositions = new ArrayList<>(idleObjectList.size());
-                        for (Object object : idleObjectList) {
-                            if (object instanceof Map<?, ?> map) {
-                                Position position = Utils.deserializePosition((Map<String, Object>) map);
-
-                                newIdlePositions.add(position);
-                            } else if (object instanceof ConfigurationSection section) {
-                                Map<String, Object> map = new HashMap<>();
-
-                                Set<String> keys = section.getKeys(false);
-
-                                for (String key : keys) {
-                                    map.put(key, section.get(key));
-                                }
-
-                                Position position = Utils.deserializePosition(map);
-                                newIdlePositions.add(position);
                             } else {
-                                plugin.getComponentLogger().warn("unknown idle position config: {}", object);
+                                plugin.getLogger().warning("Could not read data \"" + entry + "\" for " + pathFindableMats.getPath() + " in ghost config!");
                             }
                         }
-                        ghostIdlePositions.setValue(newIdlePositions);
 
-                        ghostAmount.setValue(config.getInt(ghostAmount.getPath(), ghostAmount.getFallback()));
+                        pathFindableMats.setValue(result);
+                    } else if (pathFindableMatsObj instanceof ConfigurationSection pathFindableMatsSection) {
+                        Map<String, Object> map = pathFindableMatsSection.getValues(false);
 
-                        final @NotNull List<?> vexSpawnObjectList = config.getList(vexSpawnLocations.getPath(), List.of());
-                        final @NotNull ArrayList<@NotNull Location> newVexSpawnLocations = new ArrayList<>(vexSpawnObjectList.size());
+                        final @NotNull Map<Material, PathModifier> result = new LinkedHashMap<>(map.size());
 
-                        for (Object object : vexSpawnObjectList) {
-                            if (object instanceof Location location) {
-                                if (!newVexSpawnLocations.contains(location)) {
-                                    newVexSpawnLocations.add(location);
+                        for (Map.Entry<?, ?> entry : map.entrySet()) {
+                            if (entry.getKey() instanceof String key && entry.getValue() instanceof PathModifier pathModifier) {
+                                final @Nullable Material material = Material.matchMaterial(key);
+
+                                if (material != null) {
+                                    result.put(material, pathModifier);
                                 }
-                            } else if (object instanceof Map<?, ?> map) {
-                                Location location = Location.deserialize((Map<String, Object>) map);
-
-                                if (!newVexSpawnLocations.contains(location)) {
-                                    newVexSpawnLocations.add(location);
-                                }
-                            } else if (object instanceof ConfigurationSection section) {
-                                Map<String, Object> map = new HashMap<>();
-
-                                Set<String> keys = section.getKeys(false);
-
-                                for (String key : keys) {
-                                    map.put(key, section.get(key));
-                                }
-
-                                Location location = Location.deserialize(map);
-
-                                if (!newVexSpawnLocations.contains(location)) {
-                                    newVexSpawnLocations.add(location);
-                                }
-                            }
-                        }
-                        vexSpawnLocations.setValue(newVexSpawnLocations);
-
-                        vexAmount.setValue(config.getInt(vexAmount.getPath(), vexAmount.getFallback()));
-
-                        final @Nullable String rawDisplayName = config.getString(displayName.getPath());
-                        if (rawDisplayName == null) {
-                            displayName.setValue(displayName.getFallback());
-                        } else {
-                            displayName.setValue(MiniMessage.miniMessage().deserialize(rawDisplayName));
-                        }
-
-                        @Nullable List<@NotNull MouseTrap> loadedMouseTraps = (List<MouseTrap>) config.getList(mouseTraps.getPath());
-                        mouseTraps.setValue(loadedMouseTraps == null ? mouseTraps.getFallback() : SetUniqueList.setUniqueList(new ArrayList<>(loadedMouseTraps)));
-
-                        gameInitCommands.setValue(config.getStringList(gameInitCommands.getPath()));
-                        lobbyLocation.setValue(config.getLocation(lobbyLocation.getPath(), lobbyLocation.getFallback()));
-                        gameStartCommands.setValue(config.getStringList(gameStartCommands.getPath()));
-                        playerStartLocation.setValue(config.getLocation(playerStartLocation.getPath(), playerStartLocation.getFallback()));
-                        spectatorStartLocation.setValue(config.getLocation(spectatorStartLocation.getPath(), spectatorStartLocation.getFallback()));
-                        gameEndCommands.setValue(config.getStringList(gameEndCommands.getPath()));
-                        endLocation.setValue(config.getLocation(endLocation.getPath(), endLocation.getFallback()));
-
-                        gameDuration.setValue(Duration.ofSeconds(config.getLong(gameDuration.getPath(), gameDuration.getFallback().toSeconds()))); // todo check if bigger than 0
-                        startPlayerTime.setValue(config.getLong(startPlayerTime.getPath(), startPlayerTime.getFallback()));
-                        endPlayerTime.setValue(config.getLong(endPlayerTime.getPath(), endPlayerTime.getFallback()));
-                        allowLateJoin.setValue(config.getBoolean(allowLateJoin.getPath(), allowLateJoin.getFallback()));
-                        allowRejoin.setValue(config.getBoolean(allowRejoin.getPath(), allowRejoin.getFallback()));
-                        minAmountPlayers.setValue(config.getInt(minAmountPlayers.getPath(), minAmountPlayers.getFallback()));
-                        maxAmountPlayers.setValue(config.getInt(maxAmountPlayers.getPath(), maxAmountPlayers.getFallback()));
-                        playerSpreadDistance.setValue(config.getDouble(playerSpreadDistance.getPath(), playerSpreadDistance.getFallback()));
-
-                        Map<String, QuestModifier> questModifierMap = new HashMap<>();
-                        for (Object rawQuestModifier : config.getList(quests.getPath(), Collections.emptyList())) {
-                            if (rawQuestModifier instanceof QuestModifier questModifier) {
-                                questModifierMap.put(questModifier.getQuestIdentifier(), questModifier);
                             } else {
-                                plugin.getComponentLogger().warn("Object in config of module {}, found with key {}  {} is not a valid QuestModifier", getModul().getName(), quests.getPath(), rawQuestModifier);
+                                plugin.getLogger().warning("Could not read data \"" + entry + "\" for " + pathFindableMats.getPath() + " in ghost config!");
                             }
                         }
-                        quests.setValue(questModifierMap);
 
-                        pointGoal.setValue(config.getInt(pointGoal.getPath(), pointGoal.getFallback()));
-                        durationInTrapUntilDeath.setValue(Duration.ofSeconds(config.getLong(durationInTrapUntilDeath.getPath(), durationInTrapUntilDeath.getFallback().toSeconds())));
-                        perishedTaskAmount.setValue(config.getInt(perishedTaskAmount.getPath(), perishedTaskAmount.getFallback()));
-
-                        startingFoodAmount.setValue(config.getInt(startingFoodAmount.getPath(), startingFoodAmount.getFallback()));
-                        startingSaturationAmount.setValue(config.getInt(startingSaturationAmount.getPath(), startingSaturationAmount.getFallback()));
-                        startingHealthAmount.setValue(config.getDouble(startingHealthAmount.getPath(), startingHealthAmount.getFallback()));
-                        feedRegion.setValue(config.getString(feedRegion.getPath(), feedRegion.getFallback()));
-                        long feedDelayTicks = config.getLong(feedDelay.getPath(), feedDelay.getFallback().toSeconds() * 20L);
-                        feedDelay.setValue(Duration.ofSeconds(feedDelayTicks / 20));
-                        feedAmount.setValue(config.getInt(feedAmount.getPath(), feedAmount.getFallback()));
-                        maxFeedAmount.setValue(config.getInt(maxFeedAmount.getPath(), maxFeedAmount.getFallback()));
-
-                        Bukkit.getScheduler().runTask(plugin, () -> { // back to main thread
-                            ghostGame.setGameState(GhostGame.GameState.IDLE);
-                            runAfter.complete(isEnabled.getValueOrFallback());
-                        });
-                    } catch (IOException e) {
-                        plugin.getComponentLogger().error("Could not load modul config for {} from file!", getModul().getName(), e);
-
-                        isEnabled.setValue(Boolean.FALSE);
-                        Bukkit.getScheduler().runTask(plugin, () -> { // back to main thread
-                            ghostGame.setGameState(GhostGame.GameState.IDLE);
-                            runAfter.complete(Boolean.FALSE);
-                        });
+                        pathFindableMats.setValue(result);
+                    } else {
+                        pathFindableMats.setValue(null);
                     }
-                } else {
-                    plugin.getComponentLogger().error("Could not load modul config, since the module of {} was not set!", this.getClass().getName());
+
+                    pathFindOffset.setValue(config.getDouble(pathFindOffset.getPath(), pathFindOffset.getFallback()));
+                    followRange.setValue(config.getInt(followRange.getPath(), followRange.getFallback()));
+                    followTimeOut.setValue(config.getLong(followTimeOut.getPath(), followTimeOut.getFallback()));
+                    idleVelocity.setValue(config.getDouble(idleVelocity.getPath(), idleVelocity.getFallback()));
+                    followVelocity.setValue(config.getDouble(followVelocity.getPath(), followVelocity.getFallback()));
+
+                    final @NotNull List<?> ghostSpawnObjectList = config.getList(ghostSpawnLocations.getPath(), List.of());
+                    final @NotNull ArrayList<@NotNull Location> newGhostSpawnLocations = new ArrayList<>(ghostSpawnObjectList.size());
+
+                    for (Object object : ghostSpawnObjectList) {
+                        if (object instanceof Location location) {
+                            if (!newGhostSpawnLocations.contains(location)) {
+                                newGhostSpawnLocations.add(location);
+                            }
+                        } else if (object instanceof Map<?, ?> map) {
+                            Location location = Location.deserialize((Map<String, Object>) map);
+
+                            if (!newGhostSpawnLocations.contains(location)) {
+                                newGhostSpawnLocations.add(location);
+                            }
+                        } else if (object instanceof ConfigurationSection section) {
+                            Map<String, Object> map = new HashMap<>();
+
+                            Set<String> keys = section.getKeys(false);
+
+                            for (String key : keys) {
+                                map.put(key, section.get(key));
+                            }
+
+                            Location location = Location.deserialize(map);
+
+                            if (!newGhostSpawnLocations.contains(location)) {
+                                newGhostSpawnLocations.add(location);
+                            }
+                        }
+                    }
+                    ghostSpawnLocations.setValue(newGhostSpawnLocations);
+
+                    final @NotNull List<?> idleObjectList = config.getList(ghostIdlePositions.getPath(), List.of());
+                    final @NotNull ArrayList<@NotNull Position> newIdlePositions = new ArrayList<>(idleObjectList.size());
+                    for (Object object : idleObjectList) {
+                        if (object instanceof Map<?, ?> map) {
+                            Position position = Utils.deserializePosition((Map<String, Object>) map);
+
+                            newIdlePositions.add(position);
+                        } else if (object instanceof ConfigurationSection section) {
+                            Map<String, Object> map = new HashMap<>();
+
+                            Set<String> keys = section.getKeys(false);
+
+                            for (String key : keys) {
+                                map.put(key, section.get(key));
+                            }
+
+                            Position position = Utils.deserializePosition(map);
+                            newIdlePositions.add(position);
+                        } else {
+                            plugin.getComponentLogger().warn("unknown idle position config: {}", object);
+                        }
+                    }
+                    ghostIdlePositions.setValue(newIdlePositions);
+
+                    ghostAmount.setValue(config.getInt(ghostAmount.getPath(), ghostAmount.getFallback()));
+
+                    final @NotNull List<?> vexSpawnObjectList = config.getList(vexSpawnLocations.getPath(), List.of());
+                    final @NotNull ArrayList<@NotNull Location> newVexSpawnLocations = new ArrayList<>(vexSpawnObjectList.size());
+
+                    for (Object object : vexSpawnObjectList) {
+                        if (object instanceof Location location) {
+                            if (!newVexSpawnLocations.contains(location)) {
+                                newVexSpawnLocations.add(location);
+                            }
+                        } else if (object instanceof Map<?, ?> map) {
+                            Location location = Location.deserialize((Map<String, Object>) map);
+
+                            if (!newVexSpawnLocations.contains(location)) {
+                                newVexSpawnLocations.add(location);
+                            }
+                        } else if (object instanceof ConfigurationSection section) {
+                            Map<String, Object> map = new HashMap<>();
+
+                            Set<String> keys = section.getKeys(false);
+
+                            for (String key : keys) {
+                                map.put(key, section.get(key));
+                            }
+
+                            Location location = Location.deserialize(map);
+
+                            if (!newVexSpawnLocations.contains(location)) {
+                                newVexSpawnLocations.add(location);
+                            }
+                        }
+                    }
+                    vexSpawnLocations.setValue(newVexSpawnLocations);
+
+                    vexAmount.setValue(config.getInt(vexAmount.getPath(), vexAmount.getFallback()));
+
+                    final @Nullable String rawDisplayName = config.getString(displayName.getPath());
+                    if (rawDisplayName == null) {
+                        displayName.setValue(displayName.getFallback());
+                    } else {
+                        displayName.setValue(MiniMessage.miniMessage().deserialize(rawDisplayName));
+                    }
+
+                    @Nullable List<@NotNull MouseTrap> loadedMouseTraps = (List<MouseTrap>) config.getList(mouseTraps.getPath());
+                    mouseTraps.setValue(loadedMouseTraps == null ? mouseTraps.getFallback() : SetUniqueList.setUniqueList(new ArrayList<>(loadedMouseTraps)));
+
+                    gameInitCommands.setValue(config.getStringList(gameInitCommands.getPath()));
+                    lobbyLocation.setValue(config.getLocation(lobbyLocation.getPath(), lobbyLocation.getFallback()));
+                    gameStartCommands.setValue(config.getStringList(gameStartCommands.getPath()));
+                    playerStartLocation.setValue(config.getLocation(playerStartLocation.getPath(), playerStartLocation.getFallback()));
+                    spectatorStartLocation.setValue(config.getLocation(spectatorStartLocation.getPath(), spectatorStartLocation.getFallback()));
+                    gameEndCommands.setValue(config.getStringList(gameEndCommands.getPath()));
+                    endLocation.setValue(config.getLocation(endLocation.getPath(), endLocation.getFallback()));
+
+                    gameDuration.setValue(Duration.ofSeconds(Math.max(0, config.getLong(gameDuration.getPath(), gameDuration.getFallback().toSeconds()))));
+                    startPlayerTime.setValue(config.getLong(startPlayerTime.getPath(), startPlayerTime.getFallback()));
+                    endPlayerTime.setValue(config.getLong(endPlayerTime.getPath(), endPlayerTime.getFallback()));
+                    allowLateJoin.setValue(config.getBoolean(allowLateJoin.getPath(), allowLateJoin.getFallback()));
+                    allowRejoin.setValue(config.getBoolean(allowRejoin.getPath(), allowRejoin.getFallback()));
+                    minAmountPlayers.setValue(config.getInt(minAmountPlayers.getPath(), minAmountPlayers.getFallback()));
+                    maxAmountPlayers.setValue(config.getInt(maxAmountPlayers.getPath(), maxAmountPlayers.getFallback()));
+
+                    Map<String, QuestModifier> questModifierMap = new HashMap<>();
+                    for (Object rawQuestModifier : config.getList(quests.getPath(), Collections.emptyList())) {
+                        if (rawQuestModifier instanceof QuestModifier questModifier) {
+                            questModifierMap.put(questModifier.getQuestIdentifier(), questModifier);
+                        } else {
+                            plugin.getComponentLogger().warn("Object in config of module {}, found with key {}  {} is not a valid QuestModifier", getModulID(), quests.getPath(), rawQuestModifier);
+                        }
+                    }
+                    quests.setValue(questModifierMap);
+
+                    pointGoal.setValue(config.getInt(pointGoal.getPath(), pointGoal.getFallback()));
+                    durationInTrapUntilDeath.setValue(Duration.ofSeconds(config.getLong(durationInTrapUntilDeath.getPath(), durationInTrapUntilDeath.getFallback().toSeconds())));
+                    perishedTaskAmount.setValue(config.getInt(perishedTaskAmount.getPath(), perishedTaskAmount.getFallback()));
+
+                    startingFoodAmount.setValue(config.getInt(startingFoodAmount.getPath(), startingFoodAmount.getFallback()));
+                    startingSaturationAmount.setValue(config.getInt(startingSaturationAmount.getPath(), startingSaturationAmount.getFallback()));
+                    startingHealthAmount.setValue(config.getDouble(startingHealthAmount.getPath(), startingHealthAmount.getFallback()));
+                    feedRegion.setValue(config.getString(feedRegion.getPath(), feedRegion.getFallback()));
+                    long feedDelayTicks = config.getLong(feedDelay.getPath(), feedDelay.getFallback().toSeconds() * 20L);
+                    feedDelay.setValue(Duration.ofSeconds(feedDelayTicks / 20));
+                    feedAmount.setValue(config.getInt(feedAmount.getPath(), feedAmount.getFallback()));
+                    maxFeedAmount.setValue(config.getInt(maxFeedAmount.getPath(), maxFeedAmount.getFallback()));
+
+                    Bukkit.getScheduler().runTask(plugin, () -> { // back to main thread
+                        new StateChangeEvent<>(gameKey, GhostGame.GameState.IDLE);
+                        runAfter.complete(isEnabled.getValueOrFallback());
+                    });
+                } catch (IOException e) {
+                    plugin.getComponentLogger().error("Could not load modul config for {} from file!", getModulID(), e);
 
                     isEnabled.setValue(Boolean.FALSE);
                     Bukkit.getScheduler().runTask(plugin, () -> { // back to main thread
-                        ghostGame.setGameState(GhostGame.GameState.IDLE);
+                        new StateChangeEvent<>(gameKey, GhostGame.GameState.IDLE);
                         runAfter.complete(Boolean.FALSE);
                     });
                 }
@@ -351,91 +343,83 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
     }
 
     @Override
-    public @NotNull CompletableFuture<@NotNull Boolean> save() { // todo commands
+    public @NotNull CompletableFuture<@NotNull Boolean> save() {
         final CompletableFuture<@NotNull Boolean> runAfter = new CompletableFuture<>();
 
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             synchronized (this) {
-                if (getModul() != null) {
-                    if (!Files.isRegularFile(configPath)) {
-                        try (final InputStream inputStream = plugin.getResource(getModul().getName() + "/defaultGhostGame.yaml")) {
-                            if (inputStream != null) {
-                                Files.createDirectories(configPath.getParent());
-                                //Files.createFile(configPath);
-                                Files.copy(inputStream, configPath);
-                            } else {
-                                plugin.getComponentLogger().error("Could not find defaultGhostGame.yaml");
-                                runAfter.complete(Boolean.FALSE);
-                                return;
-                            }
-                        } catch (final @NotNull IOException e) {
-                            plugin.getComponentLogger().error("Exception was thrown when trying to save default ghost game config!", e);
+                if (!Files.isRegularFile(getConfigPath())) {
+                    try (final InputStream inputStream = plugin.getResource(getModulID() + "/defaultGhostGame.yaml")) {
+                        if (inputStream != null) {
+                            Files.createDirectories(getConfigPath().getParent());
+                            //Files.createFile(configPath);
+                            Files.copy(inputStream, getConfigPath());
+                        } else {
+                            plugin.getComponentLogger().error("Could not find defaultGhostGame.yaml");
+                            runAfter.complete(Boolean.FALSE);
+                            return;
                         }
+                    } catch (final @NotNull IOException e) {
+                        plugin.getComponentLogger().error("Exception was thrown when trying to save default ghost game config!", e);
                     }
+                }
 
-                    try (BufferedReader bufferedReader = Files.newBufferedReader(configPath)) {
-                        @NotNull YamlConfiguration config = YamlConfiguration.loadConfiguration(bufferedReader);
+                try (BufferedReader bufferedReader = Files.newBufferedReader(getConfigPath())) {
+                    @NotNull YamlConfiguration config = YamlConfiguration.loadConfiguration(bufferedReader);
 
-                        config.set(VERSION_PATH, dataVersion.toString());
+                    config.set(VERSION_PATH, dataVersion.toString());
 
-                        config.set(pathFindableMats.getPath(),
-                            pathFindableMats.getValueOrFallback().entrySet().stream().collect(Collectors.toMap(
-                                e -> e.getKey().getKey().asString(), // map materials to namespaced strings
-                                Map.Entry::getValue)));
-                        config.set(pathFindOffset.getPath(), pathFindOffset.getValueOrFallback());
-                        config.set(followRange.getPath(), followRange.getValueOrFallback());
-                        config.set(followTimeOut.getPath(), followTimeOut.getValueOrFallback());
-                        config.set(idleVelocity.getPath(), idleVelocity.getValueOrFallback());
-                        config.set(followVelocity.getPath(), followVelocity.getValueOrFallback());
-                        config.set(ghostSpawnLocations.getPath(), ghostSpawnLocations.getValueOrFallback());
-                        config.set(ghostIdlePositions.getPath(), ghostIdlePositions.getValueOrFallback().stream().map(Utils::serializePosition).toList());
-                        config.set(ghostAmount.getPath(), ghostAmount.getValueOrFallback());
+                    config.set(pathFindableMats.getPath(),
+                        pathFindableMats.getValueOrFallback().entrySet().stream().collect(Collectors.toMap(
+                            e -> e.getKey().getKey().asString(), // map materials to namespaced strings
+                            Map.Entry::getValue)));
+                    config.set(pathFindOffset.getPath(), pathFindOffset.getValueOrFallback());
+                    config.set(followRange.getPath(), followRange.getValueOrFallback());
+                    config.set(followTimeOut.getPath(), followTimeOut.getValueOrFallback());
+                    config.set(idleVelocity.getPath(), idleVelocity.getValueOrFallback());
+                    config.set(followVelocity.getPath(), followVelocity.getValueOrFallback());
+                    config.set(ghostSpawnLocations.getPath(), ghostSpawnLocations.getValueOrFallback());
+                    config.set(ghostIdlePositions.getPath(), ghostIdlePositions.getValueOrFallback().stream().map(Utils::serializePosition).toList());
+                    config.set(ghostAmount.getPath(), ghostAmount.getValueOrFallback());
 
-                        config.set(vexSpawnLocations.getPath(), vexSpawnLocations.getValueOrFallback());
-                        config.set(vexAmount.getPath(), vexAmount.getValueOrFallback());
+                    config.set(vexSpawnLocations.getPath(), vexSpawnLocations.getValueOrFallback());
+                    config.set(vexAmount.getPath(), vexAmount.getValueOrFallback());
 
-                        config.set(gameInitCommands.getPath(), gameInitCommands.getValueOrFallback());
-                        config.set(gameStartCommands.getPath(), gameStartCommands.getValueOrFallback());
-                        config.set(gameEndCommands.getPath(), gameEndCommands.getValueOrFallback());
-                        config.set(displayName.getPath(), MiniMessage.miniMessage().serialize(displayName.getValueOrFallback()));
-                        config.set(mouseTraps.getPath(), List.copyOf(mouseTraps.getValueOrFallback()));
-                        config.set(lobbyLocation.getPath(), lobbyLocation.getValueOrFallback());
-                        config.set(playerStartLocation.getPath(), playerStartLocation.getValueOrFallback());
-                        config.set(spectatorStartLocation.getPath(), spectatorStartLocation.getValueOrFallback());
-                        config.set(endLocation.getPath(), endLocation.getValueOrFallback());
-                        config.set(gameDuration.getPath(), gameDuration.getValueOrFallback().toSeconds());
-                        config.set(startPlayerTime.getPath(), startPlayerTime.getValueOrFallback());
-                        config.set(endPlayerTime.getPath(), endPlayerTime.getValueOrFallback());
-                        config.set(allowLateJoin.getPath(), allowLateJoin.getValueOrFallback());
-                        config.set(allowRejoin.getPath(), allowRejoin.getValueOrFallback());
-                        config.set(minAmountPlayers.getPath(), minAmountPlayers.getValueOrFallback());
-                        config.set(maxAmountPlayers.getPath(), maxAmountPlayers.getValueOrFallback());
-                        config.set(playerSpreadDistance.getPath(), playerSpreadDistance.getValueOrFallback());
-                        config.set(quests.getPath(), List.copyOf(quests.getValueOrFallback().values()));
-                        config.set(pointGoal.getPath(), pointGoal.getValueOrFallback());
-                        config.set(durationInTrapUntilDeath.getPath(), durationInTrapUntilDeath.getValueOrFallback().toSeconds());
-                        config.set(perishedTaskAmount.getPath(), perishedTaskAmount.getValueOrFallback());
+                    config.set(gameInitCommands.getPath(), gameInitCommands.getValueOrFallback());
+                    config.set(gameStartCommands.getPath(), gameStartCommands.getValueOrFallback());
+                    config.set(gameEndCommands.getPath(), gameEndCommands.getValueOrFallback());
+                    config.set(displayName.getPath(), MiniMessage.miniMessage().serialize(displayName.getValueOrFallback()));
+                    config.set(mouseTraps.getPath(), List.copyOf(mouseTraps.getValueOrFallback()));
+                    config.set(lobbyLocation.getPath(), lobbyLocation.getValueOrFallback());
+                    config.set(playerStartLocation.getPath(), playerStartLocation.getValueOrFallback());
+                    config.set(spectatorStartLocation.getPath(), spectatorStartLocation.getValueOrFallback());
+                    config.set(endLocation.getPath(), endLocation.getValueOrFallback());
+                    config.set(gameDuration.getPath(), gameDuration.getValueOrFallback().toSeconds());
+                    config.set(startPlayerTime.getPath(), startPlayerTime.getValueOrFallback());
+                    config.set(endPlayerTime.getPath(), endPlayerTime.getValueOrFallback());
+                    config.set(allowLateJoin.getPath(), allowLateJoin.getValueOrFallback());
+                    config.set(allowRejoin.getPath(), allowRejoin.getValueOrFallback());
+                    config.set(minAmountPlayers.getPath(), minAmountPlayers.getValueOrFallback());
+                    config.set(maxAmountPlayers.getPath(), maxAmountPlayers.getValueOrFallback());
+                    config.set(quests.getPath(), List.copyOf(quests.getValueOrFallback().values()));
+                    config.set(pointGoal.getPath(), pointGoal.getValueOrFallback());
+                    config.set(durationInTrapUntilDeath.getPath(), durationInTrapUntilDeath.getValueOrFallback().toSeconds());
+                    config.set(perishedTaskAmount.getPath(), perishedTaskAmount.getValueOrFallback());
 
-                        config.set(startingFoodAmount.getPath(), startingFoodAmount.getValueOrFallback());
-                        config.set(startingSaturationAmount.getPath(), startingSaturationAmount.getValueOrFallback());
-                        config.set(startingHealthAmount.getPath(), startingHealthAmount.getValueOrFallback());
-                        config.set(feedRegion.getPath(), feedRegion.getValueOrFallback());
-                        config.set(feedDelay.getPath(), feedDelay.getValueOrFallback().toSeconds() * 20);
-                        config.set(feedAmount.getPath(), feedAmount.getValueOrFallback());
-                        config.set(maxFeedAmount.getPath(), maxFeedAmount.getValueOrFallback());
+                    config.set(startingFoodAmount.getPath(), startingFoodAmount.getValueOrFallback());
+                    config.set(startingSaturationAmount.getPath(), startingSaturationAmount.getValueOrFallback());
+                    config.set(startingHealthAmount.getPath(), startingHealthAmount.getValueOrFallback());
+                    config.set(feedRegion.getPath(), feedRegion.getValueOrFallback());
+                    config.set(feedDelay.getPath(), feedDelay.getValueOrFallback().toSeconds() * 20);
+                    config.set(feedAmount.getPath(), feedAmount.getValueOrFallback());
+                    config.set(maxFeedAmount.getPath(), maxFeedAmount.getValueOrFallback());
 
-                        config.options().parseComments(true);
-                        config.save(configPath.toFile());
+                    config.options().parseComments(true);
+                    config.save(getConfigPath().toFile());
 
-                        Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(Boolean.TRUE)); // back to main thread
-                    } catch (IOException e) {
-                        plugin.getComponentLogger().error("Could not load modul config for {} from file!", getModul().getName(), e);
-
-                        isEnabled.setValue(Boolean.FALSE);
-                        Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(Boolean.FALSE)); // back to main thread
-                    }
-                } else {
-                    plugin.getComponentLogger().error("Could not save modul config, since the module of {} was not set!", this.getClass().getName());
+                    Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(Boolean.TRUE)); // back to main thread
+                } catch (IOException e) {
+                    plugin.getComponentLogger().error("Could not load modul config for {} from file!", getModulID(), e);
 
                     isEnabled.setValue(Boolean.FALSE);
                     Bukkit.getScheduler().runTask(plugin, () -> runAfter.complete(Boolean.FALSE)); // back to main thread
@@ -454,14 +438,14 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
                 reload().thenRun(() -> {
                     if (wasEnabled) {
                         if (!isEnabled()) {
-                            ghostGame.onDisable();
+                            new StateChangeEvent<>(gameKey, false).callEvent();
                         }
                     } else if (isEnabled()) {
-                        ghostGame.onEnable();
+                        new StateChangeEvent<>(gameKey, true).callEvent();
                     }
                 });
             } else if (wasEnabled) {
-                ghostGame.onDisable();
+                new StateChangeEvent<>(gameKey, false).callEvent();
             }
         });
     }
@@ -476,7 +460,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
         saveAndReload();
     }
 
-    public int getFollowRangeAt(final @NotNull Material material) { // todo setter
+    public int getFollowRangeAt(final @NotNull Material material) {
         PathModifier modifier = pathFindableMats.getValueOrFallback().get(material);
 
         if (modifier != null) {
@@ -490,7 +474,25 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
         return followRange.getValueOrFallback();
     }
 
-    public double getIdleVelocityAt(final @NotNull Material material) { // todo setter
+    public void setFollowRangeFor(final @NotNull Material material, int followRange) { // todo
+        @Nullable PathModifier modifier = pathFindableMats.getValueOrFallback().get(material);
+
+        if (modifier == null) {
+            modifier = new PathModifier();
+
+            if (!pathFindableMats.hasValue()) {
+                pathFindableMats.setValue(new LinkedHashMap<>());
+            }
+
+            pathFindableMats.getValueOrFallback().put(material, modifier);
+        }
+
+        modifier.setOverwriteFollowRange(followRange);
+
+        saveAndReload();
+    }
+
+    public double getIdleVelocityAt(final @NotNull Material material) {
         PathModifier modifier = pathFindableMats.getValueOrFallback().get(material);
 
         if (modifier != null) {
@@ -504,7 +506,25 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
         return idleVelocity.getValueOrFallback();
     }
 
-    public double getFollowVelocityAt(final @NotNull Material material) { // todo setter
+    public void setIdleVelocity(final @NotNull Material material, double idleVelocity) { // todo
+        @Nullable PathModifier modifier = pathFindableMats.getValueOrFallback().get(material);
+
+        if (modifier == null) {
+            modifier = new PathModifier();
+
+            if (!pathFindableMats.hasValue()) {
+                pathFindableMats.setValue(new LinkedHashMap<>());
+            }
+
+            pathFindableMats.getValueOrFallback().put(material, modifier);
+        }
+
+        modifier.setOverwriteIdleVelocity(idleVelocity);
+
+        saveAndReload();
+    }
+
+    public double getFollowVelocityAt(final @NotNull Material material) {
         PathModifier modifier = pathFindableMats.getValueOrFallback().get(material);
 
         if (modifier != null) {
@@ -516,6 +536,24 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
         }
 
         return followVelocity.getValueOrFallback();
+    }
+
+    public void setFollowRangeFor(final @NotNull Material material, double followVelocity) { // todo
+        @Nullable PathModifier modifier = pathFindableMats.getValueOrFallback().get(material);
+
+        if (modifier == null) {
+            modifier = new PathModifier();
+
+            if (!pathFindableMats.hasValue()) {
+                pathFindableMats.setValue(new LinkedHashMap<>());
+            }
+
+            pathFindableMats.getValueOrFallback().put(material, modifier);
+        }
+
+        modifier.setOverwriteFollowVelocity(followVelocity);
+
+        saveAndReload();
     }
 
     public @NotNull List<@NotNull Location> getGhostSpawnLocations() {
@@ -591,7 +629,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
         }
     }
 
-    public @NotNull List<@NotNull Position> getIdlePositions() { // todo make configuable
+    public @NotNull List<@NotNull Position> getIdlePositions() {
         return ghostIdlePositions.getValueOrFallback();
     }
 
@@ -656,7 +694,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
         return mouseTraps.getValueOrFallback();
     }
 
-    public @NotNull List<String> getGameInitCommands() { // todo use and makle editable
+    public @NotNull List<String> getGameInitCommands() { // todo make editable
         return gameInitCommands.getValueOrFallback();
     }
 
@@ -670,7 +708,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
         saveAndReload();
     }
 
-    public @NotNull List<String> getGameStartCommands() { // todo use and make editable
+    public @NotNull List<String> getGameStartCommands() { // todo make editable
         return gameStartCommands.getValueOrFallback();
     }
 
@@ -684,15 +722,17 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
         saveAndReload();
     }
 
-    public @NotNull Location getSpectatorStartLocation() { // todo
+    public @NotNull Location getSpectatorStartLocation() {
         return spectatorStartLocation.getValueOrFallback();
     }
 
-    public void setSpectatorStartLocation(final @NotNull Location newStartingLocation) { // todo
+    public void setSpectatorStartLocation(final @NotNull Location newStartingLocation) {
         spectatorStartLocation.setValue(newStartingLocation);
+
+        saveAndReload();
     }
 
-    public @NotNull List<String> getGameEndCommands() { // todo use and make editable
+    public @NotNull List<String> getGameEndCommands() { // todo make editable
         return gameEndCommands.getValueOrFallback();
     }
 
@@ -750,7 +790,7 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
         return allowRejoin.getValueOrFallback();
     }
 
-    public void setIsRejoinAllowed(boolean isAllowed) { // todo
+    public void setIsRejoinAllowed(boolean isAllowed) {
         allowRejoin.setValue(isAllowed);
 
         saveAndReload();
@@ -776,16 +816,6 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
         saveAndReload();
     }
 
-    public double getMaxPlayerSpreadTeleport() { // todo use
-        return playerSpreadDistance.getValueOrFallback();
-    }
-
-    public void setPlayerSpreadDistanceTeleport(double newDistance) {
-        playerSpreadDistance.setValue(newDistance);
-
-        saveAndReload();
-    }
-
     public @Nullable Double getPointsOfTask(final @NotNull String questIdentifier) { // todo setter
         final @Nullable QuestModifier questModifier = quests.getValueOrFallback().get(questIdentifier);
         if (questModifier != null) {
@@ -799,16 +829,20 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
         return pointGoal.getValueOrFallback();
     }
 
-    public void setPointGoal(int newGoal) { // todo
+    public void setPointGoal(final @Range(from = 1, to = Integer.MAX_VALUE) int newGoal) {
         pointGoal.setValue(newGoal);
+
+        saveAndReload();
     }
 
     public Duration getDurationTrappedUntilDeath() {
         return durationInTrapUntilDeath.getValueOrFallback();
     }
 
-    public void setDurationTrappedUntilDeath(final @NotNull Duration newDuration) { // todo
+    public void setDurationTrappedUntilDeath(final @NotNull Duration newDuration) {
         durationInTrapUntilDeath.setValue(newDuration);
+
+        saveAndReload();
     }
 
     public @Range(from = 0, to = Integer.MAX_VALUE) int getPerishedTaskAmount() {
@@ -817,62 +851,78 @@ public class GhostGameConfig extends AModulConfig<GhostModul> { // todo create a
 
     public void setPerishedTaskAmount(final @Range(from = 0, to = Integer.MAX_VALUE) int newAmountOfTasks) {
         perishedTaskAmount.setValue(newAmountOfTasks);
+
+        saveAndReload();
     }
 
     public @Range(from = 0, to = Integer.MAX_VALUE) int getStartingFoodAmount() {
         return startingFoodAmount.getValueOrFallback();
     }
 
-    public void setStartingFoodAmount(final @Range(from = 0, to = Integer.MAX_VALUE) int newStartingFoodAmount) { // todo
+    public void setStartingFoodAmount(final @Range(from = 0, to = Integer.MAX_VALUE) int newStartingFoodAmount) {
         startingFoodAmount.setValue(newStartingFoodAmount);
+
+        saveAndReload();
     }
 
     public @Range(from = 0, to = Integer.MAX_VALUE) int getStartingSaturationAmount() {
         return startingSaturationAmount.getValueOrFallback();
     }
 
-    public void setStartingSaturationAmount(final @Range(from = 0, to = Integer.MAX_VALUE) int newStartingSaturationAmount) { // todo
+    public void setStartingSaturationAmount(final @Range(from = 0, to = Integer.MAX_VALUE) int newStartingSaturationAmount) {
         startingSaturationAmount.setValue(newStartingSaturationAmount);
+
+        saveAndReload();
     }
 
     public @Range(from = 0, to = Integer.MAX_VALUE) double getStartingHealthAmount() {
         return startingHealthAmount.getValueOrFallback();
     }
 
-    public void setStartingHealthAmount(final @Range(from = 0, to = Integer.MAX_VALUE) double newStartingHealthAmount) { // todo
+    public void setStartingHealthAmount(final @Range(from = 0, to = Integer.MAX_VALUE) double newStartingHealthAmount) {
         startingHealthAmount.setValue(newStartingHealthAmount);
+
+        saveAndReload();
     }
 
     public @NotNull String getFeedRegionName() {
         return feedRegion.getValueOrFallback();
     }
 
-    public void setFeedRegionName(final @NotNull String newFeedRegionName) { // todo
+    public void setFeedRegionName(final @NotNull String newFeedRegionName) {
         feedRegion.setValue(newFeedRegionName);
+
+        saveAndReload();
     }
 
     public @NotNull Duration getFeedDuration() {
         return feedDelay.getValueOrFallback();
     }
 
-    public void setFeedDuration(final @NotNull Duration newFeedDelay) { // todo
+    public void setFeedDuration(final @NotNull Duration newFeedDelay) {
         feedDelay.setValue(newFeedDelay);
+
+        saveAndReload();
     }
 
     public @Range(from = 0, to = Integer.MAX_VALUE) int getFeedAmount() {
         return feedAmount.getValueOrFallback();
     }
 
-    public void setFeedAmount(final @Range(from = 0, to = Integer.MAX_VALUE) int newFeedAmount) { // todo
+    public void setFeedAmount(final @Range(from = 0, to = Integer.MAX_VALUE) int newFeedAmount) {
         feedAmount.setValue(newFeedAmount);
+
+        saveAndReload();
     }
 
     public @Range(from = 0, to = Integer.MAX_VALUE) int getFeedMaxAmount() {
         return maxFeedAmount.getValueOrFallback();
     }
 
-    public void setFeedMaxAmount(final @Range(from = 0, to = Integer.MAX_VALUE) int newMaxFeedAmount) { // todo
+    public void setFeedMaxAmount(final @Range(from = 0, to = Integer.MAX_VALUE) int newMaxFeedAmount) {
         maxFeedAmount.setValue(newMaxFeedAmount);
+
+        saveAndReload();
     }
 
     public @NotNull Map<@NotNull String, @NotNull QuestModifier> getTasks() {

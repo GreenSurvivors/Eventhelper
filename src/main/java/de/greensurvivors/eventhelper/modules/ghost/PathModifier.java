@@ -64,6 +64,18 @@ public class PathModifier implements ConfigurationSerializable {
         return followVelocity.getValueOrFallback() > 0.0D ? followVelocity.getValueOrFallback() : null;
     }
 
+    public void setOverwriteFollowRange(@Nullable Integer followRange) {
+        this.followRange.setValue(followRange == null ? -1 : followRange);
+    }
+
+    public void setOverwriteIdleVelocity(@Nullable Double idleVelocity) {
+        this.idleVelocity.setValue(idleVelocity == null ? -1.0D : idleVelocity);
+    }
+
+    public void setOverwriteFollowVelocity(@Nullable Double followVelocity) {
+        this.followVelocity.setValue(followVelocity == null ? -1.0D : followVelocity);
+    }
+
     @Override
     public @NotNull String toString() {
         return "PathModifier [" +

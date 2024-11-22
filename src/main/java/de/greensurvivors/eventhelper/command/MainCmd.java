@@ -17,7 +17,6 @@ public class MainCmd extends Command {
     private final static @NotNull Permission permission = new Permission("eventhelper.command.*", description, PermissionDefault.OP);
     private final static @NotNull String label = "eventhelper";
     private final @NotNull EventHelper plugin;
-    private final @NotNull Set<ASubCommand> registeredCommands = new LinkedHashSet<>(); // SequenzedSet
     protected final @NotNull Map<String, ASubCommand> registeredCommandMap = new LinkedHashMap<>(); // SequencedMap
 
     public MainCmd(@NotNull EventHelper plugin) {
@@ -26,7 +25,7 @@ public class MainCmd extends Command {
         this.plugin = plugin;
         plugin.getServer().getCommandMap().register(MainCmd.label, plugin.getName().toLowerCase(Locale.ENGLISH), this);
 
-        registerSubCommand(new HelpSubCommand(plugin, permission, this));
+        //registerSubCommand(new HelpSubCommand(plugin, permission, this)); // todo
         registerSubCommand(new ReloadCommand(plugin, permission));
     }
 
@@ -35,18 +34,14 @@ public class MainCmd extends Command {
     }
 
     public void registerSubCommand(final @NotNull ASubCommand subCommand) {
-        if (registeredCommands.add(subCommand)) {
-
-            for (final @NotNull String alias : subCommand.getAliases()) {
-                this.registeredCommandMap.put(alias, subCommand);
-            }
+        for (final @NotNull String alias : subCommand.getAliases()) {
+            this.registeredCommandMap.put(alias, subCommand);
         }
     }
 
     @Override
     public boolean execute(@NotNull CommandSender sender, @NotNull String commandLabel, @NotNull String[] args) {
         if (args.length > 0) {
-
             ASubCommand subCommand = registeredCommandMap.get(args[0]);
 
             if (subCommand != null) {
@@ -73,7 +68,7 @@ public class MainCmd extends Command {
         if (args.length == 0) {
             List<String> result = new ArrayList<>(registeredCommandMap.size());
 
-            for (ASubCommand subCommand : registeredCommands) {
+            for (ASubCommand subCommand : registeredCommandMap.values()) {
                 if (subCommand.hasPermission(sender)) {
                     result.addAll(subCommand.getAliases());
                 }
@@ -83,7 +78,7 @@ public class MainCmd extends Command {
         } else if (args.length == 1) {
             List<String> result = new ArrayList<>(registeredCommandMap.size());
 
-            for (ASubCommand subCommand : registeredCommands) {
+            for (ASubCommand subCommand : registeredCommandMap.values()) {
                 if (subCommand.hasPermission(sender)) {
                     for (String subAlias : subCommand.getAliases()) {
                         if (subAlias.startsWith(args[0])) {

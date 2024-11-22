@@ -12,10 +12,13 @@ import de.greensurvivors.eventhelper.command.MainCmd;
 import de.greensurvivors.eventhelper.messages.SharedLangPath;
 import de.greensurvivors.eventhelper.messages.SharedPlaceHolder;
 import de.greensurvivors.eventhelper.modules.AModul;
+import de.greensurvivors.eventhelper.modules.StateChangeEvent;
 import de.greensurvivors.eventhelper.modules.ghost.command.GhostCmd;
 import de.greensurvivors.eventhelper.modules.ghost.player.AGhostGameParticipant;
 import de.greensurvivors.eventhelper.modules.ghost.player.AGhostGamePlayer;
 import de.greensurvivors.eventhelper.modules.ghost.player.SpectatingPlayer;
+import net.kyori.adventure.key.Key;
+import net.kyori.adventure.key.KeyPattern;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
@@ -46,9 +49,13 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 public class GhostModul extends AModul<GeneralGhostConfig> implements Listener {
+    private static final @NotNull Pattern INETERN_GAME_ID_PATTERN = Pattern.compile("[a-z0-9_\\-./]+");
+    private static final @NotNull
+    @KeyPattern.Namespace String MODUL_ID = "ghost";
     private final @NotNull Map<@NotNull String, GhostGame> games = new HashMap<>();
     protected @Nullable StateFlag ghostVexAllowedFlag;
     private final static @NotNull Permission PERMISSION_EDIT_SIGN = new Permission("eventhelper.ghost.edit-sign", PermissionDefault.OP);
@@ -62,8 +69,7 @@ public class GhostModul extends AModul<GeneralGhostConfig> implements Listener {
         ));
 
     public GhostModul(final @NotNull EventHelper plugin) {
-        super(plugin, new GeneralGhostConfig(plugin));
-        this.getConfig().setModul(this);
+        super(plugin, new GeneralGhostConfig(plugin, MODUL_ID));
 
         plugin.getMainCmd().registerSubCommand(new GhostCmd(plugin, List.of(MainCmd.getParentPermission(), PERMISSION_GHOST_WILDCARD), this));
         plugin.getServer().getPluginManager().addPermission(PERMISSION_EDIT_SIGN);
@@ -93,13 +99,37 @@ public class GhostModul extends AModul<GeneralGhostConfig> implements Listener {
         }
     }
 
-    @Override
-    public @NotNull String getName() {
-        return "ghost";
+    public static boolean isValidGhostGameName(final @NotNull String strToTest) {
+        return INETERN_GAME_ID_PATTERN.matcher(strToTest).matches();
     }
 
     @Override
-    public void onEnable() {
+    public @NotNull @KeyPattern.Namespace String getName() {
+        return MODUL_ID;
+    }
+
+    @Override
+    @EventHandler(ignoreCancelled = true)
+    protected void onConfigEnabledChange(@NotNull StateChangeEvent<?> event) {
+        Key eventKey = event.getKey();
+
+        if (eventKey.namespace().equals(getName()) && eventKey.value().equals(getName())) {
+            if (event.getNewState() instanceof Boolean enabledState) {
+                if (enabledState) {
+                    onEnable();
+                } else {
+                    for (GhostGame ghostGame : games.values()) {
+                        ghostGame.resetGame();
+                        ghostGame.onDisable();
+                    }
+
+                    HandlerList.unregisterAll(this);
+                }
+            }
+        }
+    }
+
+    private void onEnable() {
         GhostLangPath.moduleName = getName(); // set here, not in constructor, so this class can expanded by another one if ever needed in the future
         PluginManager pluginManager = Bukkit.getPluginManager();
         games.clear();
@@ -113,10 +143,11 @@ public class GhostModul extends AModul<GeneralGhostConfig> implements Listener {
                         String fileName = path.getFileName().toString();
                         return fileName.endsWith(".yaml") ? fileName.substring(0, fileName.length() - 5) : fileName;
                     }).
+                    filter(GhostModul::isValidGhostGameName).
                     map(gameName -> new GhostGame(plugin, this, gameName)). // create a new game instance
                     forEach(game -> {
                     // register game
-                    games.put(game.getName_id().toLowerCase(Locale.ENGLISH), game);
+                    games.put(game.getNameID().toLowerCase(Locale.ENGLISH), game);
 
                     // reload game
                     game.getConfig().reload().thenAccept(result -> {
@@ -134,18 +165,8 @@ public class GhostModul extends AModul<GeneralGhostConfig> implements Listener {
         pluginManager.registerEvents(this, plugin);
     }
 
-    @Override
-    public void onDisable() {
-        for (GhostGame ghostGame : games.values()) {
-            ghostGame.resetGame();
-            ghostGame.onDisable();
-        }
-
-        HandlerList.unregisterAll(this);
-    }
-
     /// returns null, if a game with the same name already exists
-    public @Nullable GhostGame createNewGame(final @NotNull String gameName) {
+    public @Nullable GhostGame createNewGame(final @NotNull @KeyPattern.Value String gameName) {
         if (!games.containsKey(gameName.toLowerCase(Locale.ENGLISH))) {
             GhostGame newGame = new GhostGame(plugin, this, gameName);
 
@@ -168,7 +189,9 @@ public class GhostModul extends AModul<GeneralGhostConfig> implements Listener {
         final @Nullable GhostGame game = games.remove(gameName.toLowerCase(Locale.ENGLISH));
 
         if (game != null) {
-            if (game.getGameState() != GhostGame.GameState.IDLE) {
+            if (game.getGameState() != GhostGame.GameState.IDLE &&
+                game.getGameState() != GhostGame.GameState.RESETTING &&
+                game.getGameState() != GhostGame.GameState.RELOADING_CONFIG) {
                 game.onDisable();
             }
 
@@ -229,11 +252,11 @@ public class GhostModul extends AModul<GeneralGhostConfig> implements Listener {
         }
     }
 
-    public @NotNull Permission getJoinPermission() {
+    public static @NotNull Permission getJoinPermission() {
         return PERMISSION_JOIN_GAME;
     }
 
-    public @NotNull Permission getSpectatePermission() {
+    public static @NotNull Permission getSpectatePermission() {
         return PERMISSION_SPECTATE_GAME;
     }
 
@@ -278,7 +301,7 @@ public class GhostModul extends AModul<GeneralGhostConfig> implements Listener {
 
                 if (game != null) {
                     game.playerQuit(eventPlayer, true);
-                    plugin.getMessageManager().sendLang(eventPlayer, GhostLangPath.PLAYER_GAME_QUIT);
+                    plugin.getMessageManager().sendLang(eventPlayer, GhostLangPath.PLAYER_QUIT_GAME);
                 } else {
                     plugin.getMessageManager().sendLang(eventPlayer, GhostLangPath.ERROR_NOT_PLAYING_SELF);
                 }

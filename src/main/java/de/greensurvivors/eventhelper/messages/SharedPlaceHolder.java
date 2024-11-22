@@ -7,7 +7,7 @@ import org.jetbrains.annotations.NotNull;
 /**
  * placeholder strings used. will be surrounded in Minimassage typical format of <>
  */
-public enum SharedPlaceHolder implements PlaceHolder {
+public enum SharedPlaceHolder implements IPlaceHolder {
     ITEM("item"),
     BOOL("bool"),
     MIN("min"),

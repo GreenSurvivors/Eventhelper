@@ -11,6 +11,9 @@ import com.sk89q.worldguard.protection.flags.registry.FlagRegistry;
 import com.sk89q.worldguard.protection.regions.RegionQuery;
 import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.modules.AModul;
+import de.greensurvivors.eventhelper.modules.StateChangeEvent;
+import net.kyori.adventure.key.Key;
+import net.kyori.adventure.key.KeyPattern;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -29,12 +32,13 @@ import java.util.UUID;
 import java.util.logging.Level;
 
 public class InventoryRegionModul extends AModul<InventoryConfig> implements Listener {
+    private static final @NotNull
+    @KeyPattern.Namespace String MODUL_ID = "inventory_regions";
     public static StringFlag inventory_identifier;
     private final HashMap<UUID, String> playerInventoryCache = new HashMap<>(); //todo use caffeein cache
 
     public InventoryRegionModul(final @NotNull EventHelper plugin) {
-        super(plugin, new InventoryConfig(plugin));
-        this.getConfig().setModul(this);
+        super(plugin, new InventoryConfig(plugin, MODUL_ID));
 
         FlagRegistry registry = WorldGuard.getInstance().getFlagRegistry();
 
@@ -101,19 +105,25 @@ public class InventoryRegionModul extends AModul<InventoryConfig> implements Lis
     }
 
     @Override
-    public @NotNull String getName() {
-        return "inventoryRegions";
+    public @NotNull @KeyPattern.Namespace String getName() {
+        return MODUL_ID;
     }
 
     @Override
-    public void onEnable() {
-        if (plugin.getDependencyManager().isWorldGuardEnabled()) {
-            Bukkit.getPluginManager().registerEvents(this, plugin);
+    @EventHandler(ignoreCancelled = true)
+    protected void onConfigEnabledChange(@NotNull StateChangeEvent<?> event) {
+        Key eventKey = event.getKey();
+
+        if (eventKey.namespace().equals(getName()) && eventKey.value().equals(getName())) {
+            if (event.getNewState() instanceof Boolean enabledState) {
+                if (enabledState) {
+                    if (plugin.getDependencyManager().isWorldGuardEnabled()) {
+                        Bukkit.getPluginManager().registerEvents(this, plugin);
+                    }
+                } else {
+                    HandlerList.unregisterAll(this);
+                }
+            }
         }
-    }
-
-    @Override
-    public void onDisable() {
-        HandlerList.unregisterAll(this);
     }
 }

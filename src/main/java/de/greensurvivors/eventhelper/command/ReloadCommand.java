@@ -27,7 +27,7 @@ public class ReloadCommand extends ASubCommand {
     }
 
     @Override
-    public @NotNull LangPath getHelpTextPath() {
+    public @NotNull LangPath getHelpTextPath(@NotNull List<String> arguments) {
         return SharedLangPath.RELOAD_HELP_TEXT;
     }
 

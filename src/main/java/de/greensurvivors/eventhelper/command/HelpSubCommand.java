@@ -33,20 +33,21 @@ public class HelpSubCommand extends ASubCommand {
     }
 
     @Override
-    public @NotNull LangPath getHelpTextPath() {
+    public @NotNull LangPath getHelpTextPath(@NotNull List<String> arguments) {
         return SharedLangPath.HELP_HELP_TEXT;
     }
 
     @Override
     public boolean execute(@NotNull CommandSender sender, @NotNull LinkedList<@NotNull String> args) {
         if (!args.isEmpty()) {
-            final @Nullable ASubCommand subCommand = mainCmd.registeredCommandMap.get(args.get(0).toLowerCase(Locale.ENGLISH));
+            final @Nullable ASubCommand subCommand = mainCmd.registeredCommandMap.get(args.getFirst().toLowerCase(Locale.ENGLISH));
 
             if (subCommand != null) {
-                plugin.getMessageManager().sendLang(sender, subCommand.getHelpTextPath());
+                args.removeFirst();
+                plugin.getMessageManager().sendLang(sender, subCommand.getHelpTextPath(args));
             } else {
                 plugin.getMessageManager().sendLang(sender, SharedLangPath.ARG_NOT_A_SUBCMD,
-                    Placeholder.unparsed(SharedPlaceHolder.ARGUMENT.getKey(), args.get(0)));
+                    Placeholder.unparsed(SharedPlaceHolder.ARGUMENT.getKey(), args.getFirst()));
             }
 
             return true;
@@ -58,8 +59,8 @@ public class HelpSubCommand extends ASubCommand {
     @Override
     public @NotNull List<String> tabComplete(@NotNull CommandSender sender, @NotNull LinkedList<@NotNull String> args) {
         if (args.isEmpty() || args.size() == 1) {
-            return mainCmd.registeredCommandMap.keySet().stream().filter(alias -> alias.startsWith(args.get(0))).toList();
-        }
+            return mainCmd.registeredCommandMap.keySet().stream().filter(alias -> alias.startsWith(args.getFirst())).toList();
+        } // todo match down the line
 
         return List.of();
     }

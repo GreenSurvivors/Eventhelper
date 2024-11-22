@@ -9,11 +9,14 @@ import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.messages.LangPath;
 import de.greensurvivors.eventhelper.messages.MessageManager;
 import de.greensurvivors.eventhelper.messages.SharedPlaceHolder;
+import de.greensurvivors.eventhelper.modules.StateChangeEvent;
 import de.greensurvivors.eventhelper.modules.ghost.ghostentity.IGhost;
 import de.greensurvivors.eventhelper.modules.ghost.player.*;
 import de.greensurvivors.eventhelper.modules.ghost.vex.IVex;
 import de.greensurvivors.simplequests.SimpleQuests;
 import de.greensurvivors.simplequests.events.QuestCompleatedEvent;
+import net.kyori.adventure.key.Key;
+import net.kyori.adventure.key.KeyPattern;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.JoinConfiguration;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
@@ -57,7 +60,8 @@ public class GhostGame implements Listener {
     private final @NotNull EventHelper plugin;
     private final @NotNull GhostModul ghostModul;
     private final @NotNull GhostGameConfig config;
-    private final @NotNull String name_id;
+    private final @NotNull
+    @KeyPattern.Value String nameID;
 
     private final @NotNull Map<@NotNull UUID, @NotNull AGhostGamePlayer> offlinePlayers = new ConcurrentHashMap<>();
     private final @NotNull Map<@NotNull UUID, @NotNull AGhostGamePlayer> players = new ConcurrentHashMap<>();
@@ -71,13 +75,13 @@ public class GhostGame implements Listener {
     private @Nullable BukkitTask tickTask = null; // this has to be sync!
     private double gainedPoints = 0;
 
-    public GhostGame(final @NotNull EventHelper plugin, final @NotNull GhostModul modul, final @NotNull String name_id) {
+    public GhostGame(final @NotNull EventHelper plugin, final @NotNull GhostModul modul, final @NotNull @KeyPattern.Value String nameID) {
         this.plugin = plugin;
         this.ghostModul = modul;
-        this.name_id = name_id;
+        this.nameID = nameID;
 
         this.gameState = GameState.IDLE;
-        this.config = new GhostGameConfig(plugin, modul, this);
+        this.config = new GhostGameConfig(plugin, modul.getName(), nameID);
 
         scoreboard = plugin.getServer().getScoreboardManager().getNewScoreboard();
 
@@ -254,13 +258,35 @@ public class GhostGame implements Listener {
         }
     }
 
+    @EventHandler
+    private void onConfigEnabledChange(final @NotNull StateChangeEvent<?> event) {
+        Key eventKey = event.getKey();
+
+        if (eventKey.namespace().equals(ghostModul.getName()) && eventKey.value().equals(nameID)) {
+            if (event.getNewState() instanceof Boolean enabledState) {
+                if (enabledState) {
+                    onEnable();
+                } else {
+                    onDisable();
+                }
+            } else if (event.getNewState() instanceof GameState newState) {
+                // don't reset twice
+                if (gameState != GameState.RESETTING && gameState != GameState.RELOADING_CONFIG) {
+                    endGame(EndReason.EXTERN);
+                }
+
+                gameState = newState;
+            }
+        }
+    }
+
     /// start countdown before the game starts
     public void startStartingCountdown() {
         gameState = GameState.COUNTDOWN;
         doCountdown(10);
 
         for (String cmd : getConfig().getGameInitCommands()) {
-            plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), gameNamePattern.matcher(cmd).replaceAll(getName_id()));
+            plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), gameNamePattern.matcher(cmd).replaceAll(getNameID()));
         }
     }
 
@@ -333,7 +359,7 @@ public class GhostGame implements Listener {
         }
 
         if (tickTask != null) {
-            plugin.getComponentLogger().warn("starting a new round of {} but the tick task was still running.", getName_id());
+            plugin.getComponentLogger().warn("starting a new round of {} but the tick task was still running.", getNameID());
             tickTask.cancel();
             tickTask = null;
         }
@@ -367,7 +393,7 @@ public class GhostGame implements Listener {
         }
 
         for (String cmd : getConfig().getGameStartCommands()) {
-            plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), gameNamePattern.matcher(cmd).replaceAll(getName_id()));
+            plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), gameNamePattern.matcher(cmd).replaceAll(getNameID()));
         }
 
         tickTask = plugin.getServer().getScheduler().runTaskTimer(plugin, this::tick, 0, 1);
@@ -386,11 +412,11 @@ public class GhostGame implements Listener {
 
         amountOfTicksRun++;
 
-        long gameDurationInTicks = config.getGameDuration().toMillis() / 50;
+        final float tickRate = plugin.getServer().getServerTickManager().getTickRate();
+        final double millisPerTick = 1000D / tickRate;
+        final long gameDurationInTicks = (long) (config.getGameDuration().toMillis() / millisPerTick);
 
         if (amountOfTicksRun <= gameDurationInTicks) { // check if game has run out of time
-            final float tickRate = plugin.getServer().getServerTickManager().getTickRate();
-            final double millisPerTick = 1000D / tickRate;
 
             // tick player time
             if (config.getStartPlayerTime() >= 0 && config.getEndPlayerTime() >= 0) {
@@ -570,7 +596,7 @@ public class GhostGame implements Listener {
         }
 
         for (String cmd : getConfig().getGameEndCommands()) {
-            plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), gameNamePattern.matcher(cmd).replaceAll(getName_id()));
+            plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), gameNamePattern.matcher(cmd).replaceAll(getNameID()));
         }
 
         resetGame();
@@ -674,7 +700,7 @@ public class GhostGame implements Listener {
                         plugin.getMessageManager().sendLang(player, GhostLangPath.ERROR_NO_LATE_JOIN);
                     }
                 }
-                case COUNTDOWN, STARTING, RESETTING ->
+                case COUNTDOWN, STARTING, RESETTING, RELOADING_CONFIG ->
                     plugin.getMessageManager().sendLang(player, GhostLangPath.ERROR_JOIN_GAME_STATE);
             }
         } else {
@@ -938,7 +964,7 @@ public class GhostGame implements Listener {
                     endGame(EndReason.ALL_DEAD);
                 }
 
-                plugin.getMessageManager().sendLang(player, GhostLangPath.PLAYER_GAME_QUIT);
+                plugin.getMessageManager().sendLang(player, GhostLangPath.PLAYER_QUIT_GAME);
                 broadcastExcept(GhostLangPath.PLAYER_GAME_QUIT_BROADCAST, player.getUniqueId(),
                     Placeholder.component(SharedPlaceHolder.PLAYER.getKey(), player.displayName()));
             }
@@ -1056,22 +1082,9 @@ public class GhostGame implements Listener {
         broadcastExcept(langPath, null);
     }
 
-    /**
-     * sets the state this game is in. Will end the game, if it's not resetting right now
-     * Dangerous method! Only used by the config to reload.
-     */
-    protected void setGameState(final @NotNull GameState newState) {
-        // don't reset twice
-        if (gameState != GameState.RESETTING) {
-            endGame(EndReason.EXTERN);
-        }
-
-        gameState = newState;
-    }
-
     /// intern used game unique name
-    public @NotNull String getName_id() {
-        return name_id;
+    public @NotNull @KeyPattern.Value String getNameID() {
+        return nameID;
     }
 
     public @NotNull GameState getGameState() {
@@ -1145,7 +1158,7 @@ public class GhostGame implements Listener {
                         }
                     }
 
-                    plugin.getComponentLogger().warn("removed player with uuid {} from the ghost game {}, because they where missing on the server (sync points xp)", entry.getKey(), getName_id());
+                    plugin.getComponentLogger().warn("removed player with uuid {} from the ghost game {}, because they where missing on the server (sync points xp)", entry.getKey(), getNameID());
                     iterator.remove();
                 } else {
                     playerInGame.setExp(percent);
@@ -1165,7 +1178,7 @@ public class GhostGame implements Listener {
                 Player playerInGame = plugin.getServer().getPlayer(entry.getKey());
 
                 if (playerInGame == null) {
-                    plugin.getComponentLogger().warn("removed spectator with uuid {} from the ghost game {}, because they where missing on the server (sync points xp)", entry.getKey(), getName_id());
+                    plugin.getComponentLogger().warn("removed spectator with uuid {} from the ghost game {}, because they where missing on the server (sync points xp)", entry.getKey(), getNameID());
                     iterator.remove();
                 } else {
                     playerInGame.setExp(percent);
@@ -1204,6 +1217,60 @@ public class GhostGame implements Listener {
         return getConfig().getMouseTraps();
     }
 
+    /// will return null if the game is not running.
+    public @Nullable Duration getRemainingDuration() {
+        if (amountOfTicksRun > 0) {
+            final double millisPerTick = 1000D / plugin.getServer().getServerTickManager().getTickRate();
+            return Duration.ofMillis((long) (config.getGameDuration().toMillis() - amountOfTicksRun * millisPerTick));
+        } else {
+            return null;
+        }
+    }
+
+    public double getGainedPointAmount() {
+        return gainedPoints;
+    }
+
+    public int getAliveFreePlayerAmount() {
+        int result = 0;
+
+        for (AGhostGamePlayer ghostGamePlayer : players.values()) {
+            if (ghostGamePlayer instanceof AlivePlayer alivePlayer &&
+                alivePlayer.getMouseTrapTrappedIn() == null) {
+
+                result++;
+            }
+        }
+
+        return result;
+    }
+
+    public int getTrappedPlayerAmount() {
+        int result = 0;
+
+        for (AGhostGamePlayer ghostGamePlayer : players.values()) {
+            if (ghostGamePlayer instanceof AlivePlayer alivePlayer &&
+                alivePlayer.getMouseTrapTrappedIn() != null) {
+
+                result++;
+            }
+        }
+
+        return result;
+    }
+
+    public int getPerishedPlayersAmount() {
+        int result = 0;
+
+        for (AGhostGamePlayer ghostGamePlayer : players.values()) {
+            if (ghostGamePlayer instanceof PerishedPlayer) {
+                result++;
+            }
+        }
+
+        return result;
+    }
+
     public enum EndReason {
         EXTERN,
         TIME,
@@ -1217,7 +1284,8 @@ public class GhostGame implements Listener {
         COUNTDOWN,
         STARTING,
         RUNNING,
-        RESETTING
+        RESETTING,
+        RELOADING_CONFIG
     }
 
     public static class PlayerNotAliveException extends IllegalArgumentException {
