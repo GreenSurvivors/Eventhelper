@@ -6,11 +6,11 @@ import de.greensurvivors.eventhelper.modules.ghost.GhostGame;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
 import net.minecraft.network.protocol.game.DebugPackets;
+import net.minecraft.server.level.ServerEntity;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
@@ -20,7 +20,8 @@ import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.ai.Brain;
-import net.minecraft.world.entity.ai.attributes.*;
+import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.monster.Monster;
@@ -30,16 +31,13 @@ import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.bukkit.Material;
-import org.bukkit.craftbukkit.v1_20_R3.attribute.CraftAttributeMap;
-import org.bukkit.craftbukkit.v1_20_R3.block.CraftBlockType;
-import org.bukkit.craftbukkit.v1_20_R3.entity.CraftLivingEntity;
+import org.bukkit.craftbukkit.block.CraftBlockType;
+import org.bukkit.craftbukkit.entity.CraftLivingEntity;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityRemoveEvent;
 import org.jetbrains.annotations.NotNull;
-import org.joml.Vector3f;
 
 import javax.annotation.Nullable;
-import java.lang.reflect.Field;
 
 // wanders around looking for player if no target. can target through walls but must path find there
 public class NMSGhostEntity extends Monster implements Enemy {
@@ -51,6 +49,7 @@ public class NMSGhostEntity extends Monster implements Enemy {
         (EntityType.Builder.
             of(null, MobCategory.MONSTER).
             sized(6.0F, 6.0F).
+            passengerAttachments(4.0625F).
             noSave(). // don't save this entity to disk.
                 clientTrackingRange(10)));
     protected final @NotNull GhostGame ghostGame;
@@ -84,59 +83,15 @@ public class NMSGhostEntity extends Monster implements Enemy {
             add(Attributes.ATTACK_DAMAGE, 30.0D);
     }
 
-    /*
-    since the DefaultAttributes class builds the immutable map directly
-    and the LivingEntity super constructor calls this method before we can set the attribute map correctly ourselves,
-    we have to get creative.
-    First we try to just let super fetch the attribute.
-    If this fails, as the fist time called from the constructor will do,
-    we set the private field ("attributes") of our super class LivingEntity with our defaults.
-    While the craftAttributes don't get immediately get accessed in the super constructor,
-    they don't get accessed via method. Since we use reflection to set the non craft field anyway,
-     we may set the craft field at the same time as well.
-    After that we try again calling the super method. fingers crossed it worked!
-
-    This have to be done this way, since the super constructor is not done and therefor we can't access the fields of this class yet.
-    We can't just relay to our own variable, nor can we just set the super one after the constructor.
-    Also, since the field is private we have to use reflection to set it to a new value!
-    If you have an idea how to solve this any mess better, please tell me!
-    */
-    public @Nullable AttributeInstance getAttribute(final @NotNull Attribute attribute) {
-        try {
-            return super.getAttribute(attribute);
-        } catch (NullPointerException ignored) {
-            Class<?> livingEntityClass = LivingEntity.class;
-
-            try {
-                // Access the private field
-                Field privateAttributesField = livingEntityClass.getDeclaredField("bN"/*"attributes"*/); // todo change when update to moj mappings
-
-                // Make the field accessible
-                privateAttributesField.setAccessible(true);
-
-                // Set the field value
-                AttributeMap attributeMap = new AttributeMap(createAttributes().build());
-                privateAttributesField.set(this, attributeMap);
-
-                // same below
-                Field finalCraftAttributesField = livingEntityClass.getDeclaredField("craftAttributes");
-
-                finalCraftAttributesField.setAccessible(true);
-
-                finalCraftAttributesField.set(this, new CraftAttributeMap(attributeMap));
-
-            } catch (NoSuchFieldException |
-                     IllegalAccessException e) { // should never happen since we set the field accessible
-                throw new RuntimeException(e);
-            }
-        }
-
-        return super.getAttribute(attribute);
-    }
-
     @Override
-    public @NotNull Packet<ClientGamePacketListener> getAddEntityPacket() { // overwrite with ghast type
-        return new ClientboundAddEntityPacket(getId(), getUUID(), getX(), getY(), getZ(), getXRot(), getYRot(), EntityType.GHAST, 0, getDeltaMovement(), getYHeadRot());
+    public @NotNull Packet<ClientGamePacketListener> getAddEntityPacket(@NotNull ServerEntity entityTrackerEntry) { // overwrite with allay type
+        return new ClientboundAddEntityPacket(
+            getId(), getUUID(),
+            getX(), getY(), getZ(),
+            entityTrackerEntry.getLastSentXRot(), entityTrackerEntry.getLastSentYRot(),
+            EntityType.GHAST, 0,
+            entityTrackerEntry.getLastSentMovement(),
+            entityTrackerEntry.getLastSentYHeadRot());
     }
 
     @Override
@@ -187,8 +142,7 @@ public class NMSGhostEntity extends Monster implements Enemy {
     public @Nullable SpawnGroupData finalizeSpawn(final @NotNull ServerLevelAccessor world,
                                                   final @NotNull DifficultyInstance difficulty,
                                                   final @NotNull MobSpawnType spawnReason,
-                                                  final @Nullable SpawnGroupData entityData,
-                                                  final @Nullable CompoundTag entityNbt) {
+                                                  final @Nullable SpawnGroupData entityData) {
         this.underWorldGhost = new NMSUnderWorldGhostEntity(this, ghostGame);
 
         level().addFreshEntity(underWorldGhost, CreatureSpawnEvent.SpawnReason.CUSTOM);
@@ -307,40 +261,8 @@ public class NMSGhostEntity extends Monster implements Enemy {
     }
 
     @Override
-    protected @NotNull Vector3f getPassengerAttachmentPoint(final Entity ignored, final @NotNull EntityDimensions dimensions, float scaleFactor) {
-        return new Vector3f(0.0F, dimensions.height + 0.0625F * scaleFactor, 0.0F);
-    }
-
-    @Override
-    protected float ridingOffset(final @NotNull Entity vehicle) {
-        return 0.5F;
-    }
-
-    // since we are "riding" an entity don't tick
-    @Override
-    public void tickEndPortal() {
-    }
-
-    @SuppressWarnings("resource") // ignore level being auto closeable
-    @Override
-    protected void handleNetherPortal() {
-        if (this.level() instanceof ServerLevel) {
-            if (this.isInsidePortal) {
-                this.isInsidePortal = false;
-            } else {
-                if (this.portalTime > 0) {
-                    this.portalTime -= 4;
-                }
-
-                if (this.portalTime < 0) {
-                    this.portalTime = 0;
-                }
-            }
-
-            this.processPortalCooldown();
-            if (!io.papermc.paper.configuration.GlobalConfiguration.get().unsupportedSettings.allowUnsafeEndPortalTeleportation)
-                this.tickEndPortal(); // Paper - make end portalling safe
-        }
+    public boolean canUsePortal(boolean allowVehicles) {
+        return false;
     }
 
     @Override

@@ -4,10 +4,10 @@ import de.greensurvivors.eventhelper.modules.ghost.GhostGame;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.MobSpawnType;
 import org.bukkit.Location;
-import org.bukkit.craftbukkit.v1_20_R3.CraftServer;
-import org.bukkit.craftbukkit.v1_20_R3.CraftWorld;
-import org.bukkit.craftbukkit.v1_20_R3.entity.CraftEnemy;
-import org.bukkit.craftbukkit.v1_20_R3.entity.CraftMob;
+import org.bukkit.craftbukkit.CraftServer;
+import org.bukkit.craftbukkit.CraftWorld;
+import org.bukkit.craftbukkit.entity.CraftEnemy;
+import org.bukkit.craftbukkit.entity.CraftMob;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -35,7 +35,7 @@ public class CraftGhostEntity extends CraftMob implements IGhost, CraftEnemy {
         // would we spawn the entity at the same time as the ghost and then set the position it wouldn't have any effect
         ghostNMSEntity.absMoveTo(location.x(), location.y(), location.z(), location.getYaw(), location.getPitch());
         ghostNMSEntity.setYHeadRot(location.getYaw());
-        ghostNMSEntity.finalizeSpawn(serverLevel.getMinecraftWorld(), serverLevel.getMinecraftWorld().getCurrentDifficultyAt(ghostNMSEntity.blockPosition()), MobSpawnType.COMMAND, null, null);
+        ghostNMSEntity.finalizeSpawn(serverLevel.getMinecraftWorld(), serverLevel.getMinecraftWorld().getCurrentDifficultyAt(ghostNMSEntity.blockPosition()), MobSpawnType.COMMAND, null);
 
         return ((CraftWorld) location.getWorld()).addEntity(ghostNMSEntity, reason, function, false);
     }

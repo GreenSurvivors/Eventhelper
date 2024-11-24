@@ -7,23 +7,25 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerEntity;
 import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.*;
-import net.minecraft.world.entity.ai.attributes.*;
+import net.minecraft.world.entity.ai.attributes.AttributeMap;
+import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.navigation.GroundPathNavigation;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.Vec3;
 import org.bukkit.Material;
-import org.bukkit.craftbukkit.v1_20_R3.attribute.CraftAttributeMap;
-import org.bukkit.craftbukkit.v1_20_R3.block.CraftBlockType;
-import org.bukkit.craftbukkit.v1_20_R3.entity.CraftLivingEntity;
+import org.bukkit.craftbukkit.block.CraftBlockType;
+import org.bukkit.craftbukkit.entity.CraftLivingEntity;
 import org.bukkit.event.entity.EntityRemoveEvent;
 import org.jetbrains.annotations.NotNull;
-import org.joml.Vector3f;
 
 import javax.annotation.Nullable;
-import java.lang.reflect.Field;
 
 public class NMSUnderWorldGhostEntity extends Monster {
     /**
@@ -39,6 +41,7 @@ public class NMSUnderWorldGhostEntity extends Monster {
 
     private final @NotNull GhostGame ghostGame;
     private final @NotNull NMSGhostEntity parentMob;
+    private final @NotNull AttributeMap attributeMap = new AttributeMap(createAttributes().build()); // replacement since we can't change supers private one
     private volatile @Nullable CraftUnderWorldGhostEntity bukkitEntity;
 
     public NMSUnderWorldGhostEntity(final @NotNull NMSGhostEntity parentMob, final @NotNull GhostGame ghostGame) {
@@ -75,56 +78,6 @@ public class NMSUnderWorldGhostEntity extends Monster {
             add(Attributes.ATTACK_DAMAGE, 30.0D);
     }
 
-    /*
-    since the DefaultAttributes class builds the immutable map directly
-    and the LivingEntity super constructor calls this method before we can set the attribute map correctly ourselves,
-    we have to get creative.
-    First we try to just let super fetch the attribute.
-    If this fails, as the fist time called from the constructor will do,
-    we set the private field ("attributes") of our super class LivingEntity with our defaults.
-    While the craftAttributes don't get immediately get accessed in the super constructor,
-    they don't get accessed via method. Since we use reflection to set the non craft field anyway,
-     we may set the craft field at the same time as well.
-    After that we try again calling the super method. fingers crossed it worked!
-
-    This have to be done this way, since the super constructor is not done and therefor we can't access the fields of this class yet.
-    We can't just relay to our own variable, nor can we just set the super one after the constructor.
-    Also, since the field is private we have to use reflection to set it to a new value!
-    If you have an idea how to solve this any mess better, please tell me!
-    */
-    public @Nullable AttributeInstance getAttribute(final @NotNull Attribute attribute) {
-        try {
-            return super.getAttribute(attribute);
-        } catch (NullPointerException ignored) {
-            Class<?> livingEntityClass = LivingEntity.class;
-
-            try {
-                // Access the private field
-                Field privateAttributesField = livingEntityClass.getDeclaredField("bN"/*"attributes"*/); // todo change one update to moj mapped server vers.
-
-                // Make the field accessible
-                privateAttributesField.setAccessible(true);
-
-                // Set the field value
-                AttributeMap attributeMap = new AttributeMap(createAttributes().build());
-                privateAttributesField.set(this, attributeMap);
-
-                // same below
-                Field finalCraftAttributesField = livingEntityClass.getDeclaredField("craftAttributes");
-
-                finalCraftAttributesField.setAccessible(true);
-
-                finalCraftAttributesField.set(this, new CraftAttributeMap(attributeMap));
-
-            } catch (NoSuchFieldException |
-                     IllegalAccessException e) { // should never happen since we set the field accessible
-                throw new RuntimeException(e);
-            }
-        }
-
-        return super.getAttribute(attribute);
-    }
-
     @Override
     public void tick() {
         super.tick();
@@ -143,11 +96,13 @@ public class NMSUnderWorldGhostEntity extends Monster {
     }
 
     @Override
-    public @NotNull Packet<ClientGamePacketListener> getAddEntityPacket() { // overwrite with skeleton type
+    public @NotNull Packet<ClientGamePacketListener> getAddEntityPacket(@NotNull ServerEntity entityTrackerEntry) { // overwrite with allay type
         return new ClientboundAddEntityPacket(getId(), getUUID(),
-            getX(), getY(), getZ(), getXRot(), getYRot(),
+            getX(), getY(), getZ(),
+            entityTrackerEntry.getLastSentXRot(), entityTrackerEntry.getLastSentYRot(),
             EntityType.ALLAY, 0,
-            getDeltaMovement(), getYHeadRot());
+            entityTrackerEntry.getLastSentMovement(),
+            entityTrackerEntry.getLastSentYHeadRot());
     }
 
     @Override
@@ -169,12 +124,12 @@ public class NMSUnderWorldGhostEntity extends Monster {
     }
 
     @Override
-    protected @NotNull Vector3f getPassengerAttachmentPoint(final Entity ignored, final @NotNull EntityDimensions dimensions, final float scaleFactor) {
+    protected @NotNull Vec3 getPassengerAttachmentPoint(final @NotNull Entity passenger, final @NotNull EntityDimensions dimensions, final float scaleFactor) {
         float walkAnimationSpeed = Math.min(0.25F, this.walkAnimation.speed());
         float walkAnimationPos = this.walkAnimation.position();
-        float bumpOffset = 0.12F * Mth.cos(walkAnimationPos * 0.5F) * 2.0F * walkAnimationSpeed;
+        float bumpOffset = 0.4F * Mth.cos(walkAnimationPos * 0.5F) * 2.0F * walkAnimationSpeed;
 
-        return new Vector3f(0.0F, (float) ghostGame.getConfig().getPathfindOffset() + 2.0f + bumpOffset * scaleFactor, 0.0F); // hardcoded offset to float 2 blocks above ground.
+        return super.getPassengerAttachmentPoint(passenger, dimensions, scaleFactor).add(0.0D, (float) ghostGame.getConfig().getPathfindOffset() + 2.0f + bumpOffset * scaleFactor, 0.0D); // hardcoded offset to float 2 blocks above ground.
     }
 
     @Override
@@ -199,8 +154,8 @@ public class NMSUnderWorldGhostEntity extends Monster {
     }
 
     @Override
-    protected void defineSynchedData() {
-        super.defineSynchedData();
+    protected void defineSynchedData(@NotNull SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
     }
 
     @Override

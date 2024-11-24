@@ -1,7 +1,7 @@
 main: de.greensurvivors.eventhelper.EventHelper
 bootstrapper: de.greensurvivors.eventhelper.Bootstrapper
 loader: de.greensurvivors.eventhelper.Loader
-api-version: '${mainMCVersion}'
+api-version: '${mcVersion}'
 name: EventHelper
 version: ${version}
 description: ${description}

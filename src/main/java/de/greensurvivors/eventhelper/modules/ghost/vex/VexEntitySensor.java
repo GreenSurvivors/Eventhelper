@@ -33,7 +33,7 @@ public class VexEntitySensor extends NearestLivingEntitySensor<NMSVexEntity> {
             constructor.setAccessible(true);
             SensorType<U> sensorType = constructor.newInstance((Supplier<VexEntitySensor>) VexEntitySensor::new);
 
-            return Registry.register(BuiltInRegistries.SENSOR_TYPE, new ResourceLocation("vex_entity_sensor"), sensorType);
+            return Registry.register(BuiltInRegistries.SENSOR_TYPE, ResourceLocation.withDefaultNamespace("vex_entity_sensor"), sensorType);
         } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException |
                  InstantiationException e) {
             throw new RuntimeException(e);

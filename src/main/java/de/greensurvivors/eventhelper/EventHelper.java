@@ -9,9 +9,14 @@ import de.greensurvivors.eventhelper.modules.ghost.ghostentity.NMSGhostEntity;
 import de.greensurvivors.eventhelper.modules.ghost.ghostentity.NMSUnderWorldGhostEntity;
 import de.greensurvivors.eventhelper.modules.ghost.vex.NMSVexEntity;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
+import net.minecraft.world.entity.ai.attributes.DefaultAttributes;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
-import org.bukkit.craftbukkit.v1_20_R3.util.CraftNamespacedKey;
+import org.bukkit.craftbukkit.entity.CraftEntityType;
+import org.bukkit.craftbukkit.util.CraftNamespacedKey;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
@@ -87,6 +92,43 @@ public class EventHelper extends JavaPlugin {
             privateAttributesField.setAccessible(false);
 
             getComponentLogger().info("Successfully hacked into Bukkits entity type registry");
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+
+        try {
+            // don't break expectations by using another data type
+            ImmutableMap.Builder<EntityType<? extends LivingEntity>, AttributeSupplier> builder = ImmutableMap.builder();
+
+            // re-add all other entities
+            for (org.bukkit.entity.EntityType bukkitEntityType : Registry.ENTITY_TYPE) {
+                EntityType<?> nmsEntityType = CraftEntityType.bukkitToMinecraft(bukkitEntityType);
+                AttributeSupplier attributeSupplier = DefaultAttributes.getSupplier((EntityType<? extends LivingEntity>) nmsEntityType);
+
+                //noinspection ConstantValue // this WILL be null for non-living entities!
+                if (attributeSupplier != null) {
+                    builder.put((EntityType<? extends LivingEntity>) nmsEntityType, attributeSupplier);
+                }
+            }
+
+            // add our own entities
+            builder.put(NMSGhostEntity.GHOST_TYPE, NMSGhostEntity.createAttributes().build());
+            builder.put(NMSUnderWorldGhostEntity.UNDERWORLD_GHOST_TYPE, NMSUnderWorldGhostEntity.createAttributes().build());
+            builder.put(NMSVexEntity.VEX_TYPE, NMSVexEntity.createAttributes().build());
+
+            // Access the private field
+            Field privateAttributesField = DefaultAttributes.class.getDeclaredField("SUPPLIERS");
+
+            // Make the field accessible
+            privateAttributesField.setAccessible(true);
+
+            // set the new map.
+            privateAttributesField.set(null, builder.build());
+
+            // set the accessibility back
+            privateAttributesField.setAccessible(false);
+
+            getComponentLogger().info("Successfully hacked into nms default attributes");
         } catch (NoSuchFieldException | IllegalAccessException e) {
             throw new RuntimeException(e);
         }

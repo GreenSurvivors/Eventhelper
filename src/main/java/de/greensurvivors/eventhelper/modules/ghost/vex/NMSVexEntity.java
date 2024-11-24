@@ -6,12 +6,14 @@ import de.greensurvivors.eventhelper.modules.ghost.ghostentity.NMSGhostEntity;
 import de.greensurvivors.eventhelper.modules.ghost.ghostentity.NMSUnderWorldGhostEntity;
 import de.greensurvivors.eventhelper.modules.ghost.player.AlivePlayer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
 import net.minecraft.network.protocol.game.DebugPackets;
+import net.minecraft.server.level.ServerEntity;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.tags.DamageTypeTags;
@@ -21,7 +23,8 @@ import net.minecraft.util.Unit;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.ai.Brain;
-import net.minecraft.world.entity.ai.attributes.*;
+import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.navigation.FlyingPathNavigation;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
@@ -33,18 +36,16 @@ import net.minecraft.world.level.gameevent.EntityPositionSource;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.level.gameevent.PositionSource;
 import net.minecraft.world.level.gameevent.vibrations.VibrationSystem;
-import net.minecraft.world.level.pathfinder.BlockPathTypes;
 import net.minecraft.world.level.pathfinder.FlyNodeEvaluator;
 import net.minecraft.world.level.pathfinder.Node;
 import net.minecraft.world.level.pathfinder.PathFinder;
+import net.minecraft.world.level.pathfinder.PathType;
 import org.bukkit.Location;
-import org.bukkit.craftbukkit.v1_20_R3.attribute.CraftAttributeMap;
-import org.bukkit.craftbukkit.v1_20_R3.util.CraftLocation;
+import org.bukkit.craftbukkit.util.CraftLocation;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nullable;
-import java.lang.reflect.Field;
 import java.util.function.BiConsumer;
 
 public class NMSVexEntity extends Vex implements VibrationSystem {
@@ -55,8 +56,9 @@ public class NMSVexEntity extends Vex implements VibrationSystem {
     public static final EntityType<NMSVexEntity> VEX_TYPE = registerEntityType(
         (EntityType.Builder.
             of((ignored, world) -> EntityType.VEX.create(world), MobCategory.MONSTER).
-            sized(EntityType.VEX.getDimensions().width, EntityType.VEX.getDimensions().height).
+            sized(EntityType.VEX.getDimensions().width(), EntityType.VEX.getDimensions().height()).
             fireImmune().
+            eyeHeight(EntityType.VEX.getDimensions().eyeHeight()).
             noSave(). // don't save this entity to disk.
                 clientTrackingRange(EntityType.VEX.clientTrackingRange())));
 
@@ -83,11 +85,11 @@ public class NMSVexEntity extends Vex implements VibrationSystem {
         this.ghostGame = ghostGame;
 
         hasLimitedLife = false;
-        this.setPathfindingMalus(BlockPathTypes.DAMAGE_OTHER, 8.0F);
-        this.setPathfindingMalus(BlockPathTypes.POWDER_SNOW, 8.0F);
-        this.setPathfindingMalus(BlockPathTypes.LAVA, 8.0F);
-        this.setPathfindingMalus(BlockPathTypes.DAMAGE_FIRE, 0.0F);
-        this.setPathfindingMalus(BlockPathTypes.DANGER_FIRE, 0.0F);
+        this.setPathfindingMalus(PathType.DAMAGE_OTHER, 8.0F);
+        this.setPathfindingMalus(PathType.POWDER_SNOW, 8.0F);
+        this.setPathfindingMalus(PathType.LAVA, 8.0F);
+        this.setPathfindingMalus(PathType.DAMAGE_FIRE, 0.0F);
+        this.setPathfindingMalus(PathType.DANGER_FIRE, 0.0F);
 
         absMoveTo(spawnLocation.x(), spawnLocation.y(), spawnLocation.z(), spawnLocation.getYaw(), spawnLocation.getPitch());
 
@@ -106,59 +108,15 @@ public class NMSVexEntity extends Vex implements VibrationSystem {
             add(Attributes.ATTACK_DAMAGE, 4.0D);
     }
 
-    /*
-    since the DefaultAttributes class builds the immutable map directly
-    and the LivingEntity super constructor calls this method before we can set the attribute map correctly ourselves,
-    we have to get creative.
-    First we try to just let super fetch the attribute.
-    If this fails, as the fist time called from the constructor will do,
-    we set the private field ("attributes") of our super class LivingEntity with our defaults.
-    While the craftAttributes don't get immediately get accessed in the super constructor,
-    they don't get accessed via method. Since we use reflection to set the non craft field anyway,
-     we may set the craft field at the same time as well.
-    After that we try again calling the super method. fingers crossed it worked!
-
-    This have to be done this way, since the super constructor is not done and therefor we can't access the fields of this class yet.
-    We can't just relay to our own variable, nor can we just set the super one after the constructor.
-    Also, since the field is private we have to use reflection to set it to a new value!
-    If you have an idea how to solve this any mess better, please tell me!
-    */
-    public @Nullable AttributeInstance getAttribute(final @NotNull Attribute attribute) {
-        try {
-            return super.getAttribute(attribute);
-        } catch (NullPointerException ignored) {
-            Class<?> livingEntityClass = LivingEntity.class;
-
-            try {
-                // Access the private field
-                Field privateAttributesField = livingEntityClass.getDeclaredField("bN"/*"attributes"*/); // todo change when update to moj mappings
-
-                // Make the field accessible
-                privateAttributesField.setAccessible(true);
-
-                // Set the field value
-                AttributeMap attributeMap = new AttributeMap(createAttributes().build());
-                privateAttributesField.set(this, attributeMap);
-
-                // same below
-                Field finalCraftAttributesField = livingEntityClass.getDeclaredField("craftAttributes");
-
-                finalCraftAttributesField.setAccessible(true);
-
-                finalCraftAttributesField.set(this, new CraftAttributeMap(attributeMap));
-
-            } catch (NoSuchFieldException |
-                     IllegalAccessException e) { // should never happen since we set the field accessible
-                throw new RuntimeException(e);
-            }
-        }
-
-        return super.getAttribute(attribute);
-    }
-
     @Override
-    public @NotNull Packet<ClientGamePacketListener> getAddEntityPacket() { // overwrite with ghast type
-        return new ClientboundAddEntityPacket(getId(), getUUID(), getX(), getY(), getZ(), getXRot(), getYRot(), EntityType.VEX, 0, getDeltaMovement(), getYHeadRot());
+    public @NotNull Packet<ClientGamePacketListener> getAddEntityPacket(@NotNull ServerEntity entityTrackerEntry) { // overwrite with ghast type
+        return new ClientboundAddEntityPacket(
+            getId(), getUUID(),
+            getX(), getY(), getZ(),
+            entityTrackerEntry.getLastSentXRot(), entityTrackerEntry.getLastSentYRot(),
+            EntityType.VEX, 0,
+            entityTrackerEntry.getLastSentMovement(),
+            entityTrackerEntry.getLastSentYHeadRot());
     }
 
     @Override
@@ -284,7 +242,7 @@ public class NMSVexEntity extends Vex implements VibrationSystem {
             Entity entity = source.getEntity();
             if (this.brain.getMemory(MemoryModuleType.ATTACK_TARGET).isEmpty() && entity instanceof LivingEntity entityliving) {
 
-                if (!source.isIndirect() || this.closerThan(entityliving, 5.0D)) {
+                if (source.isDirect() || this.closerThan(entityliving, 5.0D)) {
                     this.setAttackTarget(entityliving);
                 }
             }
@@ -392,7 +350,7 @@ public class NMSVexEntity extends Vex implements VibrationSystem {
         @Override
         public boolean canReceiveVibration(final @NotNull ServerLevel world,
                                            final @NotNull BlockPos pos,
-                                           final @NotNull GameEvent event,
+                                           final @NotNull Holder<GameEvent> event,
                                            final @NotNull GameEvent.Context emitter) {
             if (!NMSVexEntity.this.isNoAi() && !NMSVexEntity.this.isDeadOrDying() && !NMSVexEntity.this.getBrain().hasMemoryValue(MemoryModuleType.VIBRATION_COOLDOWN) && world.getWorldBorder().isWithinBounds(pos)) {
                 Entity entity = emitter.sourceEntity();
@@ -410,7 +368,7 @@ public class NMSVexEntity extends Vex implements VibrationSystem {
         @Override
         public void onReceiveVibration(final @NotNull ServerLevel world,
                                        final @NotNull BlockPos pos,
-                                       final @NotNull GameEvent event,
+                                       final @NotNull Holder<GameEvent> event,
                                        final @Nullable Entity sourceEntity,
                                        final @Nullable Entity entity,
                                        final float distance) {

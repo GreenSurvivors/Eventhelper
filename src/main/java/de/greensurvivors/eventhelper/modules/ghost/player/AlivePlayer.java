@@ -155,7 +155,7 @@ public class AlivePlayer extends AGhostGamePlayer {
                                             int effectDuration = Math.max(40, (int) unsafeArea.getWarnInterval().toMillis() / 50 + 10);
 
                                             plugin.getMessageManager().sendLang(bukkitPlayer, GhostLangPath.PLAYER_UNSAFE_AREA_WARNING);
-                                            bukkitPlayer.addPotionEffect(new PotionEffect(PotionEffectType.CONFUSION, effectDuration, 1, false, true, false));
+                                            bukkitPlayer.addPotionEffect(new PotionEffect(PotionEffectType.NAUSEA, effectDuration, 1, false, true, false));
                                         }
                                     }
                                 }
