@@ -9,10 +9,13 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
 import net.minecraft.network.protocol.game.DebugPackets;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerEntity;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
@@ -20,6 +23,8 @@ import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.tags.GameEventTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.Unit;
+import net.minecraft.util.profiling.Profiler;
+import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.ai.Brain;
@@ -55,7 +60,7 @@ public class NMSVexEntity extends Vex implements VibrationSystem {
      */
     public static final EntityType<NMSVexEntity> VEX_TYPE = registerEntityType(
         (EntityType.Builder.
-            of((ignored, world) -> EntityType.VEX.create(world), MobCategory.MONSTER).
+            of(null, MobCategory.MONSTER).
             sized(EntityType.VEX.getDimensions().width(), EntityType.VEX.getDimensions().height()).
             fireImmune().
             eyeHeight(EntityType.VEX.getDimensions().eyeHeight()).
@@ -63,8 +68,6 @@ public class NMSVexEntity extends Vex implements VibrationSystem {
                 clientTrackingRange(EntityType.VEX.clientTrackingRange())));
 
     private static final int VIBRATION_COOLDOWN_TICKS = 40;
-    private static final int ANGERMANAGEMENT_TICK_DELAY = 20;
-    private static final int DEFAULT_ANGER = 35;
     private static final int TOUCH_COOLDOWN_TICKS = 20;
     private final DynamicGameEventListener<VibrationSystem.Listener> dynamicGameEventListener = new DynamicGameEventListener<>(new VibrationSystem.Listener(this));
     private final VibrationSystem.User vibrationUser = new VibrationUser();
@@ -77,7 +80,7 @@ public class NMSVexEntity extends Vex implements VibrationSystem {
     // has to be called while the server is bootstrapping, or else the registry will be frozen!
     private static <T extends Entity> @NotNull EntityType<T> registerEntityType(final @NotNull EntityType.Builder<Entity> type) {
         return (EntityType<T>) Registry.register(BuiltInRegistries.ENTITY_TYPE, "ghost_vex",
-            type.build("ghost_vex"));
+            type.build(ResourceKey.create(Registries.ENTITY_TYPE, ResourceLocation.withDefaultNamespace("ghost_vex"))));
     }
 
     public NMSVexEntity(final @NotNull Level world, final @NotNull GhostGame ghostGame, Location spawnLocation) {
@@ -136,8 +139,8 @@ public class NMSVexEntity extends Vex implements VibrationSystem {
     }
 
     @Override
-    public boolean isInvulnerableTo(final @NotNull DamageSource damageSource) {
-        return !damageSource.is(DamageTypeTags.BYPASSES_INVULNERABILITY) || super.isInvulnerableTo(damageSource);
+    public boolean isInvulnerableTo(final @NotNull ServerLevel world, final @NotNull DamageSource damageSource) {
+        return !damageSource.is(DamageTypeTags.BYPASSES_INVULNERABILITY) || super.isInvulnerableTo(world, damageSource);
     }
 
     @Override
@@ -167,15 +170,15 @@ public class NMSVexEntity extends Vex implements VibrationSystem {
 
     @SuppressWarnings("resource") // ignore level being auto closeable
     @Override
-    protected void customServerAiStep() {
-        ServerLevel worldserver = (ServerLevel) this.level();
+    protected void customServerAiStep(final @NotNull ServerLevel world) {
+        ProfilerFiller gameprofilerfiller = Profiler.get();
 
-        worldserver.getProfiler().push("ghostVexBrain");
-        this.getBrain().tick(worldserver, this);
-        this.level().getProfiler().pop();
-        super.customServerAiStep();
-
+        gameprofilerfiller.push("ghostVexBrain");
+        this.getBrain().tick(world, this);
         VexAI.updateActivity(this);
+        gameprofilerfiller.pop();
+
+        super.customServerAiStep(world);
     }
 
     @Override
@@ -235,8 +238,8 @@ public class NMSVexEntity extends Vex implements VibrationSystem {
     }
 
     @Override
-    public boolean hurt(final @NotNull DamageSource source, final float amount) {
-        boolean superHurt = super.hurt(source, amount);
+    public boolean hurtServer(final @NotNull ServerLevel world, final @NotNull DamageSource source, float amount) {
+        boolean superHurt = super.hurtServer(world, source, amount);
 
         if (!this.isNoAi()) {
             Entity entity = source.getEntity();

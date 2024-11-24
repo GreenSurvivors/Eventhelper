@@ -8,7 +8,7 @@ plugins {
 group = "de.greensurvivors"
 version = "2.0.2-SNAPSHOT"
 description = "Helper for all kinds of Events."
-val mcVersion by extra("1.21.1")
+val mcVersion by extra("1.21.3")
 
 // we only work with paper and downstream!
 paperweight.reobfArtifactConfiguration = io.papermc.paperweight.userdev.ReobfArtifactConfiguration.MOJANG_PRODUCTION
@@ -59,8 +59,8 @@ tasks {
     runServer {
         downloadPlugins {
             // make sure to double-check the version id on the Modrinth version page
-            modrinth("worldguard", "J66QOTLZ")
-            modrinth("worldedit", "ecqqLKUO")
+            modrinth("worldguard", "r9yT7tvE")
+            modrinth("worldedit", "lynJ1VTU")
         }
     }
 }

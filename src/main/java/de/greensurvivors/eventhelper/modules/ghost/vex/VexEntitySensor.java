@@ -65,14 +65,4 @@ public class VexEntitySensor extends NearestLivingEntitySensor<NMSVexEntity> {
             .filter(targetPredicate)
             .findFirst();
     }
-
-    @Override
-    protected int radiusXZ() {
-        return 24;
-    }
-
-    @Override
-    protected int radiusY() {
-        return 24;
-    }
 }

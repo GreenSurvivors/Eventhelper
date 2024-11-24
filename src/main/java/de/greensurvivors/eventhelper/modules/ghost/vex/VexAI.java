@@ -63,7 +63,7 @@ public class VexAI {
 
     private static void initCoreActivity(final @NotNull Brain<NMSVexEntity> brain) {
         brain.addActivity(
-            Activity.CORE, 0, ImmutableList.of(new Swim(0.8F), SetVexLookTargetBehavior.create(), new LookAtTargetSink(45, 90), new MoveToTargetSink())
+            Activity.CORE, 0, ImmutableList.of(new Swim<>(0.8F), SetVexLookTargetBehavior.create(), new LookAtTargetSink(45, 90), new MoveToTargetSink())
         );
     }
 
@@ -95,7 +95,7 @@ public class VexAI {
             ImmutableList.of(
                 new VexChargeAttackBehavior(),
                 StopAttackingIfTargetInvalid.create(
-                    entity -> !nmsVex.canTargetEntity(entity), (entityinsentient, entityliving) -> {
+                    (world, entity) -> !nmsVex.canTargetEntity(entity), (world, entity, target) -> {
                     }, false
                 ),
                 SetEntityLookTarget.create(entity -> isTarget(nmsVex, entity), (float) nmsVex.getAttributeValue(Attributes.FOLLOW_RANGE)),

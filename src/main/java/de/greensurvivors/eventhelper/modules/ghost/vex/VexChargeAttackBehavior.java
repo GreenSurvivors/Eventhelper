@@ -62,7 +62,7 @@ class VexChargeAttackBehavior extends Behavior<NMSVexEntity> {
             final LivingEntity target = optionalTarget.get();
 
             if (nmsVex.getBoundingBox().intersects(target.getBoundingBox())) {
-                nmsVex.doHurtTarget(target);
+                nmsVex.doHurtTarget(world, target);
                 nmsVex.setIsCharging(false);
             } else {
                 double d0 = nmsVex.distanceToSqr(target);

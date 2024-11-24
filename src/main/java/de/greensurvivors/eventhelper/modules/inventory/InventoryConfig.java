@@ -206,7 +206,7 @@ public class InventoryConfig extends AModulConfig {
 
         player.setExp(Math.max(0, (float) cfg.getDouble(buildKey(identifier, STATS, EXP), 0.0)));
         player.setLevel(Math.max(0, cfg.getInt(buildKey(identifier, STATS, LEVEL), 0)));
-        final double maxHealth = player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue();
+        final double maxHealth = player.getAttribute(Attribute.MAX_HEALTH).getValue();
         player.setHealth(Math.max(0, Math.min(maxHealth, cfg.getDouble(buildKey(identifier, STATS, HEALTH), maxHealth))));
         player.setFoodLevel(Math.max(0, Math.min(20, cfg.getInt(buildKey(identifier, STATS, HUNGER), 20))));
     }

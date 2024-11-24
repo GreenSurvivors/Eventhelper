@@ -735,7 +735,7 @@ public class GhostGame implements Listener {
 
         player.setGameMode(GameMode.SURVIVAL);
 
-        AttributeInstance healthAttribute = player.getAttribute(Attribute.GENERIC_MAX_HEALTH);
+        AttributeInstance healthAttribute = player.getAttribute(Attribute.MAX_HEALTH);
         if (config.getStartingHealthAmount() >= healthAttribute.getValue()) {
             healthAttribute.setBaseValue(config.getStartingHealthAmount());
         }

@@ -2,6 +2,7 @@ package de.greensurvivors.eventhelper.modules.ghost.ghostentity;
 
 import com.google.common.collect.ImmutableList;
 import com.mojang.datafixers.util.Pair;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.valueproviders.UniformInt;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.Brain;
@@ -53,7 +54,7 @@ public class GhostAI {
             Activity.IDLE,
             10,
             ImmutableList.of(
-                StartAttacking.create(ignored -> brain.getMemory(MemoryModuleType.ATTACK_TARGET)),
+                StartAttacking.create((world, entity) -> brain.getMemory(MemoryModuleType.ATTACK_TARGET)),
                 SetEntityLookTargetSometimes.create(8.0F, UniformInt.of(30, 60)),
                 new RunOne<>(
                     ImmutableList.of(
@@ -72,7 +73,7 @@ public class GhostAI {
             10,
             ImmutableList.of(
                 StopAttackingIfTargetInvalid.create(
-                    entity -> !ghost.canTargetEntity(entity), GhostAI::onTargetInvalid, false),
+                    (world, entity) -> !ghost.canTargetEntity(entity), GhostAI::onTargetInvalid, false),
                 MeleeAttack.create(8),
                 StopAttackingIfTargetInvalid.create()
             ),
@@ -80,7 +81,7 @@ public class GhostAI {
         );
     }
 
-    private static void onTargetInvalid(NMSGhostEntity entity, LivingEntity entity1) {
+    private static void onTargetInvalid(ServerLevel world, NMSGhostEntity entity, LivingEntity target) {
     }
 
     public static void updateActivity(final @NotNull NMSGhostEntity ghost) {

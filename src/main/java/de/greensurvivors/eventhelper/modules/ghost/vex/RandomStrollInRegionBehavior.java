@@ -48,7 +48,7 @@ public class RandomStrollInRegionBehavior {
             BlockPos blockPos2 = RandomPos.generateRandomPosTowardDirection(entity, MAX_XZ_DIST, entity.getRandom(), blockPos);
 
             if (!GoalUtils.isOutsideLimits(blockPos2, entity) && entity.isWithinRestriction(blockPos2)) {
-                blockPos2 = RandomPos.moveUpOutOfSolid(blockPos2, entity.level().getMaxBuildHeight(), pos -> GoalUtils.isSolid(entity, pos));
+                blockPos2 = RandomPos.moveUpOutOfSolid(blockPos2, entity.level().getMaxY(), pos -> GoalUtils.isSolid(entity, pos));
 
                 if (GoalUtils.hasMalus(entity, blockPos2)) {
                     return null;
@@ -59,7 +59,7 @@ public class RandomStrollInRegionBehavior {
                 }
             } else {
                 if (stuckDetectionHolder.doStuckDetection()) {
-                    return RandomPos.moveUpOutOfSolid(entity.getUnstuckPos(), entity.level().getMaxBuildHeight(), pos -> GoalUtils.isSolid(entity, pos));
+                    return RandomPos.moveUpOutOfSolid(entity.getUnstuckPos(), entity.level().getMaxY(), pos -> GoalUtils.isSolid(entity, pos));
                 }
 
                 return null;

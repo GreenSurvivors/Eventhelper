@@ -6,16 +6,21 @@ import de.greensurvivors.eventhelper.modules.ghost.GhostGame;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
 import net.minecraft.network.protocol.game.DebugPackets;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerEntity;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.DamageTypeTags;
+import net.minecraft.util.profiling.Profiler;
+import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.*;
@@ -60,7 +65,7 @@ public class NMSGhostEntity extends Monster implements Enemy {
     // has to be called while the server is bootstrapping, or else the registry will be frozen!
     private static <T extends Entity> @NotNull EntityType<T> registerEntityType(final @NotNull EntityType.Builder<Entity> type) {
         return (EntityType<T>) Registry.register(BuiltInRegistries.ENTITY_TYPE, "ghost",
-            type.build("ghost"));
+            type.build(ResourceKey.create(Registries.ENTITY_TYPE, ResourceLocation.withDefaultNamespace("ghost"))));
     }
 
     public NMSGhostEntity(final @NotNull Level world, final @NotNull GhostGame ghostGame) {
@@ -141,7 +146,7 @@ public class NMSGhostEntity extends Monster implements Enemy {
     @SuppressWarnings("resource") // ignore level being auto closeable
     public @Nullable SpawnGroupData finalizeSpawn(final @NotNull ServerLevelAccessor world,
                                                   final @NotNull DifficultyInstance difficulty,
-                                                  final @NotNull MobSpawnType spawnReason,
+                                                  final @NotNull EntitySpawnReason spawnReason,
                                                   final @Nullable SpawnGroupData entityData) {
         this.underWorldGhost = new NMSUnderWorldGhostEntity(this, ghostGame);
 
@@ -169,17 +174,16 @@ public class NMSGhostEntity extends Monster implements Enemy {
         this.setDeltaMovement(Vec3.ZERO);
     }
 
-    @SuppressWarnings("resource") // ignore level being auto closeable
     @Override
-    protected void customServerAiStep() {
-        ServerLevel worldserver = (ServerLevel) this.level();
+    protected void customServerAiStep(final @NotNull ServerLevel world) {
+        ProfilerFiller gameprofilerfiller = Profiler.get();
 
-        worldserver.getProfiler().push("ghostBrain");
-        this.getBrain().tick(worldserver, this);
-        this.level().getProfiler().pop();
-        super.customServerAiStep();
-
+        gameprofilerfiller.push("ghostBrain");
+        this.getBrain().tick(world, this);
         GhostAI.updateActivity(this);
+        gameprofilerfiller.pop();
+
+        super.customServerAiStep(world);
     }
 
     @SuppressWarnings("resource") // ignore level being auto closeable
@@ -234,7 +238,7 @@ public class NMSGhostEntity extends Monster implements Enemy {
     }
 
     @Override
-    public boolean isInvulnerableTo(final @NotNull DamageSource damageSource) { // is invulnerable to everything
+    public boolean isInvulnerableTo(final @NotNull ServerLevel world, final @NotNull DamageSource damageSource) { // is invulnerable to everything
         return !damageSource.is(DamageTypeTags.BYPASSES_INVULNERABILITY);
     }
 

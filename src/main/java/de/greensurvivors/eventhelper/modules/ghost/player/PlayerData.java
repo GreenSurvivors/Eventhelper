@@ -63,7 +63,7 @@ public class PlayerData { // todo share this class with InventoryRegions
         }
         this.wasGlowing = player.isGlowing();
 
-        final AttributeInstance maxHealthAttribute = player.getAttribute(Attribute.GENERIC_MAX_HEALTH);
+        final AttributeInstance maxHealthAttribute = player.getAttribute(Attribute.MAX_HEALTH);
         this.prevMaxHealthBase = maxHealthAttribute.getValue();
         maxHealthAttribute.setBaseValue(maxHealthAttribute.getDefaultValue());
         this.prevHealth = player.getHealth();
@@ -113,7 +113,7 @@ public class PlayerData { // todo share this class with InventoryRegions
             }
             player.setGlowing(wasGlowing);
 
-            player.getAttribute(Attribute.GENERIC_MAX_HEALTH).setBaseValue(prevMaxHealthBase);
+            player.getAttribute(Attribute.MAX_HEALTH).setBaseValue(prevMaxHealthBase);
             player.setHealth(prevHealth);
             player.setFoodLevel(prevFoodLevel);
             player.setSaturation(prevSaturation);
