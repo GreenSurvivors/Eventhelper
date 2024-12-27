@@ -8,6 +8,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
 
+/// A participant that is still part of the game and can change its outcome
 public abstract class AGhostGamePlayer extends AGhostGameParticipant {
 
     public AGhostGamePlayer(final @NotNull EventHelper plugin,
@@ -17,8 +18,14 @@ public abstract class AGhostGamePlayer extends AGhostGameParticipant {
         super(plugin, game, uuid, playerData);
     }
 
+    /// get the current QuestModifier or null if this player has none
     public abstract @Nullable QuestModifier getQuestModifier();
 
+    /**
+     * finish the current quest
+     *
+     * @return returns the next one
+     */
     public abstract @Nullable QuestModifier finishCurrentQuest();
 
     public @NotNull PlayerData getPlayerData() {

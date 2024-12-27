@@ -10,7 +10,10 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 
-public class SharedConfig { // todo set language locale
+/**
+ * the config shared by the whole plugin and all it's modules
+ */
+public class SharedConfig {
     protected final @NotNull ConfigOption<@NotNull Locale> locale = new ConfigOption<>("language", Locale.ENGLISH);
     protected final @NotNull ConfigOption<@NotNull ComparableVersion> dataVersion = new ConfigOption<>("dataVersion", new ComparableVersion("1.0.0"));
     protected final @NotNull EventHelper plugin;
@@ -19,6 +22,13 @@ public class SharedConfig { // todo set language locale
         this.plugin = plugin;
     }
 
+    /**
+     * reloads the shared config, and sets the locale of the {@link de.greensurvivors.eventhelper.messages.MessageManager}.
+     * The reload will happen async.
+     *
+     * @return a CompletableFuture, that will complete on the main thread with true, once the reload is fully done,
+     * or complete on the main thread with false, if an error happened.
+     */
     public @NotNull CompletableFuture<@NotNull Boolean> reload() {
         final CompletableFuture<Boolean> runAfter = new CompletableFuture<>();
 
@@ -57,6 +67,11 @@ public class SharedConfig { // todo set language locale
         return runAfter;
     }
 
+    /**
+     * async saves the shared config.
+     * @return a CompletableFuture, that will complete on the main thread with true, once the save is fully done,
+     * or complete on the main thread with false, if an error happened.
+     */
     public @NotNull CompletableFuture<@NotNull Boolean> save() {
         final CompletableFuture<@NotNull Boolean> runAfter = new CompletableFuture<>();
 

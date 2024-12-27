@@ -1,24 +1,28 @@
 package de.greensurvivors.eventhelper.modules;
 
 import de.greensurvivors.eventhelper.EventHelper;
+import net.kyori.adventure.key.KeyPattern;
+import org.bukkit.event.EventHandler;
 import org.jetbrains.annotations.NotNull;
 
-public abstract class AModul<ConfigType extends AModulConfig<?>> {
+public abstract class AModul<Config extends AModulConfig> {
     protected final @NotNull EventHelper plugin;
-    protected final @NotNull ConfigType config;
+    protected final @NotNull Config config;
 
-    protected AModul(final @NotNull EventHelper plugin, final @NotNull ConfigType config) {
+    protected AModul(final @NotNull EventHelper plugin, final @NotNull Config config) {
         this.plugin = plugin;
         this.config = config;
     }
 
-    public abstract @NotNull String getName();
+    /**
+     * @return the unique unchanging name, of this modul
+     */
+    public abstract @NotNull @KeyPattern.Namespace String getName();
 
-    public abstract void onEnable();
+    @EventHandler
+    protected abstract void onConfigEnabledChange(final @NotNull StateChangeEvent<?> event);
 
-    public abstract void onDisable();
-
-    public @NotNull ConfigType getConfig() {
+    public @NotNull Config getConfig() {
         return config;
     }
 }

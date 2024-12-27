@@ -26,6 +26,8 @@ public class EventHelper extends JavaPlugin {
     private @NotNull DependencyManager dependencyManager;
     private @NotNull ModulRegistery modulRegistery;
 
+    // the instance of a Java plugin is created before the whole server api is loaded.
+    // that's why we make use of the {@link #onEnable()} method.
     public EventHelper() {
         super();
 
@@ -37,6 +39,12 @@ public class EventHelper extends JavaPlugin {
         return instance;
     }
 
+    /**
+     * The onDisable Method of java plugin is after the plugin was marked as disabled by the server.
+     * If a plugin is marked as disabled all it's EventHandlers are dead.
+     * We need them, since the StateChange event stops all modules.
+     * That's why we make use of the {@link #onEnable()} method, but not of the {@link #onDisable()} one.
+     */
     @Override
     public void onEnable() {
         // listener
@@ -47,9 +55,7 @@ public class EventHelper extends JavaPlugin {
         mainCmd = new MainCmd(this);
         // register modules
         modulRegistery = new ModulRegistery(this);
-        modulRegistery.registerDefault();
         modulRegistery.onEnable();
-
 
         try {
             // don't break expectations by using another data type
@@ -86,11 +92,6 @@ public class EventHelper extends JavaPlugin {
         }
     }
 
-    @Override
-    public void onDisable() {
-        getModulRegistery().disableAll();
-    }
-
     public @NotNull MainCmd getMainCmd() {
         return mainCmd;
     }
@@ -105,5 +106,10 @@ public class EventHelper extends JavaPlugin {
 
     public @NotNull DependencyManager getDependencyManager() {
         return dependencyManager;
+    }
+
+    public void reloadAll() {
+        sharedConfig.reload();
+        modulRegistery.reloadAll();
     }
 }
