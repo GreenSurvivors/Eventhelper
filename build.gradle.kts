@@ -1,14 +1,14 @@
 plugins {
     `java-library`
     //java
-    id("io.papermc.paperweight.userdev") version "1.7.3"
+    id("io.papermc.paperweight.userdev") version "2.0.0-beta.18"
     id("xyz.jpenilla.run-paper") version "2.3.1" // Adds runServer and runMojangMappedServer tasks for testing
 }
 
 group = "de.greensurvivors"
-version = "2.0.2-SNAPSHOT"
+version = "2.0.3-SNAPSHOT"
 description = "Helper for all kinds of Events."
-val mcVersion by extra("1.21.3")
+val mcVersion by extra("1.21.4")
 
 // we only work with paper and downstream!
 paperweight.reobfArtifactConfiguration = io.papermc.paperweight.userdev.ReobfArtifactConfiguration.MOJANG_PRODUCTION
@@ -34,10 +34,10 @@ repositories {
 
 dependencies {
     paperweight.paperDevBundle("$mcVersion-R0.1-SNAPSHOT")
-    compileOnly("com.sk89q.worldguard", "worldguard-bukkit", "7.1.0-SNAPSHOT") //newest worldguard version
-    api("com.github.ben-manes.caffeine", "caffeine", "3.1.8") // caches
+    compileOnly("com.sk89q.worldguard", "worldguard-bukkit", "7.0.14-SNAPSHOT") //newest worldguard version
+    api("com.github.ben-manes.caffeine", "caffeine", "3.2.2") // caches
     compileOnly("de.greensurvivors", "SimpleQuests", "2.0.0") // installed locally as we depend on a dev version
-    api("org.apache.commons", "commons-collections4", "4.5.0-M2")
+    api("org.apache.commons", "commons-collections4", "4.5.0")
 }
 
 tasks {
@@ -59,8 +59,8 @@ tasks {
     runServer {
         downloadPlugins {
             // make sure to double-check the version id on the Modrinth version page
-            modrinth("worldguard", "r9yT7tvE")
-            modrinth("worldedit", "lynJ1VTU")
+            modrinth("worldguard", "f9NoeotB")
+            modrinth("worldedit", "Jk1z2u7n")
         }
     }
 }

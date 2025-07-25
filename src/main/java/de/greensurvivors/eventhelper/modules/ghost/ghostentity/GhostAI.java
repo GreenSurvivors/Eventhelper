@@ -38,7 +38,7 @@ public class GhostAI {
     protected static Brain<?> makeBrain(final @NotNull NMSGhostEntity ghost, final @NotNull Brain<NMSGhostEntity> brain) {
         initCoreActivity(brain);
         initIdleActivity(ghost, brain);
-        initFightActivity(ghost, brain);
+        initFightActivity(brain);
         brain.setCoreActivities(Set.of(Activity.CORE));
         brain.setDefaultActivity(Activity.FIGHT);
         brain.useDefaultActivity();
@@ -67,13 +67,13 @@ public class GhostAI {
         );
     }
 
-    private static void initFightActivity(final @NotNull NMSGhostEntity ghost, final @NotNull Brain<NMSGhostEntity> brain) {
+    private static void initFightActivity(final @NotNull Brain<NMSGhostEntity> brain) {
         brain.addActivityAndRemoveMemoryWhenStopped(
             Activity.FIGHT,
             10,
             ImmutableList.of(
                 StopAttackingIfTargetInvalid.create(
-                    (world, entity) -> !ghost.canTargetEntity(entity), GhostAI::onTargetInvalid, false),
+                    (world, entity) -> !((NMSGhostEntity) entity).canTargetEntity(entity), GhostAI::onTargetInvalid, false),
                 MeleeAttack.create(8),
                 StopAttackingIfTargetInvalid.create()
             ),
@@ -81,7 +81,7 @@ public class GhostAI {
         );
     }
 
-    private static void onTargetInvalid(ServerLevel world, NMSGhostEntity entity, LivingEntity target) {
+    private static void onTargetInvalid(ServerLevel world, NMSGhostEntity ghost, LivingEntity target) {
     }
 
     public static void updateActivity(final @NotNull NMSGhostEntity ghost) {

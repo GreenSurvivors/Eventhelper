@@ -23,7 +23,7 @@ public abstract class AGameSubCmd {
         this.plugin = plugin;
         this.permission = permission;
 
-        if (permission != null) {
+        if (permission != null && Bukkit.getPluginManager().getPermission(permission.getName()) == null) {
             Bukkit.getPluginManager().addPermission(permission);
         }
     }

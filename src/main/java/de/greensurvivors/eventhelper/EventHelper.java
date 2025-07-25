@@ -15,12 +15,13 @@ import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.DefaultAttributes;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
-import org.bukkit.craftbukkit.entity.CraftEntityType;
 import org.bukkit.craftbukkit.util.CraftNamespacedKey;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.Map;
 
 public class EventHelper extends JavaPlugin {
     private static @NotNull EventHelper instance;
@@ -100,27 +101,22 @@ public class EventHelper extends JavaPlugin {
             // don't break expectations by using another data type
             ImmutableMap.Builder<EntityType<? extends LivingEntity>, AttributeSupplier> builder = ImmutableMap.builder();
 
-            // re-add all other entities
-            for (org.bukkit.entity.EntityType bukkitEntityType : Registry.ENTITY_TYPE) {
-                EntityType<?> nmsEntityType = CraftEntityType.bukkitToMinecraft(bukkitEntityType);
-                AttributeSupplier attributeSupplier = DefaultAttributes.getSupplier((EntityType<? extends LivingEntity>) nmsEntityType);
-
-                //noinspection ConstantValue // this WILL be null for non-living entities!
-                if (attributeSupplier != null) {
-                    builder.put((EntityType<? extends LivingEntity>) nmsEntityType, attributeSupplier);
-                }
-            }
-
-            // add our own entities
-            builder.put(NMSGhostEntity.GHOST_TYPE, NMSGhostEntity.createAttributes().build());
-            builder.put(NMSUnderWorldGhostEntity.UNDERWORLD_GHOST_TYPE, NMSUnderWorldGhostEntity.createAttributes().build());
-            builder.put(NMSVexEntity.VEX_TYPE, NMSVexEntity.createAttributes().build());
-
             // Access the private field
             Field privateAttributesField = DefaultAttributes.class.getDeclaredField("SUPPLIERS");
 
             // Make the field accessible
             privateAttributesField.setAccessible(true);
+            Field modifiersField = Field.class.getDeclaredField("modifiers");
+            modifiersField.setAccessible(true);
+            modifiersField.setInt(privateAttributesField, privateAttributesField.getModifiers() & ~Modifier.FINAL);
+
+            // re-add all other entities
+            builder.putAll((Map<EntityType<? extends LivingEntity>, AttributeSupplier>) privateAttributesField.get(null));
+
+            // add our own entities
+            builder.put(NMSGhostEntity.GHOST_TYPE, NMSGhostEntity.createAttributes().build());
+            builder.put(NMSUnderWorldGhostEntity.UNDERWORLD_GHOST_TYPE, NMSUnderWorldGhostEntity.createAttributes().build());
+            builder.put(NMSVexEntity.VEX_TYPE, NMSVexEntity.createAttributes().build());
 
             // set the new map.
             privateAttributesField.set(null, builder.build());

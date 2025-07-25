@@ -60,7 +60,7 @@ public class NMSVexEntity extends Vex implements VibrationSystem {
      */
     public static final EntityType<NMSVexEntity> VEX_TYPE = registerEntityType(
         (EntityType.Builder.
-            of(null, MobCategory.MONSTER).
+            of((ignored, world) -> EntityType.VEX.create(world, EntitySpawnReason.TRIGGERED), MobCategory.MONSTER).
             sized(EntityType.VEX.getDimensions().width(), EntityType.VEX.getDimensions().height()).
             fireImmune().
             eyeHeight(EntityType.VEX.getDimensions().eyeHeight()).
@@ -86,6 +86,8 @@ public class NMSVexEntity extends Vex implements VibrationSystem {
     public NMSVexEntity(final @NotNull Level world, final @NotNull GhostGame ghostGame, Location spawnLocation) {
         super(VEX_TYPE, world);
         this.ghostGame = ghostGame;
+
+        getAttribute(Attributes.FOLLOW_RANGE).setBaseValue(24);
 
         hasLimitedLife = false;
         this.setPathfindingMalus(PathType.DAMAGE_OTHER, 8.0F);
@@ -168,17 +170,15 @@ public class NMSVexEntity extends Vex implements VibrationSystem {
         super.tick();
     }
 
-    @SuppressWarnings("resource") // ignore level being auto closeable
     @Override
     protected void customServerAiStep(final @NotNull ServerLevel world) {
-        ProfilerFiller gameprofilerfiller = Profiler.get();
-
-        gameprofilerfiller.push("ghostVexBrain");
-        this.getBrain().tick(world, this);
-        VexAI.updateActivity(this);
-        gameprofilerfiller.pop();
-
+        ProfilerFiller profilerFiller = Profiler.get();
+        profilerFiller.push("ghostVexBrain");
+        getBrain().tick(world, this);
         super.customServerAiStep(world);
+        profilerFiller.pop();
+
+        VexAI.updateActivity(this);
     }
 
     @Override
@@ -238,15 +238,15 @@ public class NMSVexEntity extends Vex implements VibrationSystem {
     }
 
     @Override
-    public boolean hurtServer(final @NotNull ServerLevel world, final @NotNull DamageSource source, float amount) {
+    public boolean hurtServer(final @NotNull ServerLevel world, final @NotNull DamageSource source, final float amount) {
         boolean superHurt = super.hurtServer(world, source, amount);
 
-        if (!this.isNoAi()) {
+        if (!isNoAi()) {
             Entity entity = source.getEntity();
             if (this.brain.getMemory(MemoryModuleType.ATTACK_TARGET).isEmpty() && entity instanceof LivingEntity entityliving) {
 
                 if (source.isDirect() || this.closerThan(entityliving, 5.0D)) {
-                    this.setAttackTarget(entityliving);
+                    setAttackTarget(entityliving);
                 }
             }
         }

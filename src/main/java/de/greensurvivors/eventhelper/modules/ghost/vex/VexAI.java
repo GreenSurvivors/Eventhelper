@@ -95,7 +95,7 @@ public class VexAI {
             ImmutableList.of(
                 new VexChargeAttackBehavior(),
                 StopAttackingIfTargetInvalid.create(
-                    (world, entity) -> !nmsVex.canTargetEntity(entity), (world, entity, target) -> {
+                    (world, entity) -> !nmsVex.canTargetEntity(entity), (world, vexEntity, target) -> {
                     }, false
                 ),
                 SetEntityLookTarget.create(entity -> isTarget(nmsVex, entity), (float) nmsVex.getAttributeValue(Attributes.FOLLOW_RANGE)),

@@ -143,14 +143,13 @@ public class NMSGhostEntity extends Monster implements Enemy {
     }
 
     @Override
-    @SuppressWarnings("resource") // ignore level being auto closeable
     public @Nullable SpawnGroupData finalizeSpawn(final @NotNull ServerLevelAccessor world,
                                                   final @NotNull DifficultyInstance difficulty,
                                                   final @NotNull EntitySpawnReason spawnReason,
                                                   final @Nullable SpawnGroupData entityData) {
         this.underWorldGhost = new NMSUnderWorldGhostEntity(this, ghostGame);
 
-        level().addFreshEntity(underWorldGhost, CreatureSpawnEvent.SpawnReason.CUSTOM);
+        world.addFreshEntity(underWorldGhost, CreatureSpawnEvent.SpawnReason.CUSTOM);
 
         return entityData;
     }
@@ -176,12 +175,11 @@ public class NMSGhostEntity extends Monster implements Enemy {
 
     @Override
     protected void customServerAiStep(final @NotNull ServerLevel world) {
-        ProfilerFiller gameprofilerfiller = Profiler.get();
-
-        gameprofilerfiller.push("ghostBrain");
-        this.getBrain().tick(world, this);
+        ProfilerFiller profilerFiller = Profiler.get();
+        profilerFiller.push("ghostBrain");
+        getBrain().tick(world, this);
         GhostAI.updateActivity(this);
-        gameprofilerfiller.pop();
+        profilerFiller.pop();
 
         super.customServerAiStep(world);
     }
