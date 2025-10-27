@@ -14,11 +14,11 @@ public class Loader implements PluginLoader {
     public void classloader(@NotNull PluginClasspathBuilder classpathBuilder) {
         MavenLibraryResolver resolver = new MavenLibraryResolver();
 
-        resolver.addRepository(new RemoteRepository.Builder("maven central", "default", "https://repo1.maven.org/maven2/").build());
+        resolver.addRepository(new RemoteRepository.Builder("central", "default", MavenLibraryResolver.MAVEN_CENTRAL_DEFAULT_MIRROR).build());
 
-        DefaultArtifact caffeineArtifact = new DefaultArtifact("com.github.ben-manes.caffeine:caffeine:3.1.8");
+        DefaultArtifact caffeineArtifact = new DefaultArtifact("com.github.ben-manes.caffeine:caffeine:${caffeineVersion}");
         resolver.addDependency(new Dependency(caffeineArtifact, null));
-        DefaultArtifact collectionsArtifact = new DefaultArtifact("org.apache.commons:commons-collections4:4.5.0-M2");
+        DefaultArtifact collectionsArtifact = new DefaultArtifact("org.apache.commons:commons-collections4:${commons-collections4Version}");
         resolver.addDependency(new Dependency(collectionsArtifact, null));
 
         classpathBuilder.getContext().getLogger().info("loaded libraries {}, version: {} and {}, version: {}",
