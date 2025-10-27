@@ -19,7 +19,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.HandlerList;
-import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
@@ -31,7 +30,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.logging.Level;
 
-public class InventoryRegionModul extends AModul<InventoryConfig> implements Listener {
+public class InventoryRegionModul extends AModul<InventoryConfig> {
     private static final @NotNull
     @KeyPattern.Namespace String MODUL_ID = "inventory_regions";
     public static StringFlag inventory_identifier;

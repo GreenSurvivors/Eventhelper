@@ -9,7 +9,7 @@ import de.greensurvivors.eventhelper.modules.ghost.GhostGame;
 import de.greensurvivors.eventhelper.modules.ghost.GhostLangPath;
 import de.greensurvivors.eventhelper.modules.ghost.GhostModul;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.permissions.Permission;
@@ -93,7 +93,7 @@ public class GhostCmd extends ASubCommand { // todo check sub permissions!
         if (ghostModul.getConfig().isEnabled()) {
             if (args.size() >= 2) {
                 for (Map.Entry<String, ASubCommand> entry : subCommands.entrySet()) {
-                    if (StringUtils.equalsIgnoreCase(entry.getKey(), args.getFirst())) {
+                    if (Strings.CI.equals(entry.getKey(), args.getFirst())) {
                         args.removeFirst();
                         return entry.getValue().execute(sender, args);
                     }
@@ -165,7 +165,7 @@ public class GhostCmd extends ASubCommand { // todo check sub permissions!
                         }
                         default -> {
                             for (Map.Entry<String, AGameSubCmd> entry : gameSubcommands.entrySet()) {
-                                if (StringUtils.equalsIgnoreCase(entry.getKey(), args.getFirst())) {
+                                if (Strings.CI.equals(entry.getKey(), args.getFirst())) {
                                     args.removeFirst();
                                     args.removeFirst();
                                     return entry.getValue().execute(sender, game, args);
@@ -184,7 +184,7 @@ public class GhostCmd extends ASubCommand { // todo check sub permissions!
                 }
             } else if (!args.isEmpty()) {
                 for (String quitAlias : quitSubCmd.getAliases()) {
-                    if (StringUtils.equalsIgnoreCase(quitAlias, args.getFirst())) {
+                    if (Strings.CI.equals(quitAlias, args.getFirst())) {
                         args.removeFirst();
                         return quitSubCmd.execute(sender, args);
                     }
@@ -231,14 +231,14 @@ public class GhostCmd extends ASubCommand { // todo check sub permissions!
                 List<String> result = new ArrayList<>(gameIds.size());
 
                 for (Map.Entry<String, ASubCommand> entry : subCommands.entrySet()) {
-                    if (entry.getValue().hasPermission(sender) && StringUtils.startsWithIgnoreCase(entry.getKey(), arg_0)) {
+                    if (entry.getValue().hasPermission(sender) && Strings.CI.startsWith(entry.getKey(), arg_0)) {
                         result.add(entry.getKey());
                     }
                 }
 
                 if (sender.hasPermission(EDIT_PERM)) {
                     for (String gameNameId : gameIds) {
-                        if (StringUtils.startsWithIgnoreCase(gameNameId, arg_0)) {
+                        if (Strings.CI.startsWith(gameNameId, arg_0)) {
                             result.add(gameNameId);
                         }
                     }
@@ -256,20 +256,20 @@ public class GhostCmd extends ASubCommand { // todo check sub permissions!
                         final String arg_1 = args.get(1);
 
                         for (String alias : gameSubcommands.keySet()) {
-                            if (StringUtils.startsWithIgnoreCase(alias, arg_1)) {
+                            if (Strings.CI.startsWith(alias, arg_1)) {
                                 result.add(alias);
                             }
                         }
 
-                        if (StringUtils.startsWithIgnoreCase(REMOVE, arg_1)) {
+                        if (Strings.CI.startsWith(REMOVE, arg_1)) {
                             result.add(REMOVE);
                         }
 
-                        if (StringUtils.startsWithIgnoreCase(REMOVE_NEAR, arg_1)) {
+                        if (Strings.CI.startsWith(REMOVE_NEAR, arg_1)) {
                             result.add(REMOVE_NEAR);
                         }
 
-                        if (StringUtils.startsWithIgnoreCase(REMOVE_ALL, arg_1)) {
+                        if (Strings.CI.startsWith(REMOVE_ALL, arg_1)) {
                             result.add(REMOVE_ALL);
                         }
 
@@ -299,13 +299,13 @@ public class GhostCmd extends ASubCommand { // todo check sub permissions!
                                 List<String> result = new ArrayList<>();
                                 String arg_2 = args.get(2);
 
-                                if (StringUtils.startsWithIgnoreCase(GHOST_SPAWN_LOCATION, arg_2)) {
+                                if (Strings.CI.startsWith(GHOST_SPAWN_LOCATION, arg_2)) {
                                     result.add(GHOST_SPAWN_LOCATION);
                                 }
-                                if (StringUtils.startsWithIgnoreCase(GHOST_IDLE_POSTION, arg_2)) {
+                                if (Strings.CI.startsWith(GHOST_IDLE_POSTION, arg_2)) {
                                     result.add(GHOST_IDLE_POSTION);
                                 }
-                                if (StringUtils.startsWithIgnoreCase(VEX_SPAWN_LOCATION, arg_2)) {
+                                if (Strings.CI.startsWith(VEX_SPAWN_LOCATION, arg_2)) {
                                     result.add(VEX_SPAWN_LOCATION);
                                 }
 
@@ -313,7 +313,7 @@ public class GhostCmd extends ASubCommand { // todo check sub permissions!
                             }
                             default -> {
                                 for (Map.Entry<String, AGameSubCmd> entry : gameSubcommands.entrySet()) {
-                                    if (StringUtils.startsWithIgnoreCase(entry.getKey(), args.get(1))) {
+                                    if (Strings.CI.startsWith(entry.getKey(), args.get(1))) {
                                         args.removeFirst();
                                         args.removeFirst();
                                         return entry.getValue().tabComplete(sender, game, args);

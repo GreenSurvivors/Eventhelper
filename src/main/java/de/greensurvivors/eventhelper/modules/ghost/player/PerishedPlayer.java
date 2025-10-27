@@ -27,7 +27,7 @@ public class PerishedPlayer extends AGhostGamePlayer {
         if (stillPossibleTasks.isEmpty()) {
             return null;
         } else {
-            return stillPossibleTasks.get(0);
+            return stillPossibleTasks.getFirst();
         }
     }
 
@@ -36,7 +36,7 @@ public class PerishedPlayer extends AGhostGamePlayer {
         if (stillPossibleTasks.isEmpty()) {
             return null;
         } else {
-            stillPossibleTasks.remove(0);
+            stillPossibleTasks.removeFirst();
 
             return getQuestModifier();
         }

@@ -31,7 +31,6 @@ import org.bukkit.block.sign.SignSide;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
-import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.SignChangeEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
@@ -52,7 +51,7 @@ import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-public class GhostModul extends AModul<GeneralGhostConfig> implements Listener {
+public class GhostModul extends AModul<GeneralGhostConfig> {
     private static final @NotNull Pattern INETERN_GAME_ID_PATTERN = Pattern.compile("[a-z0-9_\\-./]+");
     private static final @NotNull
     @KeyPattern.Namespace String MODUL_ID = "ghost";

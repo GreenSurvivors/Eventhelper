@@ -401,7 +401,6 @@ public class GhostGame implements Listener {
     }
 
     /// heartbeat of the game
-    @SuppressWarnings("UnstableApiUsage") // tick manager
     protected void tick() {
         // sanity check: the game somehow changed state
         if (gameState != GameState.RUNNING) {

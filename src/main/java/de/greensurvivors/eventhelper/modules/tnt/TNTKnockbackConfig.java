@@ -16,7 +16,7 @@ import java.util.concurrent.CompletableFuture;
 
 public class TNTKnockbackConfig extends AModulConfig {
 
-    public TNTKnockbackConfig(@NotNull EventHelper plugin, @NotNull String modulID) {
+    public TNTKnockbackConfig(final @NotNull EventHelper plugin, final @NotNull String modulID) {
         super(plugin, modulID);
     }
 

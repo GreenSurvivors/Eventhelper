@@ -9,7 +9,7 @@ import de.greensurvivors.eventhelper.modules.ghost.GhostGame;
 import de.greensurvivors.eventhelper.modules.ghost.GhostLangPath;
 import de.greensurvivors.eventhelper.modules.ghost.GhostModul;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.permissions.Permission;
@@ -84,7 +84,7 @@ public class QuitSubCmd extends ASubCommand {
         if (args.isEmpty() && sender.hasPermission(quitOthersPerm)) {
             return plugin.getServer().getOnlinePlayers().stream().map(Player::getName).toList();
         } else if (args.size() == 1 && sender.hasPermission(quitOthersPerm)) {
-            return plugin.getServer().getOnlinePlayers().stream().map(Player::getName).filter(name -> StringUtils.startsWithIgnoreCase(name, args.getFirst())).toList();
+            return plugin.getServer().getOnlinePlayers().stream().map(Player::getName).filter(name -> Strings.CI.startsWith(name, args.getFirst())).toList();
         }
 
         return List.of();

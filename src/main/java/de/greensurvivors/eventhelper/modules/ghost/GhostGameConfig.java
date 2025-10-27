@@ -61,12 +61,12 @@ public class GhostGameConfig extends AModulConfig {
     private final @NotNull ConfigOption<@NotNull Component> displayName;
     private final @NotNull ConfigOption<@NotNull List<@NotNull MouseTrap>> mouseTraps = new ConfigOption<>("game.mouseTraps", List.of()); // we need fast random access. But the MouseTraps should be unique!
     private final @NotNull ConfigOption<@NotNull List<@NotNull String>> gameInitCommands = new ConfigOption<>("game.commands.gameInit", List.of());
-    private final @NotNull ConfigOption<@NotNull Location> lobbyLocation = new ConfigOption<>("game.lobbyLocation", Bukkit.getWorlds().get(0).getSpawnLocation());
+    private final @NotNull ConfigOption<@NotNull Location> lobbyLocation = new ConfigOption<>("game.lobbyLocation", Bukkit.getWorlds().getFirst().getSpawnLocation());
     private final @NotNull ConfigOption<@NotNull List<@NotNull String>> gameStartCommands = new ConfigOption<>("game.commands.gameStart", List.of());
-    private final @NotNull ConfigOption<@NotNull Location> playerStartLocation = new ConfigOption<>("game.playerStartLocation", Bukkit.getWorlds().get(0).getSpawnLocation());
-    private final @NotNull ConfigOption<@NotNull Location> spectatorStartLocation = new ConfigOption<>("game.spectatorStartLocation", Bukkit.getWorlds().get(0).getSpawnLocation());
+    private final @NotNull ConfigOption<@NotNull Location> playerStartLocation = new ConfigOption<>("game.playerStartLocation", Bukkit.getWorlds().getFirst().getSpawnLocation());
+    private final @NotNull ConfigOption<@NotNull Location> spectatorStartLocation = new ConfigOption<>("game.spectatorStartLocation", Bukkit.getWorlds().getFirst().getSpawnLocation());
     private final @NotNull ConfigOption<@NotNull List<@NotNull String>> gameEndCommands = new ConfigOption<>("game.commands.gameEnd", List.of());
-    private final @NotNull ConfigOption<@NotNull Location> endLocation = new ConfigOption<>("game.endLocation", Bukkit.getWorlds().get(0).getSpawnLocation());
+    private final @NotNull ConfigOption<@NotNull Location> endLocation = new ConfigOption<>("game.endLocation", Bukkit.getWorlds().getFirst().getSpawnLocation());
     private final @NotNull ConfigOption<@NotNull Duration> gameDuration = new ConfigOption<>("game.durationSeconds", Duration.of(10, ChronoUnit.MINUTES));
     private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = 24000) Long> startPlayerTime = new ConfigOption<>("game.playerTime.startTicks", 14000L);
     private final @NotNull ConfigOption<@NotNull @Range(from = 0, to = 24000) Long> endPlayerTime = new ConfigOption<>("game.playerTime.endTicks", 23000L);

@@ -41,6 +41,7 @@ public class AlivePlayer extends AGhostGamePlayer {
     public AlivePlayer(final @NotNull AlivePlayer alivePlayer) {
         super(alivePlayer.plugin, alivePlayer.getGame(), alivePlayer.getUuid(), new PlayerData(alivePlayer.plugin, alivePlayer.getBukkitPlayer()));
         this.doneTaskIds.addAll(alivePlayer.doneTaskIds);
+        this.trappedIn = null;
 
         if (alivePlayer.currentTaskModifier == null || getGame().getConfig().getTasks().containsKey(alivePlayer.currentTaskModifier.getQuestIdentifier())) {
             this.currentTaskModifier = alivePlayer.currentTaskModifier;

@@ -7,7 +7,7 @@ import de.greensurvivors.eventhelper.messages.SharedPlaceHolder;
 import de.greensurvivors.eventhelper.modules.ghost.GhostGame;
 import de.greensurvivors.eventhelper.modules.ghost.GhostLangPath;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
 import org.bukkit.permissions.Permissible;
@@ -99,13 +99,13 @@ public class AddSubCmd extends AGameSubCmd {
             List<String> result = new ArrayList<>();
             final @NotNull String arg_0 = args.getFirst();
 
-            if (StringUtils.startsWithIgnoreCase(GhostCmd.GHOST_SPAWN_LOCATION, arg_0)) {
+            if (Strings.CI.startsWith(GhostCmd.GHOST_SPAWN_LOCATION, arg_0)) {
                 result.add(GhostCmd.GHOST_SPAWN_LOCATION);
             }
-            if (StringUtils.startsWithIgnoreCase(GhostCmd.GHOST_IDLE_POSTION, arg_0)) {
+            if (Strings.CI.startsWith(GhostCmd.GHOST_IDLE_POSTION, arg_0)) {
                 result.add(GhostCmd.GHOST_IDLE_POSTION);
             }
-            if (StringUtils.startsWithIgnoreCase(GhostCmd.VEX_SPAWN_LOCATION, arg_0)) {
+            if (Strings.CI.startsWith(GhostCmd.VEX_SPAWN_LOCATION, arg_0)) {
                 result.add(GhostCmd.VEX_SPAWN_LOCATION);
             }
 

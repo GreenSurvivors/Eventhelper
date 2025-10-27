@@ -24,7 +24,6 @@ import org.bukkit.entity.TNTPrimed;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.HandlerList;
-import org.bukkit.event.Listener;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntitySpawnEvent;
@@ -37,7 +36,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Level;
 
-public class TNTKnockbackModul extends AModul<TNTKnockbackConfig> implements Listener {
+public class TNTKnockbackModul extends AModul<TNTKnockbackConfig> {
     private static final @NotNull
     @KeyPattern.Namespace String MODUL_ID = "tnt_knockback";
     private final HashMap<UUID, TntAndTasks> interactionMap = new HashMap<>();
