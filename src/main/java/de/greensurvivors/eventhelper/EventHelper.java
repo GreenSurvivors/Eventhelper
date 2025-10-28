@@ -20,7 +20,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
 import java.util.Map;
 
 public class EventHelper extends JavaPlugin {
@@ -63,6 +62,8 @@ public class EventHelper extends JavaPlugin {
         modulRegistery = new ModulRegistery(this);
         modulRegistery.onEnable();
 
+        // todo move this to onEnable of GhostModule
+        // register our ghost entity type in Bukkit - in nms was done in bootstrap.
         try {
             // don't break expectations by using another data type
             ImmutableMap.Builder<NamespacedKey, org.bukkit.entity.EntityType> builder = ImmutableMap.builder();
@@ -97,21 +98,15 @@ public class EventHelper extends JavaPlugin {
             throw new RuntimeException(e);
         }
 
+        // todo move to bootstrap so we can remove the message about ignoring the waring there
+        // register attributes
         try {
             // don't break expectations by using another data type
             ImmutableMap.Builder<EntityType<? extends LivingEntity>, AttributeSupplier> builder = ImmutableMap.builder();
 
-            // Access the private field
-            Field privateAttributesField = DefaultAttributes.class.getDeclaredField("SUPPLIERS");
+            final Field privateAttributesField = DefaultAttributes.class.getDeclaredField("SUPPLIERS");
 
-            // Make the field accessible
-            privateAttributesField.setAccessible(true);
-            Field modifiersField = Field.class.getDeclaredField("modifiers");
-            modifiersField.setAccessible(true);
-            modifiersField.setInt(privateAttributesField, privateAttributesField.getModifiers() & ~Modifier.FINAL);
-
-            // re-add all other entities
-            builder.putAll((Map<EntityType<? extends LivingEntity>, AttributeSupplier>) privateAttributesField.get(null));
+            builder.putAll((Map<EntityType<? extends LivingEntity>, AttributeSupplier>) FinalFieldUtil.getStaticFinalField(privateAttributesField));
 
             // add our own entities
             builder.put(NMSGhostEntity.GHOST_TYPE, NMSGhostEntity.createAttributes().build());
@@ -119,13 +114,10 @@ public class EventHelper extends JavaPlugin {
             builder.put(NMSVexEntity.VEX_TYPE, NMSVexEntity.createAttributes().build());
 
             // set the new map.
-            privateAttributesField.set(null, builder.build());
-
-            // set the accessibility back
-            privateAttributesField.setAccessible(false);
+            FinalFieldUtil.setStaticFinalField(privateAttributesField, builder.build());
 
             getComponentLogger().info("Successfully hacked into nms default attributes");
-        } catch (NoSuchFieldException | IllegalAccessException e) {
+        } catch (Throwable e) {
             throw new RuntimeException(e);
         }
     }

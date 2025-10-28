@@ -92,5 +92,11 @@ tasks {
             modrinth("worldedit", "${project.properties["worldeditVersionRunTask"]}")
             modrinth("worldguard", "${project.properties["worldguardVersionRunTask"]}")
         }
+
+        jvmArgs(
+            "-Dcom.mojang.eula.agree=true", // automatically agree to eula
+            "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED", // fuck with reflection
+            "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED"
+        )
     }
 }

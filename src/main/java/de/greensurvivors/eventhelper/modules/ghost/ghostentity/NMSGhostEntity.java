@@ -64,8 +64,10 @@ public class NMSGhostEntity extends Monster implements Enemy {
     @SuppressWarnings("unchecked")
     // has to be called while the server is bootstrapping, or else the registry will be frozen!
     private static <T extends Entity> @NotNull EntityType<T> registerEntityType(final @NotNull EntityType.Builder<Entity> type) {
-        return (EntityType<T>) Registry.register(BuiltInRegistries.ENTITY_TYPE, "ghost",
-            type.build(ResourceKey.create(Registries.ENTITY_TYPE, ResourceLocation.withDefaultNamespace("ghost"))));
+        ResourceKey<EntityType<?>> key = ResourceKey.create(Registries.ENTITY_TYPE, ResourceLocation.withDefaultNamespace("ghost"));
+
+        return (EntityType<T>) Registry.register(BuiltInRegistries.ENTITY_TYPE,
+            key, type.build(key));
     }
 
     public NMSGhostEntity(final @NotNull Level world, final @NotNull GhostGame ghostGame) {
