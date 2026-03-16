@@ -2,21 +2,25 @@ package de.greensurvivors.eventhelper.modules.inventory;
 
 import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.modules.AModulConfig;
+import net.kyori.adventure.key.KeyPattern;
 import org.apache.maven.artifact.versioning.ComparableVersion;
 import org.bukkit.Bukkit;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.NonNull;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
@@ -38,7 +42,7 @@ public class InventoryConfig extends AModulConfig {
 
     private final String defaultIdentifier = "default";
 
-    public InventoryConfig(final @NotNull EventHelper plugin, final @NotNull String modulID) {
+    public InventoryConfig(final @NotNull EventHelper plugin, final @NotNull @KeyPattern.Namespace String modulID) {
         super(plugin, modulID);
     }
 
@@ -129,9 +133,9 @@ public class InventoryConfig extends AModulConfig {
         File file = new File(plugin.getDataFolder(), "inventory_regions" + File.separator + player.getUniqueId() + ".yml");
         FileConfiguration cfg = YamlConfiguration.loadConfiguration(file);
 
-        //saves the inventory, enderchest and states of a player under the identifier
-        cfg.set(buildKey(identifier, INVENTORY), player.getInventory().getContents());
-        cfg.set(buildKey(identifier, ENDERCHEST), player.getEnderChest().getContents());
+        //saves the inventory, enderchest and states of a player under the identifier;
+        cfg.set(buildKey(identifier, INVENTORY), serializeInventory(player.getInventory()));
+        cfg.set(buildKey(identifier, ENDERCHEST), serializeInventory(player.getEnderChest()));
         cfg.set(buildKey(identifier, STATS, EXP), player.getExp());
         cfg.set(buildKey(identifier, STATS, LEVEL), player.getLevel());
         cfg.set(buildKey(identifier, STATS, HEALTH), player.getHealth());
@@ -146,10 +150,6 @@ public class InventoryConfig extends AModulConfig {
         }
     }
 
-    private String buildKey(String... args) {
-        return String.join(".", args);
-    }
-
     /**
      * loads the inventory and stats of a player, depending on the identifier
      *
@@ -157,7 +157,7 @@ public class InventoryConfig extends AModulConfig {
      * @param identifier the identifier what inventory should be loaded.
      */
     public void loadPlayerData(final @NotNull Player player, final @NotNull String identifier) {
-        File file = new File(plugin.getDataFolder(), "inventory_regions" + File.separator + player.getUniqueId() + ".yml");
+        final @NotNull File file = new File(plugin.getDataFolder(), "inventory_regions" + File.separator + player.getUniqueId() + ".yml");
         FileConfiguration cfg = YamlConfiguration.loadConfiguration(file);
 
         //set active
@@ -171,35 +171,53 @@ public class InventoryConfig extends AModulConfig {
             plugin.getLogger().log(Level.SEVERE, "Could not save " + file.getName() + " inventory file.", e);
         }
 
-        List<?> inventoryListLoaded = cfg.getList(buildKey(identifier, INVENTORY));
-        List<?> enderListLoaded = cfg.getList(buildKey(identifier, ENDERCHEST));
+        final @Nullable Object inventoryLoaded = cfg.get(buildKey(identifier, INVENTORY));
+        final @Nullable Object enderChestLoaded = cfg.get(buildKey(identifier, ENDERCHEST));
 
-        if (inventoryListLoaded == null) {
-            player.getInventory().clear();
-        } else {
-            List<ItemStack> inventoryList = new ArrayList<>();
-
-            for (Object obj : inventoryListLoaded) {
-                if (obj instanceof ItemStack || obj == null) {
-                    inventoryList.add((ItemStack) obj);
+        player.getInventory().clear();
+        if (inventoryLoaded != null) {
+            if (inventoryLoaded instanceof final @NotNull String base64) {
+                try {
+                    player.getInventory().setContents(deserializeInventory(base64));
+                } catch (final @NotNull IllegalArgumentException e) {
+                    plugin.getComponentLogger().error("Couldn't deserialize Inventory from base64 for player {} in {}!", player.getUniqueId(), identifier, e);
                 }
-            }
+            } else if (inventoryLoaded instanceof List<?> inventoryListLoaded) { // dataFixerUpper
+                final @NotNull List<ItemStack> inventoryList = new ArrayList<>();
 
-            player.getInventory().setContents(inventoryList.toArray(new ItemStack[0]));
+                for (final @Nullable Object obj : inventoryListLoaded) {
+                    if (obj instanceof ItemStack || obj == null) {
+                        inventoryList.add((ItemStack) obj);
+                    }
+                }
+
+                player.getInventory().setContents(inventoryList.toArray(new ItemStack[0]));
+            } else {
+                plugin.getComponentLogger().error("Couldn't deserialize Inventory for player {} in {} because of unknown data format!", player.getUniqueId(), identifier);
+            }
         }
 
-        if (enderListLoaded == null) {
-            player.getEnderChest().clear();
-        } else {
-            List<ItemStack> enderList = new ArrayList<>();
-
-            for (Object obj : enderListLoaded) {
-                if (obj instanceof ItemStack || obj == null) {
-                    enderList.add((ItemStack) obj);
+        player.getEnderChest().clear();
+        if (enderChestLoaded != null) {
+            if (enderChestLoaded instanceof final @NotNull String base64) {
+                try {
+                    player.getEnderChest().setContents(deserializeInventory(base64));
+                } catch (final @NotNull IllegalArgumentException e) {
+                    plugin.getComponentLogger().error("Couldn't deserialize EnderChest from base64 for player {} in {}!", player.getUniqueId(), identifier, e);
                 }
-            }
+            } else if (enderChestLoaded instanceof List<?> enderListLoaded) { // dataFixerUpper
+                final @NotNull List<ItemStack> enderList = new ArrayList<>();
 
-            player.getEnderChest().setContents(enderList.toArray(new ItemStack[0]));
+                for (final @Nullable Object obj : enderListLoaded) {
+                    if (obj instanceof ItemStack || obj == null) {
+                        enderList.add((ItemStack) obj);
+                    }
+                }
+
+                player.getEnderChest().setContents(enderList.toArray(new ItemStack[0]));
+            } else {
+                plugin.getComponentLogger().error("Couldn't deserialize EnderChest for player {} in {} because of unknown data format!", player.getUniqueId(), identifier);
+            }
         }
 
         player.updateInventory();
@@ -222,5 +240,17 @@ public class InventoryConfig extends AModulConfig {
 
         //get active inventory identifier
         return cfg.getString(ACTIVE_INVENTORY, defaultIdentifier);
+    }
+
+    protected static @NotNull String serializeInventory(final @NonNull Inventory inventory) {
+        return Base64.getEncoder().encodeToString(ItemStack.serializeItemsAsBytes(inventory.getContents()));
+    }
+
+    protected static @NotNull ItemStack @NotNull [] deserializeInventory(final @NonNull String str) throws IllegalArgumentException {
+        return ItemStack.deserializeItemsFromBytes(Base64.getDecoder().decode(str));
+    }
+
+    protected String buildKey(String... args) {
+        return String.join(".", args);
     }
 }
