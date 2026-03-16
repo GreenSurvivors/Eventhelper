@@ -34,7 +34,8 @@ public class InventoryConfig extends AModulConfig {
         LEVEL = "level",
         HEALTH = "health",
         HUNGER = "hunger",
-        ATTRIBUTES = "attributes",
+        SATURATION = "saturation",
+        ATTRIBUTES = "attributes", // todo ponder about exhaustion
         ATTRIBUTE_BASE_VALUE = "base",
         ATTRIBUTE_MODIFIERS = "modifiers",
         ATTRIBUTE_TYPE = "type",
@@ -140,6 +141,7 @@ public class InventoryConfig extends AModulConfig {
         cfg.set(buildKey(identifier, STATS, LEVEL), player.getLevel());
         cfg.set(buildKey(identifier, STATS, HEALTH), player.getHealth());
         cfg.set(buildKey(identifier, STATS, HUNGER), player.getFoodLevel());
+        cfg.set(buildKey(identifier, STATS, SATURATION), player.getSaturation());
 
         // save modified configuration
         cfg.options().parseComments(true);
@@ -225,8 +227,9 @@ public class InventoryConfig extends AModulConfig {
         player.setExp(Math.max(0, (float) cfg.getDouble(buildKey(identifier, STATS, EXP), 0.0)));
         player.setLevel(Math.max(0, cfg.getInt(buildKey(identifier, STATS, LEVEL), 0)));
         final double maxHealth = player.getAttribute(Attribute.MAX_HEALTH).getValue();
-        player.setHealth(Math.max(0, Math.min(maxHealth, cfg.getDouble(buildKey(identifier, STATS, HEALTH), maxHealth))));
-        player.setFoodLevel(Math.max(0, Math.min(20, cfg.getInt(buildKey(identifier, STATS, HUNGER), 20))));
+        player.setHealth(Math.clamp(cfg.getDouble(buildKey(identifier, STATS, HEALTH), maxHealth), 0, maxHealth));
+        player.setFoodLevel(Math.clamp(cfg.getInt(buildKey(identifier, STATS, HUNGER), 20), 0, 20));
+        player.setSaturation((float) Math.clamp(cfg.getDouble(buildKey(identifier, STATS, SATURATION), 5D), 0f, 5f));
     }
 
     /**
