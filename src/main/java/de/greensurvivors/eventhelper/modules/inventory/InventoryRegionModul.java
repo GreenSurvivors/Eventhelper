@@ -11,8 +11,6 @@ import com.sk89q.worldguard.protection.flags.registry.FlagRegistry;
 import com.sk89q.worldguard.protection.regions.RegionQuery;
 import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.modules.AModul;
-import de.greensurvivors.eventhelper.modules.StateChangeEvent;
-import net.kyori.adventure.key.Key;
 import net.kyori.adventure.key.KeyPattern;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -109,20 +107,13 @@ public class InventoryRegionModul extends AModul<InventoryConfig> {
     }
 
     @Override
-    @EventHandler(ignoreCancelled = true)
-    protected void onConfigEnabledChange(@NotNull StateChangeEvent<?> event) {
-        Key eventKey = event.getKey();
-
-        if (eventKey.namespace().equals(getName()) && eventKey.value().equals(getName())) {
-            if (event.getNewState() instanceof Boolean enabledState) {
-                if (enabledState) {
-                    if (plugin.getDependencyManager().isWorldGuardEnabled()) {
-                        Bukkit.getPluginManager().registerEvents(this, plugin);
-                    }
-                } else {
-                    HandlerList.unregisterAll(this);
-                }
+    protected void onConfigEnabledChange(final boolean newState) {
+        if (newState) {
+            if (plugin.getDependencyManager().isWorldGuardEnabled()) {
+                Bukkit.getPluginManager().registerEvents(this, plugin);
             }
+        } else {
+            HandlerList.unregisterAll(this);
         }
     }
 }

@@ -2,7 +2,6 @@ package de.greensurvivors.eventhelper.modules;
 
 import de.greensurvivors.eventhelper.EventHelper;
 import net.kyori.adventure.key.KeyPattern;
-import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.jetbrains.annotations.NotNull;
 
@@ -20,8 +19,7 @@ public abstract class AModul<Config extends AModulConfig> implements Listener {
      */
     public abstract @NotNull @KeyPattern.Namespace String getName();
 
-    @EventHandler
-    protected abstract void onConfigEnabledChange(final @NotNull StateChangeEvent<?> event);
+    protected abstract void onConfigEnabledChange(final boolean newState);
 
     public @NotNull Config getConfig() {
         return config;

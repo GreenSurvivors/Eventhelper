@@ -4,7 +4,6 @@ import de.greensurvivors.eventhelper.EventHelper;
 import de.greensurvivors.eventhelper.modules.ghost.GhostModul;
 import de.greensurvivors.eventhelper.modules.inventory.InventoryRegionModul;
 import de.greensurvivors.eventhelper.modules.tnt.TNTKnockbackModul;
-import net.kyori.adventure.key.Key;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.server.PluginDisableEvent;
@@ -69,7 +68,7 @@ public class ModulRegistery implements Listener {
     public void disableAll() {
         for (final @NotNull AModul<?> modul : registeredModules.values()) {
             if (modul.getConfig().isEnabled()) {
-                new StateChangeEvent<>(Key.key(modul.getName(), modul.getName()), false).callEvent();
+                modul.onConfigEnabledChange(false);
             }
         }
     }
@@ -80,11 +79,10 @@ public class ModulRegistery implements Listener {
             final boolean wasEnabled = modul.getConfig().isEnabled();
 
             modul.getConfig().reload().thenAccept(isEnabled -> {
-                final Key modulKey = Key.key(modul.getName(), modul.getName());
                 if (isEnabled) {
-                    new StateChangeEvent<>(modulKey, true).callEvent();
+                    modul.onConfigEnabledChange(true);
                 } else if (wasEnabled) {
-                    new StateChangeEvent<>(modulKey, false).callEvent();
+                    modul.onConfigEnabledChange(false);
                 }
             });
         }

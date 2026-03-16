@@ -12,12 +12,10 @@ import de.greensurvivors.eventhelper.command.MainCmd;
 import de.greensurvivors.eventhelper.messages.SharedLangPath;
 import de.greensurvivors.eventhelper.messages.SharedPlaceHolder;
 import de.greensurvivors.eventhelper.modules.AModul;
-import de.greensurvivors.eventhelper.modules.StateChangeEvent;
 import de.greensurvivors.eventhelper.modules.ghost.command.GhostCmd;
 import de.greensurvivors.eventhelper.modules.ghost.player.AGhostGameParticipant;
 import de.greensurvivors.eventhelper.modules.ghost.player.AGhostGamePlayer;
 import de.greensurvivors.eventhelper.modules.ghost.player.SpectatingPlayer;
-import net.kyori.adventure.key.Key;
 import net.kyori.adventure.key.KeyPattern;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
@@ -108,23 +106,16 @@ public class GhostModul extends AModul<GeneralGhostConfig> {
     }
 
     @Override
-    @EventHandler(ignoreCancelled = true)
-    protected void onConfigEnabledChange(@NotNull StateChangeEvent<?> event) {
-        Key eventKey = event.getKey();
-
-        if (eventKey.namespace().equals(getName()) && eventKey.value().equals(getName())) {
-            if (event.getNewState() instanceof Boolean enabledState) {
-                if (enabledState) {
-                    onEnable();
-                } else {
-                    for (GhostGame ghostGame : games.values()) {
-                        ghostGame.resetGame();
-                        ghostGame.onDisable();
-                    }
-
-                    HandlerList.unregisterAll(this);
-                }
+    protected void onConfigEnabledChange(final boolean newState) {
+        if (newState) {
+            onEnable();
+        } else {
+            for (GhostGame ghostGame : games.values()) {
+                ghostGame.resetGame();
+                ghostGame.onDisable();
             }
+
+            HandlerList.unregisterAll(this);
         }
     }
 
